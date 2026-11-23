@@ -6294,7 +6294,7 @@ var Core = (function () {
       var redoNow = 0;
       for (var rn = 0; rn < qs.length; rn++) if (qs[rn].redo) redoNow += 1;
       h += redoNow
-        ? '<div class="banner retry">🔄 다시 냈어요. 고친 답 ' + redoNow + '문제만 다시 채점해요. 맞힌 문제는 그대로 남겨 뒀어요.</div>'
+        ? '<div class="banner retry">🔄 다시 냈어요. 고친 답 ' + redoNow + '문제만 다시 채점해요. 다른 문제는 지난 결과 그대로예요.</div>'
         : '<div class="banner ok">📮 답안을 냈어요. 채점을 기다리는 중!</div>';
     }
     if (st === 'draft') {
@@ -6746,7 +6746,7 @@ var Core = (function () {
     if (sc.allGraded && wasGraded) {
       msg = '고친 답안이 없어서 지난 채점을 그대로 뒀어요.';
     } else if (redone > 0) {
-      msg = '고친 답 ' + redone + '문제만 다시 채점해요.' + (kept ? ' 맞힌 문제 ' + kept + '개는 그대로 뒀어요.' : '');
+      msg = '고친 답 ' + redone + '문제만 다시 채점해요.' + (kept ? ' 나머지 ' + kept + '문제는 그대로 뒀어요.' : '');
     } else {
       msg = '답안을 제출했어요. 채점을 기다려 주세요!';
     }
