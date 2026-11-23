@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "updatedAt": "2026-11-23T10:00:00+09:00",
+  "source": "🐢 4월 보홀 항공·헤난 리조트 가격 스캔 (매일 오전 10:00)",
+  "trip": {
+    "route": "ICN ↔ TAG (인천 ↔ 보홀 팡라오 직항)",
+    "window": "2027년 4월 중순~하순, 화요일 밤 출발 ~ 일요일 아침 귀국",
+    "pax": "성인 3 + 소아 1"
+  },
+  "goals": {
+    "air4Total": 1650000,
+    "hotel4Nights": 1250000
+  },
+  "latest": {
+    "scannedAt": "2026-11-23T10:00:00+09:00",
+    "headline": "4월 하계 특가 오픈 전 · 의미 있는 변동 없음",
+    "alert": false,
+    "air": {
+      "source": "엔조이스카이",
+      "url": "https://enjoysky.net/destinations/bohol",
+      "perPersonRoundTrip": 354800,
+      "prevPerPersonRoundTrip": 352977,
+      "observations": 237,
+      "basis": "2027년 4월 출발 왕복 최저가 · 4월 중 가장 싼 날짜 조합 기준(1인)",
+      "note": "4/13~18처럼 날짜를 고정한 값이 아니라, 4월 안에서 가장 싼 조합의 관측값입니다."
+    },
+    "hotel": {
+      "source": "헤난 공홈 · 아고다 · 트립닷컴",
+      "familyRoom4Nights": null,
+      "note": "패밀리룸(52㎡ · 4인 조식 포함) 4박 125만 원 이하 특가는 아직 미포착."
+    },
+    "deals": {
+      "jinMarket": "미오픈",
+      "jejuCham": "미오픈",
+      "note": "2027년 하계(4월) 공식 특가 일정 발표 전"
+    }
+  },
+  "reference": {
+    "checkedAt": "2026-11-23T15:55:00+09:00",
+    "label": "대시보드를 만들 때 직접 확인한 값(매일 스캔 기록과 별도)",
+    "tripComHotel": {
+      "checkIn": "2027-04-13",
+      "checkOut": "2027-04-17",
+      "nights": 4,
+      "room": "패밀리룸 52㎡ · 조식 4인 포함",
+      "perNight": 390220,
+      "total": 1560878,
+      "cancellation": "환불 불가"
+    },
+    "henannOfficial": {
+      "room": "Family Room (52㎡ · 성인 4인)",
+      "perNightPHP": 13533,
+      "breakfast": "조식 포함",
+      "note": "공홈 BEST AVAILABLE RATE, 날짜에 따라 달라짐"
+    }
+  },
+  "logs": [
+    {
+      "date": "2026-11-22",
+      "time": "10:00",
+      "title": "첫 스캔",
+      "airPerPerson": 352977,
+      "observations": 220,
+      "alert": false,
+      "note": "4월 하계 특가 변동 없음. 땡처리닷컴은 동계(2027-03-24 출발까지)만 등록 상태."
+    },
+    {
+      "date": "2026-11-23",
+      "time": "10:00",
+      "title": "일일 스캔",
+      "airPerPerson": 354800,
+      "observations": 237,
+      "alert": false,
+      "note": "진에어 블랙프라이데이 프로모션은 탑승 2027-03-27(동계)까지. 4월 하계 특가 공지 미발표."
+    }
+  ]
+}

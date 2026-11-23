@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b5f73">
+<meta name="robots" content="noindex">
+<title>보홀 항공·숙소 대시보드 (2027년 4월)</title>
+<style>
+  :root{
+    --bg:#eef4f7;
+    --card:#ffffff;
+    --ink:#10222e;
+    --muted:#5d7484;
+    --line:#dde8ee;
+    --brand:#0b5f73;
+    --brand-2:#12869c;
+    --sky:#e8f4f8;
+    --warn:#b45309;
+    --ok:#0f766e;
+    --shadow:0 1px 2px rgba(16,34,46,.05),0 8px 20px -12px rgba(16,34,46,.18);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",system-ui,"Segoe UI",Roboto,sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:560px;margin:0 auto;padding:0 14px 44px}
+
+  /* ---------- hero ---------- */
+  .hero{
+    margin:0 -14px 14px;
+    padding:22px 20px 18px;
+    color:#fff;
+    background:
+      radial-gradient(120% 90% at 100% 0%, #17a2b8 0%, rgba(23,162,184,0) 55%),
+      linear-gradient(160deg,#0b5f73 0%,#0e7490 55%,#12869c 100%);
+    border-radius:0 0 22px 22px;
+    box-shadow:0 10px 24px -16px rgba(11,95,115,.9);
+  }
+  .kicker{
+    display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.08em;
+    text-transform:uppercase;opacity:.85;margin-bottom:6px;
+  }
+  .hero h1{margin:0 0 4px;font-size:23px;line-height:1.28;letter-spacing:-.02em}
+  .hero .sub{margin:0 0 14px;font-size:13px;opacity:.88}
+  .facts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .fact{
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:12px;padding:9px 10px;
+  }
+  .fact.wide{grid-column:1 / -1}
+  .fact .k{display:block;font-size:10.5px;font-weight:700;letter-spacing:.03em;opacity:.8;margin-bottom:2px}
+  .fact .v{display:block;font-size:14px;font-weight:700;line-height:1.35}
+  .fact .v small{font-weight:500;font-size:11.5px;opacity:.85}
+
+  /* ---------- cards ---------- */
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:15px 14px 14px;margin:0 0 12px;box-shadow:var(--shadow);
+  }
+  .card > h2{
+    margin:0 0 3px;font-size:15.5px;letter-spacing:-.01em;
+    display:flex;align-items:center;gap:7px;
+  }
+  .card > h2 .n{
+    display:inline-grid;place-items:center;width:19px;height:19px;border-radius:6px;
+    background:var(--sky);color:var(--brand);font-size:11px;font-weight:800;flex:none;
+  }
+  .card .lead{margin:0 0 11px;font-size:12.5px;color:var(--muted)}
+  .hint{
+    font-size:11px;font-weight:700;color:var(--brand-2);background:var(--sky);
+    border-radius:999px;padding:2px 8px;margin-left:auto;flex:none;
+  }
+
+  /* ---------- tabs ---------- */
+  .tabs{display:flex;gap:6px;margin:10px 0 11px}
+  .tab{
+    flex:1;appearance:none;border:1px solid var(--line);background:#f8fbfc;
+    color:var(--muted);border-radius:12px;padding:9px 4px;cursor:pointer;
+    font-family:inherit;font-size:12.5px;font-weight:700;line-height:1.25;
+    transition:background .15s,color .15s,border-color .15s,transform .1s;
+  }
+  .tab span{display:block;font-size:10.5px;font-weight:600;opacity:.75;margin-top:2px}
+  .tab[aria-selected="true"]{
+    background:linear-gradient(180deg,#12869c,#0b5f73);color:#fff;border-color:#0b5f73;
+    box-shadow:0 6px 14px -8px rgba(11,95,115,.9);
+  }
+  .tab[aria-selected="true"] span{opacity:.9}
+  .tab:active{transform:scale(.985)}
+  .summary{
+    background:#f7fafb;border:1px dashed var(--line);border-radius:12px;
+    padding:10px 11px;font-size:12.5px;color:var(--ink);
+  }
+  .summary dl{display:grid;grid-template-columns:58px 1fr;gap:3px 8px;margin:0}
+  .summary dt{color:var(--muted);font-weight:700;font-size:11.5px}
+  .summary dd{margin:0;font-weight:600}
+  .summary dd b{color:var(--brand)}
+
+  /* ---------- buttons ---------- */
+  .btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .btn-grid.one{grid-template-columns:1fr}
+  .btn{
+    display:flex;align-items:center;gap:9px;min-height:56px;
+    padding:9px 10px;border-radius:13px;text-decoration:none;color:var(--ink);
+    background:#fff;border:1px solid var(--line);transition:transform .1s,border-color .15s;
+  }
+  .btn:active{transform:scale(.985)}
+  .btn .ico{
+    flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+    background:var(--sky);font-size:15px;
+  }
+  .btn .txt{min-width:0;flex:1}
+  .btn .txt strong{display:block;font-size:13px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .btn .txt small{display:block;font-size:10.5px;color:var(--muted);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .btn .chev{flex:none;color:#a8bcc8;font-size:15px;line-height:1}
+  .btn.primary{
+    grid-column:1 / -1;min-height:60px;border-color:transparent;
+    background:linear-gradient(135deg,#12869c,#0b5f73);color:#fff;
+    box-shadow:0 8px 18px -12px rgba(11,95,115,.95);
+  }
+  .btn.primary .ico{background:rgba(255,255,255,.18)}
+  .btn.primary .txt small{color:rgba(255,255,255,.82)}
+  .btn.primary .chev{color:rgba(255,255,255,.7)}
+  .btn.soft{background:#f8fbfc}
+  .group-label{
+    display:flex;align-items:center;gap:7px;margin:13px 0 7px;
+    font-size:11.5px;font-weight:800;color:var(--muted);letter-spacing:.02em;
+  }
+  .group-label::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* ---------- hotel toggle ---------- */
+  .nights{
+    display:flex;gap:6px;margin:2px 0 10px;background:#f4f9fb;
+    border:1px solid var(--line);border-radius:11px;padding:3px;
+  }
+  .nights button{
+    flex:1;appearance:none;border:0;background:transparent;color:var(--muted);
+    font-family:inherit;font-size:12px;font-weight:700;padding:7px 4px;border-radius:9px;cursor:pointer;
+  }
+  .nights button[aria-pressed="true"]{background:#fff;color:var(--brand);box-shadow:0 1px 4px rgba(16,34,46,.12)}
+  .tiny{font-size:11.5px;color:var(--muted);margin:9px 0 0;line-height:1.55}
+  .tiny b{color:var(--ink)}
+
+  /* ---------- scan ---------- */
+  .scan-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+  .scan-head .when{font-size:12.5px;font-weight:700}
+  .scan-head .badge{
+    font-size:10.5px;font-weight:800;border-radius:999px;padding:3px 9px;
+    background:#fff7ed;color:var(--warn);border:1px solid #fed7aa;
+  }
+  .scan-head .badge.hot{background:#ecfdf5;color:var(--ok);border-color:#a7f3d0}
+  .scan-head .badge.quiet{background:#f1f5f9;color:#475569;border-color:#e2e8f0}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .metric{background:#f7fafb;border:1px solid var(--line);border-radius:12px;padding:10px}
+  .metric .k{font-size:10.5px;font-weight:800;color:var(--muted);letter-spacing:.02em}
+  .metric .v{font-size:17px;font-weight:800;letter-spacing:-.02em;margin:2px 0 1px}
+  .metric .v small{font-size:11px;font-weight:700;color:var(--muted)}
+  .metric .d{font-size:10.5px;color:var(--muted);line-height:1.35}
+  .delta.up{color:#b91c1c}
+  .delta.down{color:#047857}
+  .log{list-style:none;margin:4px 0 0;padding:0}
+  .log li{
+    position:relative;padding:0 0 12px 16px;border-left:2px solid var(--line);
+    margin-left:3px;
+  }
+  .log li:last-child{padding-bottom:2px;border-left-color:transparent}
+  .log li::before{
+    content:"";position:absolute;left:-5px;top:4px;width:8px;height:8px;border-radius:50%;
+    background:#cbd8e0;border:2px solid #fff;
+  }
+  .log li:first-child::before{background:var(--brand-2)}
+  .log .lt{font-size:12px;font-weight:800}
+  .log .lb{font-size:11.5px;color:var(--muted);line-height:1.5}
+  .log .ln{font-size:11.5px;color:var(--ink);font-weight:600;margin-top:1px}
+  .ref{
+    margin-top:10px;border-radius:12px;background:#f7fafb;border:1px solid var(--line);
+    padding:10px 11px;font-size:11.5px;color:var(--muted);line-height:1.55;
+  }
+  .ref b{color:var(--ink)}
+  .ref .ref-t{font-size:11px;font-weight:800;color:var(--brand);margin-bottom:4px}
+  .refresh{
+    margin-top:11px;width:100%;appearance:none;border:1px solid var(--line);background:#fff;
+    border-radius:11px;padding:9px;font-family:inherit;font-size:12px;font-weight:700;
+    color:var(--brand);cursor:pointer;
+  }
+  .refresh:active{background:#f1f7f9}
+  .refresh[disabled]{opacity:.6}
+
+  /* ---------- timeline ---------- */
+  .tl{list-style:none;margin:2px 0 0;padding:0}
+  .tl li{display:grid;grid-template-columns:60px 1fr;gap:9px;padding:0 0 11px;position:relative}
+  .tl li:not(:last-child)::after{
+    content:"";position:absolute;left:29px;top:22px;bottom:0;width:1px;background:var(--line);
+  }
+  .tl .when{
+    font-size:11px;font-weight:800;color:var(--brand);background:var(--sky);
+    border-radius:8px;height:22px;display:grid;place-items:center;text-align:center;line-height:1.1;
+    padding:0 3px;
+  }
+  .tl .what{font-size:12.5px;line-height:1.45}
+  .tl .what b{display:block;font-size:13px}
+  .tl .what span{color:var(--muted);font-size:11.5px}
+  .tl .dday{font-size:10.5px;font-weight:800;color:#b45309}
+  .tl li.key .when{background:#fff7ed;color:var(--warn)}
+
+  /* ---------- footer ---------- */
+  footer{
+    margin-top:16px;padding:0 4px;font-size:11px;color:var(--muted);line-height:1.65;
+  }
+  footer strong{color:var(--ink)}
+  .privacy{
+    margin-top:10px;background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:10px 11px;font-size:11px;color:var(--muted);line-height:1.6;
+  }
+  .privacy b{color:var(--ok)}
+  @media (max-width:360px){
+    .btn .txt small{font-size:10px}
+    .fact .v{font-size:13px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="kicker">2027 봄 · 4인 가족</span>
+    <h1>보홀 항공 · 숙소 대시보드</h1>
+    <p class="sub">인천 → 보홀 팡라오 직항 · 4박 6일 · 날짜만 고르면 조회 링크가 한 번에 바뀝니다</p>
+    <div class="facts">
+      <div class="fact wide">
+        <span class="k">일정</span>
+        <span class="v">화 20:45 출발 → 일 07:10 인천 도착 <small>(수·목·금 연차 3일)</small></span>
+      </div>
+      <div class="fact">
+        <span class="k">항공 인원</span>
+        <span class="v">성인 3 · 소아 1</span>
+      </div>
+      <div class="fact">
+        <span class="k">숙소</span>
+        <span class="v">헤난 알로나 비치 <small>패밀리룸</small></span>
+      </div>
+      <div class="fact">
+        <span class="k">항공 목표</span>
+        <span class="v">165만 원 이하</span>
+      </div>
+      <div class="fact">
+        <span class="k">숙소 목표</span>
+        <span class="v">4박 125만 원 이하</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 날짜 -->
+  <section class="card">
+    <h2><span class="n">1</span> 날짜 선택 <span class="hint" id="tabHint">4박 6일</span></h2>
+    <p class="lead">탭을 누르면 아래 항공권·숙소 링크의 날짜가 전부 바뀝니다.</p>
+    <div class="tabs" role="tablist" aria-label="여행 날짜">
+      <button class="tab" role="tab" data-trip="0" aria-selected="true">4/13(화)<span>~ 4/18(일)</span></button>
+      <button class="tab" role="tab" data-trip="1" aria-selected="false">4/20(화)<span>~ 4/25(일)</span></button>
+      <button class="tab" role="tab" data-trip="2" aria-selected="false">4/06(화)<span>~ 4/11(일)</span></button>
+    </div>
+    <div class="summary">
+      <dl>
+        <dt>항공</dt><dd id="sAir">—</dd>
+        <dt>숙소</dt><dd id="sHotel">—</dd>
+        <dt>연차</dt><dd id="sLeave">—</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- 항공권 -->
+  <section class="card">
+    <h2><span class="n">2</span> 항공권 조회 <span class="hint" id="airPax">성인3 · 소아1</span></h2>
+    <p class="lead">인천 ↔ 보홀 팡라오(TAG) 왕복. 버튼은 새 창에서 열립니다.</p>
+
+    <div class="btn-grid">
+      <a class="btn primary" data-b="naver" target="_blank" rel="noopener">
+        <span class="ico">✈️</span>
+        <span class="txt"><strong>네이버 항공권</strong><small id="sub-naver">3성인+1소아 · 날짜까지 자동 입력</small></span>
+        <span class="chev">›</span>
+      </a>
+      <a class="btn" data-b="trip" target="_blank" rel="noopener">
+        <span class="ico">🧭</span>
+        <span class="txt"><strong>트립닷컴</strong><small id="sub-trip">왕복 · 4명</small></span>
+        <span class="chev">›</span>
+      </a>
+      <a class="btn" data-b="skyscanner" target="_blank" rel="noopener">
+        <span class="ico">🔎</span>
+        <span class="txt"><strong>스카이스캐너</strong><small id="sub-skyscanner">최저가 비교</small></span>
+        <span class="chev">›</span>
+      </a>
+      <a class="btn" data-b="kayak" target="_blank" rel="noopener">
+        <span class="ico">📊</span>
+        <span class="txt"><strong>카약</strong><small id="sub-kayak">가격 추이까지</small></span>
+        <span class="chev">›</span>
+      </a>
+    </div>
+
+    <div class="group-label">항공사 공식 (특가가 먼저 뜨는 곳)</div>
+    <div class="btn-grid">
+      <a class="btn" data-b="jejuair" target="_blank" rel="noopener">
+        <span class="ico">🟠</span>
+        <span class="txt"><strong>제주항공</strong><small id="sub-jejuair">찜특가 · 인원 직접 선택</small></span>
+        <span class="chev">›</span>
+      </a>
+      <a class="btn" data-b="jinair" target="_blank" rel="noopener">
+        <span class="ico">🟢</span>
+        <span class="txt"><strong>진에어</strong><small>진마켓 · 날짜 직접 입력</small></span>
+        <span class="chev">›</span>
+      </a>
+    </div>
+
+    <div class="group-label">특가·통계 사이트</div>
+    <div class="btn-grid">
+      <a class="btn soft" data-b="enjoysky" target="_blank" rel="noopener">
+        <span class="ico">🌴</span>
+        <span class="txt"><strong>엔조이스카이</strong><small>보홀 4월 최저가 통계</small></span>
+        <span class="chev">›</span>
+      </a>
+      <a class="btn soft" data-b="ttang" target="_blank" rel="noopener">
+        <span class="ico">⚡</span>
+        <span class="txt"><strong>땡처리닷컴</strong><small>출발 임박 특가</small></span>
+        <span class="chev">›</span>
+      </a>
+    </div>
+    <p class="tiny">4월 하계 스케줄이 아직 안 열렸으면 <b>직항이 안 보이거나 “결과 없음”</b>이 정상입니다. 2027년 3월 말 하계 전환 이후 채워집니다.</p>
+  </section>
+
+  <!-- 숙소 -->
+  <section class="card">
+    <h2><span class="n">3</span> 숙소 조회 <span class="hint">패밀리룸</span></h2>
+    <p class="lead">헤난 리조트 알로나 비치 · 52㎡ · 4인 조식 포함(만 10세 이상 성인 요금)</p>
+
+    <div class="nights" role="group" aria-label="숙박 일수">
+      <button data-nights="4" aria-pressed="true">4박 (기본)</button>
+      <button data-nights="5" aria-pressed="false">5박 (마지막 밤까지 방 유지)</button>
+    </div>
+
+    <div class="btn-grid">
+      <a class="btn primary" data-b="agoda" target="_blank" rel="noopener">
+        <span class="ico">🏖️</span>
+        <span class="txt"><strong>아고다</strong><small id="sub-agoda">체크인·숙박일수 자동 입력</small></span>
+        <span class="chev">›</span>
+      </a>
+      <a class="btn" data-b="tripHotel" target="_blank" rel="noopener">
+        <span class="ico">🧭</span>
+        <span class="txt"><strong>트립닷컴</strong><small id="sub-tripHotel">성인 4명 · 패밀리룸</small></span>
+        <span class="chev">›</span>
+      </a>
+      <a class="btn" data-b="henann" target="_blank" rel="noopener">
+        <span class="ico">🏨</span>
+        <span class="txt"><strong>헤난 공홈</strong><small>성인 4명 · 날짜 직접 선택</small></span>
+        <span class="chev">›</span>
+      </a>
+      <a class="btn soft" data-b="agoda5" target="_blank" rel="noopener">
+        <span class="ico">🔁</span>
+        <span class="txt"><strong>아고다 (5박)</strong><small id="sub-agoda5">귀국일까지 방 유지</small></span>
+        <span class="chev">›</span>
+      </a>
+    </div>
+    <p class="tiny" id="hotelNote">—</p>
+  </section>
+
+  <!-- 스캔 기록 -->
+  <section class="card" id="scanCard">
+    <h2><span class="n">4</span> 매일 오전 10시 스캔 <span class="hint" id="scanState">불러오는 중</span></h2>
+    <div id="scanBody">
+      <p class="lead">스캔 기록을 불러오고 있습니다…</p>
+    </div>
+    <button class="refresh" id="reloadScan" type="button">기록 새로고침</button>
+  </section>
+
+  <!-- 타임라인 -->
+  <section class="card">
+    <h2><span class="n">5</span> 특가 오픈 타임라인</h2>
+    <p class="lead">2026년 기준 실제 오픈 시기입니다. 2027년은 3/17 진에어·에어부산·에어서울 통합 출범이 변수예요.</p>
+    <ul class="tl" id="timeline"></ul>
+  </section>
+
+  <footer>
+    <div class="privacy">
+      <b>공개 페이지 안내</b> — 이 주소는 누구나 열 수 있는 GitHub Pages입니다. 그래서 가족 이름·생년월일·직장 같은 개인정보는 담지 않고 <b>“성인 3 · 소아 1”, “4인 가족”</b>으로만 적었습니다.
+    </div>
+    <p style="margin:10px 2px 0">가격은 조회 시점·날짜에 따라 계속 바뀝니다. 표시된 금액은 “그때 이 값이 있었다”는 기록이지 예약 확정가가 아닙니다.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------- 여행 날짜 정의 ---------------- */
+  var TRIPS = [
+    { out: "2027-04-13", back: "2027-04-18" },
+    { out: "2027-04-20", back: "2027-04-25" },
+    { out: "2027-04-06", back: "2027-04-11" }
+  ];
+  var WD = ["일", "월", "화", "수", "목", "금", "토"];
+  var state = { trip: 0, nights: 4 };
+
+  function D(iso) {
+    var p = iso.split("-");
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function ymd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function compact(d) { return "" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()); }
+  function md(iso) { var d = D(iso); return (d.getMonth() + 1) + "/" + d.getDate() + "(" + WD[d.getDay()] + ")"; }
+  function mdFull(iso) { var d = D(iso); return d.getFullYear() + ". " + (d.getMonth() + 1) + ". " + d.getDate() + "(" + WD[d.getDay()] + ")"; }
+  function addDays(iso, n) { var d = D(iso); d.setDate(d.getDate() + n); return d; }
+  function nightsBetween(a, b) { return Math.round((D(b) - D(a)) / 86400000); }
+
+  /* ---------------- 링크 생성기 (2026-11-23 실제 접속 확인) ---------------- */
+  var BUILD = {
+    naver: function (t) {
+      return "https://flight.naver.com/flights/international/ICN-TAG-" + compact(D(t.out)) +
+        "/TAG-ICN-" + compact(D(t.back)) + "?adult=3&child=1&infant=0&fareType=Y";
+    },
+    trip: function (t) {
+      return "https://kr.trip.com/flights/showfarefirst?dcity=icn&acity=tag&ddate=" + t.out +
+        "&rdate=" + t.back + "&triptype=rt&class=y&quantity=3&adultqty=3&childqty=1&locale=ko-KR&curr=KRW";
+    },
+    skyscanner: function (t) {
+      return "https://www.skyscanner.co.kr/transport/flights/icn/tag/" + compact(D(t.out)) + "/" +
+        compact(D(t.back)) + "/?adultsv2=3&childrenv2=10&cabinclass=economy&rtn=1";
+    },
+    kayak: function (t) {
+      return "https://www.kayak.co.kr/flights/ICN-TAG/" + t.out + "/" + t.back +
+        "/3adults/children-10?sort=bestflight_a";
+    },
+    jejuair: function (t) {
+      return "https://www.jejuair.net/ko/ibe/booking/Availability.do?tripType=R&depStn=ICN&arrStn=TAG&depDate=" +
+        t.out + "&arrDate=" + t.back;
+    },
+    jinair: function () { return "https://www.jinair.com/booking/index"; },
+    enjoysky: function () { return "https://enjoysky.net/destinations/bohol"; },
+    ttang: function () { return "https://www.ttang.com"; },
+    agoda: function (t) {
+      return "https://www.agoda.com/henann-resort-alona-beach/hotel/bohol-ph.html?checkIn=" + t.hotelIn +
+        "&los=" + t.nights + "&adults=4&rooms=1&currency=KRW";
+    },
+    agoda5: function (t) {
+      return "https://www.agoda.com/henann-resort-alona-beach/hotel/bohol-ph.html?checkIn=" + t.out +
+        "&los=5&adults=4&rooms=1&currency=KRW";
+    },
+    tripHotel: function (t) {
+      return "https://kr.trip.com/hotels/detail/?hotelId=2085967&checkIn=" + t.hotelIn +
+        "&checkOut=" + t.hotelOut + "&adult=4&children=0&curr=KRW";
+    },
+    henann: function () {
+      return "https://reservations.henann.com/458/henann-resort-alona-beach?adults=4";
+    }
+  };
+
+  /* ---------------- 날짜 탭 ---------------- */
+  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+
+  function currentTrip() {
+    var t = TRIPS[state.trip];
+    var hotelOut = (state.nights === 5) ? t.back : ymd(addDays(t.out, 4));
+    return {
+      out: t.out,
+      back: t.back,
+      nights: state.nights,
+      hotelIn: t.out,
+      hotelOut: hotelOut
+    };
+  }
+
+  function render() {
+    var t = currentTrip();
+
+    tabs.forEach(function (b, i) {
+      b.setAttribute("aria-selected", i === state.trip ? "true" : "false");
+    });
+
+    document.getElementById("tabHint").textContent = t.nights + "박 " + (nightsBetween(t.out, t.back) + 1) + "일";
+
+    document.getElementById("sAir").innerHTML =
+      "<b>" + md(t.out) + "</b> 20:45 출발 → <b>" + md(t.back) + "</b> 07:10 도착";
+    document.getElementById("sHotel").innerHTML =
+      "체크인 <b>" + md(t.hotelIn) + "</b> · 체크아웃 <b>" + md(t.hotelOut) + "</b> <span style='color:var(--muted);font-weight:500'>(" +
+      t.nights + "박)</span>";
+    document.getElementById("sLeave").textContent = "화 반차 + 수·목·금 연차 3일 (주말 포함 6일)";
+
+    document.getElementById("sub-naver").textContent = md(t.out) + "~" + md(t.back) + " · 3성인+1소아";
+    document.getElementById("sub-trip").textContent = md(t.out) + "~" + md(t.back) + " · 왕복 4명";
+    document.getElementById("sub-skyscanner").textContent = md(t.out) + "~" + md(t.back);
+    document.getElementById("sub-kayak").textContent = md(t.out) + "~" + md(t.back) + " · 성인3+소아1";
+    document.getElementById("sub-jejuair").textContent = md(t.out) + "~" + md(t.back) + " · 인원 직접 선택";
+    document.getElementById("sub-agoda").textContent = md(t.hotelIn) + " 체크인 · " + t.nights + "박";
+    document.getElementById("sub-agoda5").textContent = md(t.out) + " 체크인 · 5박";
+    document.getElementById("sub-tripHotel").textContent = md(t.hotelIn) + "~" + md(t.hotelOut) + " · 성인 4명";
+
+    Array.prototype.forEach.call(document.querySelectorAll("[data-b]"), function (a) {
+      var fn = BUILD[a.getAttribute("data-b")];
+      if (fn) a.href = fn(t);
+    });
+
+    document.getElementById("hotelNote").innerHTML = (t.nights === 4)
+      ? "<b>4박 기준</b> — " + md(t.out) + " 도착(수 00:45)이라 화요일 밤부터 방이 필요해요. 체크아웃은 " + md(t.hotelOut) +
+        " 11:00이고, 그날 밤 비행기(일 01:45)까지 12시간이 남습니다. 리조트에 <b>레이트 체크아웃·짐 보관·샤워실</b>을 미리 요청하거나, 아래 <b>5박</b>으로 방을 유지할 수 있어요."
+      : "<b>5박 기준</b> — " + md(t.back) + " 밤 비행기 전까지 방을 그대로 씁니다(샤워·짐 정리 편함). 4박보다 1박 요금이 더 붙습니다.";
+  }
+
+  tabs.forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.trip = Number(b.getAttribute("data-trip"));
+      render();
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-nights]"), function (b) {
+    b.addEventListener("click", function () {
+      state.nights = Number(b.getAttribute("data-nights"));
+      Array.prototype.forEach.call(document.querySelectorAll("[data-nights]"), function (o) {
+        o.setAttribute("aria-pressed", String(o === b));
+      });
+      render();
+    });
+  });
+
+  /* ---------------- 특가 타임라인 ---------------- */
+  function dday(iso) {
+    var today = new Date();
+    var t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    var d = Math.round((D(iso) - t0) / 86400000);
+    if (d > 0) return "D-" + d;
+    if (d === 0) return "오늘";
+    return "지남";
+  }
+  var TL = [
+    { when: "지금", key: false, title: "스캔만 하면 되는 시기", desc: "여권 만료일(2027.10 이후) 확인 · 진에어·제주항공 앱에 가족 4명 등록 + 푸시 켜두기" },
+    { when: "1/21쯤", key: true, date: "2027-01-21", title: "진에어 진마켓 티저", desc: "보통 일주일 전에 오픈 날짜·노선이 먼저 공지됩니다" },
+    { when: "1/26~29", key: true, date: "2027-01-26", title: "진에어 진마켓 오픈 (예상)", desc: "하계 포함 대형 특가 · 오전 10시 정각 오픈" },
+    { when: "2/4", key: true, date: "2027-02-04", title: "제주항공 찜특가 국제선 (예상)", desc: "2026년엔 2/4 오전 10시 오픈 → 2/10까지" },
+    { when: "2월", key: false, title: "항공 결제 → 숙소 확정", desc: "특가는 취소 불가가 많아요. 결제 직후 헤난 패밀리룸 4박을 잡습니다" },
+    { when: "3월 말", key: false, title: "투어·픽업·학교 서류", desc: "정어리떼·거북이 호핑·반딧불이 + 공항 픽업 밴, 교외체험학습 신청서" },
+    { when: "출발 3일 전", key: false, title: "필리핀 eTravel 등록", desc: "etravel.gov.ph 에서 4명 QR 생성 (도착 72시간 이내에만 가능)" }
+  ];
+  var tl = document.getElementById("timeline");
+  TL.forEach(function (item) {
+    var li = document.createElement("li");
+    if (item.key) li.className = "key";
+    var when = document.createElement("span");
+    when.className = "when";
+    when.textContent = item.when;
+    var what = document.createElement("div");
+    what.className = "what";
+    var b = document.createElement("b");
+    b.textContent = item.title;
+    var s = document.createElement("span");
+    s.textContent = item.desc;
+    what.appendChild(b);
+    what.appendChild(s);
+    if (item.date) {
+      var dd = document.createElement("span");
+      dd.className = "dday";
+      dd.textContent = " " + dday(item.date);
+      b.appendChild(dd);
+    }
+    li.appendChild(when);
+    li.appendChild(what);
+    tl.appendChild(li);
+  });
+
+  /* ---------------- 스캔 기록 ---------------- */
+  var FALLBACK = {
+    updatedAt: "2026-11-23T10:00:00+09:00",
+    source: "🐢 4월 보홀 항공·헤난 리조트 가격 스캔 (매일 오전 10:00)",
+    goals: { air4Total: 1650000, hotel4Nights: 1250000 },
+    latest: {
+      scannedAt: "2026-11-23T10:00:00+09:00",
+      headline: "4월 하계 특가 오픈 전 · 의미 있는 변동 없음",
+      alert: false,
+      air: {
+        source: "엔조이스카이",
+        url: "https://enjoysky.net/destinations/bohol",
+        perPersonRoundTrip: 354800,
+        prevPerPersonRoundTrip: 352977,
+        observations: 237,
+        basis: "2027년 4월 출발 왕복 최저가 · 가장 싼 날짜 조합 기준(1인)"
+      },
+      hotel: { note: "패밀리룸(52㎡ · 4인 조식 포함) 4박 125만 원 이하 특가는 아직 미포착." },
+      deals: { jinMarket: "미오픈", jejuCham: "미오픈", note: "2027년 하계(4월) 공식 특가 일정 발표 전" }
+    },
+    logs: [
+      { date: "2026-11-22", time: "10:00", title: "첫 스캔", airPerPerson: 352977, observations: 220,
+        note: "4월 하계 특가 변동 없음. 땡처리닷컴은 동계(2027-03-24 출발까지)만 등록 상태." },
+      { date: "2026-11-23", time: "10:00", title: "일일 스캔", airPerPerson: 354800, observations: 237,
+        note: "진에어 블랙프라이데이 프로모션은 탑승 2027-03-27(동계)까지. 4월 하계 특가 공지 미발표." }
+    ]
+  };
+
+  function won(n) {
+    if (typeof n !== "number" || !isFinite(n)) return "—";
+    return n.toLocaleString("ko-KR") + "원";
+  }
+  function man(n) {
+    if (typeof n !== "number" || !isFinite(n)) return "—";
+    var v = Math.round(n / 10000);
+    return v.toLocaleString("ko-KR") + "만";
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function stamp(iso) {
+    if (!iso) return "—";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return (d.getMonth() + 1) + "월 " + d.getDate() + "일(" + WD[d.getDay()] + ") " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function renderScan(data) {
+    var L = data.latest || {};
+    var air = L.air || {};
+    var hotel = L.hotel || {};
+    var deals = L.deals || {};
+    var p = air.perPersonRoundTrip;
+    var prev = air.prevPerPersonRoundTrip;
+    var total4 = (typeof p === "number") ? p * 3 + p * 0.75 : null;
+    var total4max = (typeof p === "number") ? p * 4 : null;
+
+    var deltaHtml = "";
+    if (typeof p === "number" && typeof prev === "number") {
+      var diff = p - prev;
+      if (diff !== 0) {
+        deltaHtml = "<span class='delta " + (diff > 0 ? "up" : "down") + "'>" +
+          (diff > 0 ? "▲ " : "▼ ") + Math.abs(diff).toLocaleString("ko-KR") + "원</span> <span style='color:var(--muted)'>전일 대비</span>";
+      } else {
+        deltaHtml = "<span style='color:var(--muted)'>전일과 동일</span>";
+      }
+    }
+
+    var badge = L.alert
+      ? "<span class='badge hot'>특가 포착 · 알림 발송</span>"
+      : "<span class='badge'>특가 아직 없음 · 조용히 기록 중</span>";
+
+    var html = "";
+    html += "<div class='scan-head'><span class='when'>최근 스캔 " + stamp(L.scannedAt || data.updatedAt) + "</span>" + badge + "</div>";
+
+    html += "<div class='metrics'>";
+    html += "<div class='metric'><div class='k'>항공 1인 왕복 최저</div><div class='v'>" +
+      (typeof p === "number" ? won(p).replace("원", "") + " <small>원</small>" : "—") + "</div><div class='d'>" +
+      esc(air.source || "") + " · 관측 " + (air.observations || "—") + "건<br>" + deltaHtml + "</div></div>";
+    html += "<div class='metric'><div class='k'>4인 합계 (추정)</div><div class='v'>" +
+      (typeof total4 === "number" ? man(total4) + "~" + man(total4max) + " <small>원</small>" : "—") +
+      "</div><div class='d'>소아 운임 75~100% 가정<br>목표 " + man((data.goals || {}).air4Total || 1650000) + "원 이하</div></div>";
+    html += "</div>";
+
+    html += "<p class='tiny' style='margin:0 0 9px'>" + esc(air.basis || "") + "</p>";
+
+    html += "<div class='ref'><div class='ref-t'>숙소</div>" + esc(hotel.note || "—") +
+      "<br>목표: 패밀리룸 4박 <b>" + man((data.goals || {}).hotel4Nights || 1250000) + "원 이하</b></div>";
+
+    html += "<div class='ref' style='margin-top:8px'><div class='ref-t'>특가 오픈 여부</div>" +
+      "진에어 진마켓 <b>" + esc(deals.jinMarket || "확인 전") + "</b> · 제주항공 찜특가 <b>" + esc(deals.jejuCham || "확인 전") + "</b>" +
+      "<br>" + esc(deals.note || "") + "</div>";
+
+    if (data.reference && data.reference.tripComHotel) {
+      var r = data.reference.tripComHotel;
+      html += "<div class='ref' style='margin-top:8px'><div class='ref-t'>참고 · 오늘 직접 확인한 값</div>" +
+        "트립닷컴 패밀리룸 " + esc(r.room || "") + " · " + md(r.checkIn) + "~" + md(r.checkOut) + " (" + r.nights + "박)<br>" +
+        "1박 <b>" + won(r.perNight) + "</b> · 4박 합계 <b>" + won(r.total) + "</b> <span style='color:#b45309'>(" + esc(r.cancellation || "") + ")</span>" +
+        "<br>목표 125만 원보다 약 " + man(r.total - ((data.goals || {}).hotel4Nights || 1250000)) + "원 높음</div>";
+    }
+
+    if (data.logs && data.logs.length) {
+      html += "<div class='group-label' style='margin-top:13px'>스캔 로그</div><ul class='log'>";
+      data.logs.slice().reverse().forEach(function (g) {
+        html += "<li><div class='lt'>" + esc((g.date || "").slice(5).replace("-", "/")) + " " + esc(g.time || "") + " · " + esc(g.title || "스캔") + "</div>";
+        if (typeof g.airPerPerson === "number") {
+          html += "<div class='ln'>항공 1인 " + won(g.airPerPerson) + " (관측 " + (g.observations || "—") + "건)</div>";
+        }
+        html += "<div class='lb'>" + esc(g.note || "") + "</div></li>";
+      });
+      html += "</ul>";
+    }
+
+    document.getElementById("scanBody").innerHTML = html;
+    document.getElementById("scanState").textContent = "자동 갱신";
+    document.getElementById("scanState").style.display = "";
+  }
+
+  function loadScan() {
+    var btn = document.getElementById("reloadScan");
+    btn.disabled = true;
+    btn.textContent = "불러오는 중…";
+    fetch("./scan-data.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        renderScan(data);
+      })
+      .catch(function () {
+        renderScan(FALLBACK);
+        var st = document.getElementById("scanState");
+        st.textContent = "기본값 표시";
+        st.className = "hint";
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = "기록 새로고침";
+      });
+  }
+
+  document.getElementById("reloadScan").addEventListener("click", loadScan);
+
+  render();
+  loadScan();
+})();
+</script>
+</body>
+</html>
