@@ -1272,9 +1272,8 @@ var Core = (function () {
     });
   }
 
-  /* 아이에게 보여 주는 글에서 참고답안(힌트)을 지운다.
-     관리자가 피드백·총평 칸에 참고답안을 그대로 적어 두어도 아이 화면에는 새어 나가지 않게 한다.
-     띄어쓰기가 달라도 같은 낱말이면 찾아 지우고, 한 글자짜리 힌트만 글 전체가 같을 때 지운다. */
+  /* 참고답안(힌트)과 겹치는 낱말을 지우는 유틸(호환 유지).
+     아이 화면의 피드백에는 쓰지 않는다 — 부모가 피드백 칸에 적은 말은 참고답안과 같아도 그대로 보여 준다. */
   function stripHint(text, hint) {
     var t = str(text);
     var h = trimStr(hint);
@@ -6278,9 +6277,10 @@ var Core = (function () {
       h += '<div class="q-card"><div class="q-head"><span class="q-no">' + (i + 1) + '</span>' +
         '<span class="q-text">' + esc(q.q) + '</span>' +
         (st === 'graded' ? '<span class="mark-chip ' + (q.mark || 'none') + '">' + markShort(q.mark) + '</span>' : '') + '</div>';
-      if (q.feedback) {
-        var kfb = Core.stripHint(q.feedback, q.ref);
-        if (kfb) h += '<p class="fb-line"><span class="fb-who">💬 ' + esc(adminDisplayName(bookGradedBy(b))) + ' 피드백</span>' + esc(kfb) + '</p>';
+      if (Core.trim(q.feedback)) {
+        /* 부모가 피드백 칸에 적은 글은 아이에게 주는 말이다. 참고답안과 같은 문구라도 그대로 보여 준다.
+           참고답안(q.ref) 자체는 아이 화면에 그리지 않으므로 부모 전용으로만 남는다. */
+        h += '<p class="fb-line"><span class="fb-who">💬 ' + esc(adminDisplayName(bookGradedBy(b))) + ' 피드백</span>' + esc(q.feedback) + '</p>';
       }
       if (editable) {
         if (retry && Core.trim(q.answer)) {
@@ -6294,8 +6294,7 @@ var Core = (function () {
     }
 
     var fbBlock = '';
-    var overallKid = b.quiz.overallFeedback;
-    for (var oi = 0; oi < qs.length; oi++) overallKid = Core.stripHint(overallKid, qs[oi].ref);
+    var overallKid = Core.trim(b.quiz.overallFeedback);
     if (st === 'graded' && overallKid) {
       fbBlock = '<div class="section"><h3>' + esc(adminDisplayName(bookGradedBy(b))) + ' 총평</h3><p>' + esc(overallKid) + '</p></div>';
     }
