@@ -6491,7 +6491,7 @@ var Core = (function () {
         '<span class="' + adminAvatarClass(role, 'urow-av') + '" aria-hidden="true">' + adminAvatarInner(role) + '</span>' +
         '<span>' + esc(adminDisplayName(role)) + ' (관리자)</span>' +
         '<span class="u-badge' + (pinHash ? ' on' : '') + '">' + (pinHash ? 'PIN 설정됨' : 'PIN 없음') + '</span></div>' +
-      '<div class="urow-foot"><span class="hint" style="margin:0;flex:1">' + roleName(role) + ' PIN을 아는 사람만 문제·채점·설정을 할 수 있어요.</span>' +
+      '<div class="urow-foot"><span class="hint" style="margin:0;flex:1 1 100%">' + roleName(role) + ' PIN을 아는 사람만 문제·채점·설정을 할 수 있어요.</span>' +
       '<button type="button" class="btn small" data-admin-profile="' + role + '">📷 프로필 편집</button>' +
       '<button type="button" class="btn small" id="set-' + role + '-pin">' + (pinHash ? 'PIN 변경' : 'PIN 만들기') + '</button></div></div>';
   }
