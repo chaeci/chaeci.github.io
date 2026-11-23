@@ -109,13 +109,13 @@
   .btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
   .btn-grid.one{grid-template-columns:1fr}
   .btn{
-    display:flex;align-items:center;gap:9px;min-height:56px;min-width:0;
+    display:flex;align-items:center;gap:8px;min-height:56px;min-width:0;
     padding:9px 10px;border-radius:13px;text-decoration:none;color:var(--ink);
     background:#fff;border:1px solid var(--line);transition:transform .1s,border-color .15s;
   }
   .btn:active{transform:scale(.985)}
   .btn .ico{
-    flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+    flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;
     background:var(--sky);font-size:15px;
   }
   .btn .txt{min-width:0;flex:1}
@@ -495,11 +495,11 @@
 
     document.getElementById("sub-naver").textContent = md(t.out) + "~" + md(t.back) + " · 3성인+1소아";
     document.getElementById("sub-trip").textContent = mdS(t.out) + "~" + mdS(t.back) + " · 4명";
-    document.getElementById("sub-skyscanner").textContent = mdS(t.out) + "~" + mdS(t.back) + " 최저가";
-    document.getElementById("sub-kayak").textContent = mdS(t.out) + "~" + mdS(t.back) + " · 3+1";
-    document.getElementById("sub-jejuair").textContent = mdS(t.out) + "~" + mdS(t.back) + " · 인원 선택";
+    document.getElementById("sub-skyscanner").textContent = mdS(t.out) + "~" + mdS(t.back);
+    document.getElementById("sub-kayak").textContent = mdS(t.out) + "~" + mdS(t.back);
+    document.getElementById("sub-jejuair").textContent = mdS(t.out) + "~" + mdS(t.back);
     document.getElementById("sub-agoda").textContent = md(t.hotelIn) + " 체크인 · " + t.nights + "박";
-    document.getElementById("sub-agoda5").textContent = mdS(t.out) + "~" + mdS(t.back) + " · 5박";
+    document.getElementById("sub-agoda5").textContent = mdS(t.out) + "~" + mdS(t.back);
     document.getElementById("sub-tripHotel").textContent = mdS(t.hotelIn) + "~" + mdS(t.hotelOut) + " · 4명";
 
     Array.prototype.forEach.call(document.querySelectorAll("[data-b]"), function (a) {
