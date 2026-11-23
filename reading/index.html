@@ -453,6 +453,37 @@
   .login-note{text-align:center;margin-top:14px;line-height:1.6}
   .login-back{margin-top:10px;width:100%;border:none;background:transparent;color:var(--muted);font-size:12.5px;padding:8px;cursor:pointer}
 
+  /* ---------- PIN 스테이지: 사람을 고르면 바로 키패드 ---------- */
+  .login.pin-stage .login-logo,
+  .login.pin-stage .login-sub,
+  .login.pin-stage .login-users,
+  .login.pin-stage .login-activity,
+  .login.pin-stage .login-kid-hint,
+  .login.pin-stage .login-note{display:none}
+  .login.pin-stage h1{font-size:16px;margin:0 0 12px}
+  .login.pin-stage{padding-top:18px}
+  .lp-person{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:8px 10px;border-radius:13px;
+    background:#FDFBF6;border:1px solid var(--line)}
+  .lp-person[hidden]{display:none}
+  .lp-emoji{flex:0 0 38px;height:38px;border-radius:12px;background:#F6EFE2;display:grid;place-items:center;font-size:20px;overflow:hidden}
+  .lp-emoji img{width:100%;height:100%;object-fit:cover}
+  .lp-who{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;text-align:left}
+  .lp-who b{font-size:15px;letter-spacing:-.3px}
+  .lp-who span{font-size:11.5px;color:var(--muted)}
+  .lp-change{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 11px;
+    font-size:11.5px;font-weight:700;color:#6B5C48;cursor:pointer}
+  .login-panel input.pin-active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,111,94,.10);background:#fff}
+  .login-pin-count{margin:-4px 0 8px;font-size:11.5px;color:var(--muted);min-height:0}
+  .login-pin-count[hidden]{display:none}
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:6px 0 0}
+  .keypad button{height:46px;border-radius:13px;border:1.5px solid var(--line);background:#fff;color:var(--ink);
+    font-size:20px;font-weight:800;letter-spacing:0;cursor:pointer;font-variant-numeric:tabular-nums;
+    -webkit-tap-highlight-color:transparent;user-select:none}
+  .keypad button:active{background:#F1E9DA}
+  .keypad button.kp-fn{font-size:12px;font-weight:700;color:#6B5C48;background:#FBF7EF;letter-spacing:-.2px}
+  .keypad button.kp-back{font-size:21px;background:#FBF7EF}
+  .login-keypad-hint{margin:7px 0 0!important;font-size:11px!important;line-height:1.45}
+
   /* ---------- 입장 암호 게이트 · 구경 모드 ---------- */
   #gate-screen{z-index:90}
   #gate-screen .login-panel input[type=password]{text-align:center;letter-spacing:2px;font-size:16px;font-weight:700;padding:11px 12px;background:#FDFBF6}
@@ -608,16 +639,37 @@
     <div class="login-users" id="login-users"></div>
 
     <div class="login-panel" id="login-panel" hidden>
+      <div class="lp-person" id="lp-person" hidden>
+        <span class="lp-emoji" id="lp-avatar" aria-hidden="true">👨‍💻</span>
+        <span class="lp-who"><b id="lp-name">아빠</b><span id="lp-role">관리자</span></span>
+        <button type="button" class="lp-change" id="lp-change">다른 사람</button>
+      </div>
       <h2 id="login-panel-title">PIN 입력</h2>
       <p class="hint" id="login-panel-hint">4자리 이상 숫자 PIN을 입력해 주세요.</p>
       <div class="field">
         <label for="login-pin" id="login-pin-label">PIN</label>
-        <input id="login-pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="12" placeholder="••••">
+        <input id="login-pin" type="password" inputmode="none" autocomplete="current-password" maxlength="12" placeholder="">
       </div>
       <div class="field" id="login-pin2-wrap" hidden>
         <label for="login-pin2">PIN 확인</label>
-        <input id="login-pin2" type="password" inputmode="numeric" autocomplete="new-password" maxlength="12" placeholder="••••">
+        <input id="login-pin2" type="password" inputmode="none" autocomplete="new-password" maxlength="12" placeholder="">
       </div>
+      <p class="hint login-pin-count" id="login-pin-count" hidden></p>
+      <div class="keypad" id="login-keypad" role="group" aria-label="숫자 키패드">
+        <button type="button" class="kp-digit" data-pin-key="1">1</button>
+        <button type="button" class="kp-digit" data-pin-key="2">2</button>
+        <button type="button" class="kp-digit" data-pin-key="3">3</button>
+        <button type="button" class="kp-digit" data-pin-key="4">4</button>
+        <button type="button" class="kp-digit" data-pin-key="5">5</button>
+        <button type="button" class="kp-digit" data-pin-key="6">6</button>
+        <button type="button" class="kp-digit" data-pin-key="7">7</button>
+        <button type="button" class="kp-digit" data-pin-key="8">8</button>
+        <button type="button" class="kp-digit" data-pin-key="9">9</button>
+        <button type="button" class="kp-fn" data-pin-act="clear" aria-label="전체 지우기">전체 지움</button>
+        <button type="button" class="kp-digit" data-pin-key="0">0</button>
+        <button type="button" class="kp-fn kp-back" data-pin-act="back" aria-label="한 자리 지우기">⌫</button>
+      </div>
+      <p class="hint login-keypad-hint" id="login-keypad-hint" hidden></p>
       <p class="login-msg" id="login-msg" role="alert"></p>
       <button class="btn primary block" id="login-submit">입장</button>
       <button class="login-back" id="login-cancel" type="button">다른 사람으로 선택</button>
@@ -2800,6 +2852,8 @@ var Core = (function () {
   var session = { role: '', childId: '' };
   var keepLogin = true;
   var loginPick = null;
+  var loginPinTarget = 'pin';   /* 키패드가 글자를 넣을 칸: 'pin' | 'pin2' */
+  var pinCheckSeq = 0;          /* 비동기 해시 대조 경합 방지 토큰 */
   var loginFails = 0;
   var loginLockUntil = 0;
   var pinTarget = null;
@@ -3156,6 +3210,15 @@ var Core = (function () {
     setLoginMsg('', '');
     el('login-panel').setAttribute('data-mode', mode);
     el('login-panel').hidden = false;
+    /* 사람을 고르면 목록을 접고 PIN 키패드를 바로 내민다 — 추가 터치·스크롤 없이 숫자를 누를 수 있게 */
+    el('login-screen').classList.add('pin-stage');
+    el('login-screen').scrollTop = 0;
+    renderLoginPerson();
+    var kh = el('login-keypad-hint');
+    kh.hidden = !need2;
+    kh.textContent = need2 ? '새 PIN을 넣은 뒤 “PIN 확인” 칸을 누르면 입력 칸이 바뀌어요.' : '';
+    pinCheckSeq += 1;
+    setPinTarget('pin');
   }
 
   function hideLoginPanel() {
@@ -3163,8 +3226,149 @@ var Core = (function () {
     el('login-panel').setAttribute('data-mode', '');
     el('login-pin').value = '';
     el('login-pin2').value = '';
+    el('login-pin').classList.remove('pin-active');
+    el('login-pin2').classList.remove('pin-active');
+    loginPinTarget = 'pin';
+    pinCheckSeq += 1;
     setLoginMsg('', '');
+    el('login-screen').classList.remove('pin-stage');
+    updatePinCount();
     markPicked();
+  }
+
+  /* ---------- PIN 키패드 · 자릿수와 상관없는 다이렉트 로그인 ----------
+     4~2자리 아무 길이의 PIN 이다. 4자리 이상 치는 동안 계속 SHA-256 을 대조해서
+     저장된 해시와 같아지는 순간(4자리면 4번째, 6자리면 6번째) 바로 입장한다. 디럭오류나 확인 버튼은 없다. */
+  function pinDigits(v) {
+    return Core.str(v).replace(/[^0-9]/g, '').slice(0, 12);
+  }
+
+  function pinField(which) {
+    return el(which === 'pin2' ? 'login-pin2' : 'login-pin');
+  }
+
+  function setPinTarget(which) {
+    loginPinTarget = (which === 'pin2' && !el('login-pin2-wrap').hidden) ? 'pin2' : 'pin';
+    el('login-pin').classList.toggle('pin-active', loginPinTarget === 'pin');
+    el('login-pin2').classList.toggle('pin-active', loginPinTarget === 'pin2');
+    updatePinCount();
+  }
+
+  function updatePinCount() {
+    var box = el('login-pin-count');
+    if (!box) return;
+    var mode = el('login-panel').getAttribute('data-mode');
+    var isSetup = (mode === 'dadsetup' || mode === 'momsetup');
+    var n = pinDigits(pinField(loginPinTarget).value).length;
+    var text = '';
+    if (isSetup) {
+      text = n
+        ? (n + '자리 입력됨 · ' + (loginPinTarget === 'pin2' ? 'PIN 확인' : '새 PIN'))
+        : '4자리 이상이면 길이는 자유롭게 정해도 돼요.';
+    } else if (n >= 4) {
+      text = n + '자리 입력됨 · 맞으면 바로 열려요';
+    } else if (n) {
+      text = n + '자리 입력됨 (4자리 이상)';
+    } else {
+      text = '숫자를 차례로 누르면 맞는 순간 바로 열려요.';
+    }
+    box.textContent = text;
+    box.hidden = !text;
+  }
+
+  /* 고른 사람의 저장된 PIN 해시 */
+  function currentPinHash(mode) {
+    if (mode === 'dadpin') return Core.str(db.auth.dadPinHash);
+    if (mode === 'mompin') return Core.str(db.auth.momPinHash);
+    if (mode === 'kidpin' && loginPick && loginPick.childId) {
+      var ka = db.auth.kids[loginPick.childId] || {};
+      return (ka.pinEnabled && ka.pinHash) ? Core.str(ka.pinHash) : '';
+    }
+    return '';
+  }
+
+  /* 한 자리 칠 때마다: 값 정리 → 자릿수 표시 → (로그인 모드면) 해시 대조 */
+  function onPinInput(inp, check) {
+    var clean = pinDigits(inp.value);
+    if (clean !== inp.value) inp.value = clean;
+    updatePinCount();
+    if (clean) setLoginMsg('', '');
+    if (check !== false) checkPinDirect(inp);
+  }
+
+  function checkPinDirect(inp) {
+    var mode = el('login-panel').getAttribute('data-mode');
+    if (!(mode === 'dadpin' || mode === 'mompin' || mode === 'kidpin')) return;
+    var pin = pinDigits(inp.value);
+    if (pin.length < 4) return;
+    if (Date.now() < loginLockUntil) return;
+    var expect = currentPinHash(mode);
+    if (!expect) return;
+    var seq = ++pinCheckSeq;
+    Core.hashPin(pin, function (hash) {
+      if (seq !== pinCheckSeq) return;              /* 더 새로운 입력이 있음 */
+      if (!loginPick || el('login-screen').hidden || el('login-panel').hidden) return;
+      if (el('login-panel').getAttribute('data-mode') !== mode) return;
+      if (pinDigits(inp.value) !== pin) return;     /* 그새 값이 바뀌음 */
+      if (hash !== expect) {
+        /* 틀렸다고 바로 오류를 띄우지 않는다 — 더 긴 PIN 일 수 있다 */
+        if (pin.length >= 12) setLoginMsg('PIN이 맞지 않아요. 다시 입력해 주세요.', 'error');
+        return;
+      }
+      loginFails = 0;
+      loginLockUntil = 0;
+      pinCheckSeq += 1;
+      keepLogin = !!el('login-keep').checked;
+      completeLogin(mode === 'kidpin' ? 'kid' : (mode === 'mompin' ? 'mom' : 'dad'), loginPick.childId || '');
+    });
+  }
+
+  function pinKey(digit) {
+    var inp = pinField(loginPinTarget);
+    var v = pinDigits(inp.value);
+    if (v.length >= 12) return;
+    inp.value = v + Core.str(digit);
+    onPinInput(inp);
+  }
+
+  function pinBack() {
+    var inp = pinField(loginPinTarget);
+    var v = pinDigits(inp.value);
+    if (!v) return;
+    inp.value = v.slice(0, -1);
+    pinCheckSeq += 1;
+    onPinInput(inp, false);
+  }
+
+  function pinClear() {
+    var inp = pinField(loginPinTarget);
+    inp.value = '';
+    pinCheckSeq += 1;
+    onPinInput(inp, false);
+  }
+
+  /* PIN 단계 머리말 — 누구 PIN 인지 한눈에 */
+  function renderLoginPerson() {
+    var wrap = el('lp-person');
+    if (!wrap) return;
+    var av = el('lp-avatar');
+    var name = '';
+    var role = '';
+    if (loginPick && (loginPick.type === 'dad' || loginPick.type === 'mom')) {
+      av.className = adminAvatarClass(loginPick.type, 'lp-emoji');
+      av.innerHTML = adminAvatarInner(loginPick.type);
+      name = adminDisplayName(loginPick.type);
+      role = '관리자 · 문제 출제 · 채점 · 설정';
+    } else if (loginPick && loginPick.type === 'kid') {
+      var c = Core.childById(db, loginPick.childId);
+      av.className = avatarClass(c, 'lp-emoji');
+      av.innerHTML = avatarInner(c);
+      name = c ? c.name : '아이';
+      role = c ? gradeOf(c) : '';
+    }
+    el('lp-name').textContent = name;
+    el('lp-role').textContent = role;
+    wrap.hidden = !name;
   }
 
   function setLoginMsg(msg, kind) {
@@ -3196,7 +3400,7 @@ var Core = (function () {
     if (!loginPick) return;
     var mode = el('login-panel').getAttribute('data-mode');
     var pick = { type: loginPick.type, childId: loginPick.childId || '' };
-    var pin = Core.trim(el('login-pin').value);
+    var pin = pinDigits(el('login-pin').value);
     keepLogin = !!el('login-keep').checked;
     if (loginLocked()) return;
     if (!Core.isValidPin(pin)) {
@@ -3210,7 +3414,7 @@ var Core = (function () {
     }
     if (mode === 'dadsetup' || mode === 'momsetup') {
       var setupRole = (mode === 'momsetup') ? 'mom' : 'dad';
-      if (pin !== Core.trim(el('login-pin2').value)) {
+      if (pin !== pinDigits(el('login-pin2').value)) {
         setLoginMsg('두 PIN이 달라요. 다시 확인해 주세요.', 'error');
         return;
       }
@@ -3240,8 +3444,10 @@ var Core = (function () {
       }
       if (!ok) {
         if (!stillSame()) return;
+        pinCheckSeq += 1;
         if (!bumpLoginFail()) setLoginMsg('PIN이 맞지 않아요.', 'error');
         el('login-pin').value = '';
+        updatePinCount();
         return;
       }
       if (!stillSame()) return;
@@ -7167,11 +7373,27 @@ var Core = (function () {
     el('login-submit').onclick = submitLogin;
     el('login-gh-pull').onclick = function () { openGhModal(true); };
     el('login-cancel').onclick = function () { loginPick = null; hideLoginPanel(); };
+    el('lp-change').onclick = function () { loginPick = null; hideLoginPanel(); };
+    /* 숫자 키패드 — 1~9 아래줄: 전체 지움 · 0 · ⌫ (표준 전화 키패드와 같은 배열) */
+    var kpBtns = el('login-keypad').querySelectorAll('button');
+    for (var kp = 0; kp < kpBtns.length; kp++) {
+      kpBtns[kp].onclick = function () {
+        var d = this.getAttribute('data-pin-key');
+        var act = this.getAttribute('data-pin-act');
+        if (act === 'clear') pinClear();
+        else if (act === 'back') pinBack();
+        else if (d !== null && d !== '') pinKey(d);
+      };
+    }
+    el('login-pin').oninput = function () { onPinInput(this); };
+    el('login-pin2').oninput = function () { onPinInput(this); };
+    el('login-pin').onfocus = function () { if (loginPinTarget !== 'pin') setPinTarget('pin'); };
+    el('login-pin2').onfocus = function () { if (loginPinTarget !== 'pin2') setPinTarget('pin2'); };
     el('login-pin').onkeydown = function (ev) {
       if (ev.key === 'Enter') {
         ev.preventDefault();
         if (el('login-pin2-wrap').hidden) submitLogin();
-        else el('login-pin2').focus();
+        else { setPinTarget('pin2'); el('login-pin2').focus(); }
       }
     };
     el('login-pin2').onkeydown = function (ev) {
