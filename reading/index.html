@@ -610,8 +610,8 @@
     <p class="hint login-note" id="login-note">로그인하면 기록이 이 기기에 저장되고, 연결해 둔 GitHub 저장소와도 함께 맞춰져요.</p>
 
     <div class="login-sync" id="login-pass-wrap" hidden>
-      <button type="button" class="btn ghost block" id="login-pass-change">🔑 입장 암호 바꾸기</button>
-      <p class="hint">이 기기에 기억해 둔 입장 암호를 지우고 다시 입력해요. 구경용으로 열려 있으면 <b>나가기</b>를 눌러 주세요.</p>
+      <button type="button" class="btn ghost block" id="login-pass-change">🚪 가족 로그아웃</button>
+      <p class="hint">이 기기에 기억해 둔 가족 입장 암호를 지우고 입장 화면으로 돌아가요. 다시 들어오려면 가족 암호를 한 번 더 넣어 주세요. <b>암호 자체가 바뀌지는 않아요.</b></p>
     </div>
 
     <div class="login-sync" id="login-sync-wrap" hidden>
@@ -831,9 +831,9 @@
         <h3 class="card-title">☁️ Cloudflare 프록시</h3>
         <p class="hint" id="proxy-summary"></p>
         <div class="btn-row">
-          <button class="btn" id="proxy-pass-change">🔑 입장 암호 바꾸기 · 나가기</button>
+          <button class="btn" id="proxy-pass-change">🚪 가족 로그아웃</button>
         </div>
-        <p class="hint">입장 암호(가족·구경용)는 Cloudflare Worker의 <b>Variables</b>에서 바꾼 뒤 Deploy 하면 돼요. 이 앱은 새 암호를 다시 넣으면 됩니다. GitHub 토큰은 Worker에만 있고 이 기기에는 저장되지 않아요.</p>
+        <p class="hint">이 버튼은 이 기기에서 <b>가족 로그아웃</b>만 해요. 암호 자체를 바꾸려면 입장 암호(가족·구경용)를 Cloudflare Worker의 <b>Variables</b>에서 바꾼 뒤 Deploy 하면 되고, 이 앱에는 새 암호를 다시 넣으면 됩니다. GitHub 토큰은 Worker에만 있고 이 기기에는 저장되지 않아요.</p>
       </div>
 
       <div class="card" id="set-gh-card">
@@ -3610,10 +3610,10 @@ var Core = (function () {
       session = { role: '', childId: '' };
       clearStoredSession();
       clearStoredProxyPass();
-      showGate('새 입장 암호를 넣어 주세요.');
+      showGate('가족 로그아웃했어요. 다시 들어오려면 가족 암호를 넣어 주세요.');
     };
     var pc = el('proxy-pass-change');
-    if (pc) pc.onclick = function () { exitGate('새 입장 암호를 넣어 주세요.'); };
+    if (pc) pc.onclick = function () { exitGate('가족 로그아웃했어요. 다시 들어오려면 가족 암호를 넣어 주세요.'); };
   }
 
   /* 저장된 암호로 조용히 다시 들어오기 */
