@@ -149,6 +149,32 @@
   .tiny{font-size:11.5px;color:var(--muted);margin:9px 0 0;line-height:1.55}
   .tiny b{color:var(--ink)}
 
+  /* ---------- tours ---------- */
+  .tours{display:grid;gap:8px}
+  .tour{
+    display:flex;align-items:center;gap:9px;padding:10px;border-radius:13px;
+    background:#fff;border:1px solid var(--line);text-decoration:none;color:var(--ink);
+    transition:transform .1s,border-color .15s;
+  }
+  .tour:active{transform:scale(.985)}
+  .tour .ico{
+    flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+    background:var(--sky);font-size:16px;
+  }
+  .tour .body{min-width:0;flex:1}
+  .tour .body strong{display:block;font-size:13.5px;font-weight:700;letter-spacing:-.01em}
+  .tour .meta{display:block;font-size:10.8px;color:var(--muted);line-height:1.35;margin-top:2px}
+  .tour .price{flex:none;text-align:right;line-height:1.15}
+  .tour .price b{display:block;font-size:13.5px;font-weight:800;color:var(--brand);letter-spacing:-.02em}
+  .tour .price small{display:block;font-size:9.5px;color:var(--muted);font-weight:600;margin-top:1px;white-space:nowrap}
+  .tour .chev{flex:none;color:#a8bcc8;font-size:15px;line-height:1}
+  .tag{
+    display:inline-block;font-size:10px;font-weight:800;border-radius:6px;
+    padding:1px 5px;margin-right:4px;vertical-align:1px;
+  }
+  .tag.join{background:#eef2f7;color:#475569;border:1px solid #dbe3ec}
+  .tag.solo{background:#ecfdf5;color:#0f766e;border:1px solid #a7f3d0}
+
   /* ---------- scan ---------- */
   .scan-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:0 0 10px}
   .scan-head .when{font-size:12.5px;font-weight:700}
@@ -308,15 +334,16 @@
     <div class="btn-grid">
       <a class="btn" data-b="jejuair" target="_blank" rel="noopener">
         <span class="ico">🟠</span>
-        <span class="txt"><strong>제주항공</strong><small id="sub-jejuair">찜특가 · 인원 직접 선택</small></span>
+        <span class="txt"><strong>제주항공</strong><small id="sub-jejuair">최우선 · 반차 없이 20:45</small></span>
         <span class="chev">›</span>
       </a>
       <a class="btn" data-b="jinair" target="_blank" rel="noopener">
         <span class="ico">🟢</span>
-        <span class="txt"><strong>진에어</strong><small>진마켓 · 날짜 직접 입력</small></span>
+        <span class="txt"><strong>진에어</strong><small>재취항 시 · 화 반차</small></span>
         <span class="chev">›</span>
       </a>
     </div>
+    <p class="tiny" style="margin:7px 0 0">제주항공 <b>20:45 최우선(화요일 반차 없음)</b> · 진에어는 <b>재취항 시 화요일 오후 반차</b>를 쓰는 특가 비교 후보입니다.</p>
 
     <div class="group-label">특가·통계 사이트</div>
     <div class="btn-grid">
@@ -357,7 +384,7 @@
       </a>
       <a class="btn" data-b="henann" target="_blank" rel="noopener">
         <span class="ico">🏨</span>
-        <span class="txt"><strong>헤난 공홈</strong><small>성인 4명 · 날짜 직접 선택</small></span>
+        <span class="txt"><strong>헤난 공홈</strong><small>성인 4명 · 직접 선택</small></span>
         <span class="chev">›</span>
       </a>
       <a class="btn soft" data-b="agoda5" target="_blank" rel="noopener">
@@ -369,9 +396,75 @@
     <p class="tiny" id="hotelNote">—</p>
   </section>
 
+  <!-- 투어 & 0.5박 -->
+  <section class="card">
+    <h2><span class="n">4</span> 투어 &amp; 0.5박 바로가기 <span class="hint">4인 기준</span></h2>
+    <p class="lead">확정된 상품 페이지로 바로 열립니다. 조인·단독과 참고 가격을 한눈에.</p>
+
+    <div class="tours">
+      <a class="tour" href="https://experiences.myrealtrip.com/products/3712862" target="_blank" rel="noopener">
+        <span class="ico">🐢</span>
+        <span class="body">
+          <strong>발리카삭 호핑</strong>
+          <span class="meta"><span class="tag join">조인</span>한바다 · 점심·장비·한국인 스텝</span>
+        </span>
+        <span class="price"><b>27.4만</b><small>4인 총액</small></span>
+        <span class="chev">›</span>
+      </a>
+
+      <a class="tour" href="https://www.lokalpagetour.com/bohol/lila-whale-shark-snorkeling" target="_blank" rel="noopener">
+        <span class="ico">🦈</span>
+        <span class="body">
+          <strong>고래상어 (릴라)</strong>
+          <span class="meta"><span class="tag solo">단독</span>로컬페이지 · 식사·고프로 촬영</span>
+        </span>
+        <span class="price"><b>33.2만</b><small>4인 총액</small></span>
+        <span class="chev">›</span>
+      </a>
+
+      <a class="tour" href="https://experiences.myrealtrip.com/products/3835244" target="_blank" rel="noopener">
+        <span class="ico">✨</span>
+        <span class="body">
+          <strong>반딧불이 투어</strong>
+          <span class="meta"><span class="tag solo">단독</span>보홀트래블 · 호텔 픽드랍·보트</span>
+        </span>
+        <span class="price"><b>15.9만</b><small>4인 총액</small></span>
+        <span class="chev">›</span>
+      </a>
+
+      <a class="tour" href="https://www.lokalpagetour.com/bohol/countryside-land-tour" target="_blank" rel="noopener">
+        <span class="ico">🌿</span>
+        <span class="body">
+          <strong>육상투어 (토요일)</strong>
+          <span class="meta"><span class="tag solo">단독</span>로컬페이지 · 짐 보관·드랍 포함</span>
+        </span>
+        <span class="price"><b>32.3만</b><small>4인 총액</small></span>
+        <span class="chev">›</span>
+      </a>
+
+      <a class="tour" href="https://experiences.myrealtrip.com/products/5849162" target="_blank" rel="noopener">
+        <span class="ico">🏊</span>
+        <span class="body">
+          <strong>토요일 0.5박 (시원리조트)</strong>
+          <span class="meta"><span class="tag join">숙소</span>보홀트래블 · 공항 드랍·수영장</span>
+        </span>
+        <span class="price"><b>9~16만</b><small>4인 · 1박</small></span>
+        <span class="chev">›</span>
+      </a>
+    </div>
+
+    <div class="ref" style="margin-top:10px">
+      <div class="ref-t">예약 전 체크</div>
+      ① 로컬페이지 2종(고래상어·육상)은 <b>예약금만 카드, 나머지는 현장 페소</b> — 고래상어 2,800페소 · 육상 2,700페소(1인).<br>
+      ② 시원리조트 0.5박은 <b>예약 확정 후 취소·환불 불가</b>(무기한 바우처 대체). 체크인 14:00 · 수영장 08:00~22:00.<br>
+      ③ 발리카삭 한바다는 <b>최소 6명</b>이라 예약할 때 “4인 확정 출발 보장”을 문의하세요.
+    </div>
+    <p class="tiny">표시 금액은 2026-11-23 조회 기준 참고값입니다. 실제 결제 금액·취소 규정은 각 상품 페이지에서 확인하세요.</p>
+  </section>
+
   <!-- 스캔 기록 -->
   <section class="card" id="scanCard">
-    <h2><span class="n">4</span> 매일 오전 10시 스캔 <span class="hint" id="scanState">불러오는 중</span></h2>
+    <h2><span class="n">5</span> 매일 오전 10시 스캔 <span class="hint" id="scanState">불러오는 중</span></h2>
     <div id="scanBody">
       <p class="lead">스캔 기록을 불러오고 있습니다…</p>
     </div>
@@ -380,7 +473,7 @@
 
   <!-- 타임라인 -->
   <section class="card">
-    <h2><span class="n">5</span> 특가 오픈 타임라인</h2>
+    <h2><span class="n">6</span> 특가 오픈 타임라인</h2>
     <p class="lead">2026년 기준 실제 오픈 시기입니다. 2027년은 3/17 진에어·에어부산·에어서울 통합 출범이 변수예요.</p>
     <ul class="tl" id="timeline"></ul>
   </section>
@@ -490,7 +583,7 @@
     document.getElementById("sHotel").innerHTML =
       "체크인 <b>" + md(t.hotelIn) + "</b> · 체크아웃 <b>" + md(t.hotelOut) + "</b> <span style='color:var(--muted);font-weight:500'>(" +
       t.nights + "박)</span>";
-    document.getElementById("sLeave").textContent = "화 반차 + 수·목·금 연차 3일 (주말 포함 6일)";
+    document.getElementById("sLeave").textContent = "수·목·금 연차 3일 (화요일 반차 없이 · 주말 포함 6일)";
 
     document.getElementById("sub-naver").textContent = md(t.out) + "~" + md(t.back) + " · 3성인+1소아";
     document.getElementById("sub-trip").textContent = mdS(t.out) + "~" + mdS(t.back) + " · 4명";
@@ -544,7 +637,7 @@
     { when: "1/26~29", key: true, date: "2027-01-26", title: "진에어 진마켓 오픈 (예상)", desc: "하계 포함 대형 특가 · 오전 10시 정각 오픈" },
     { when: "2/4", key: true, date: "2027-02-04", title: "제주항공 찜특가 국제선 (예상)", desc: "2026년엔 2/4 오전 10시 오픈 → 2/10까지" },
     { when: "2월", key: false, title: "항공 결제 → 숙소 확정", desc: "특가는 취소 불가가 많아요. 결제 직후 헤난 패밀리룸 4박을 잡습니다" },
-    { when: "3월 말", key: false, title: "투어·픽업·학교 서류", desc: "정어리떼·거북이 호핑·반딧불이 + 공항 픽업 밴, 교외체험학습 신청서" },
+    { when: "3월 말", key: false, title: "투어·픽업·학교 서류", desc: "발리카삭 조인 + 고래상어·반딧불이·육상 단독 + 0.5박, 교외체험학습 신청서" },
     { when: "출발 3일 전", key: false, title: "필리핀 eTravel 등록", desc: "etravel.gov.ph 에서 4명 QR 생성 (도착 72시간 이내에만 가능)" }
   ];
   var tl = document.getElementById("timeline");
