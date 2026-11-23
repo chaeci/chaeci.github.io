@@ -357,6 +357,7 @@
   .sync-pill.syncing{background:#EEF3FB;border-color:#C9D8EE;color:#2E5E9E}
   .sync-pill.error{background:#FCE9E4;border-color:#F0C7BA;color:#9E3B1F}
   .sync-pill.local{background:#F4EEE2;border-color:var(--line);color:#7B6A55}
+  .sync-pill.guest{background:#EAF1FB;border-color:#C9D8EE;color:#2E5E9E}
   .brand{min-width:0}
   .brand > div{min-width:0}
   .topbar h1,.topbar p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -452,6 +453,20 @@
   .login-note{text-align:center;margin-top:14px;line-height:1.6}
   .login-back{margin-top:10px;width:100%;border:none;background:transparent;color:var(--muted);font-size:12.5px;padding:8px;cursor:pointer}
 
+  /* ---------- 입장 암호 게이트 · 구경 모드 ---------- */
+  #gate-screen{z-index:90}
+  #gate-screen .login-panel input[type=password]{text-align:center;letter-spacing:2px;font-size:16px;font-weight:700;padding:11px 12px;background:#FDFBF6}
+  .gate-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:0 0 14px}
+  .gate-chip{font-size:11px;font-weight:800;border-radius:999px;padding:4px 10px;background:#fff;color:#7B6A55;border:1px solid var(--line)}
+  .gate-chip b{color:var(--accent)}
+  .gate-state{font-size:12px;color:var(--muted);text-align:center;margin:10px 0 0;line-height:1.5}
+  .gate-state:empty{display:none}
+  .ro-note{margin:0 16px 8px;background:#EAF1FB;color:#2E5E9E;border-radius:13px;padding:9px 12px;font-size:12.5px;line-height:1.55}
+  .ro-note[hidden]{display:none!important}
+  .ro-note b{color:#1F4C87}
+  body.guest #fab-add,body.guest #btn-settings{display:none!important}
+  .user-chip.guest .u-role{background:#EAF1FB;color:#2E5E9E}
+
   /* ---------- header user bar ---------- */
   .topbar{flex-direction:column;align-items:stretch}
   .topbar-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-width:0}
@@ -536,6 +551,34 @@
 </style>
 </head>
 <body class="locked">
+<div id="gate-screen" class="login" hidden>
+  <div class="login-card">
+    <div class="login-logo" aria-hidden="true">📚</div>
+    <h1>채씨네 작은도서관</h1>
+    <p class="login-sub" id="gate-sub">입장 암호를 넣어 주세요</p>
+    <div class="gate-chips" aria-hidden="true">
+      <span class="gate-chip">🏠 <b>가족 암호</b> · 읽기·쓰기</span>
+      <span class="gate-chip">👀 <b>구경용 암호</b> · 보기만</span>
+    </div>
+    <div class="login-panel" id="gate-panel">
+      <h2 id="gate-title">입장 암호</h2>
+      <p class="hint">가족이 정한 암호를 넣으면 책장이 열려요. 한 번 넣으면 이 기기에 기억해 둬서 다음부터는 바로 열립니다.</p>
+      <div class="field">
+        <label for="gate-pass">암호</label>
+        <input id="gate-pass" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" maxlength="64">
+      </div>
+      <p class="login-msg" id="gate-msg" role="alert"></p>
+      <button class="btn primary block" id="gate-submit">들어가기</button>
+      <label class="switch-row login-keep" style="margin-top:12px">
+        <input type="checkbox" id="gate-remember" checked>
+        <span>이 기기에 암호 기억하기</span>
+      </label>
+      <p class="gate-state" id="gate-state"></p>
+    </div>
+    <p class="hint login-note">구경용 암호로 들어오면 책·독서노트·퀴즈 결과는 볼 수 있지만 고치거나 저장할 수는 없어요.</p>
+  </div>
+</div>
+
 <div id="login-screen" class="login" hidden>
   <div class="login-card">
     <div class="login-logo" aria-hidden="true">📚</div>
@@ -566,6 +609,11 @@
     </label>
     <p class="hint login-note" id="login-note">로그인하면 기록이 이 기기에 저장되고, 연결해 둔 GitHub 저장소와도 함께 맞춰져요.</p>
 
+    <div class="login-sync" id="login-pass-wrap" hidden>
+      <button type="button" class="btn ghost block" id="login-pass-change">🔑 입장 암호 바꾸기</button>
+      <p class="hint">이 기기에 기억해 둔 입장 암호를 지우고 다시 입력해요. 구경용으로 열려 있으면 <b>나가기</b>를 눌러 주세요.</p>
+    </div>
+
     <div class="login-sync" id="login-sync-wrap" hidden>
       <button type="button" class="btn ghost block" id="login-gh-pull">🔗 다른 기기에서 쓰던 GitHub DB 불러오기</button>
       <p class="hint">새 기기이거나 브라우저 기록을 지운 경우, 폰에서 쓰던 <b>책 기록·아이 프로필·PIN</b>을 GitHub 저장소 <b>reading-db.json</b>에서 가져와요. 저장소 주소와 토큰이 필요해요.</p>
@@ -595,6 +643,8 @@
       <button class="user-out" id="btn-logout">로그아웃</button>
     </div>
   </header>
+
+  <div class="ro-note" id="ro-note" hidden>👀 <b>구경 모드</b> — 가족이 보내준 암호로 열었어요. 책과 기록은 볼 수만 있고, 고치거나 저장할 수는 없어요.</div>
 
   <main>
     <section id="view-shelf" class="view active" aria-label="책장">
@@ -777,7 +827,16 @@
         <p class="hint">PIN을 잊으면 이 기기의 브라우저 데이터를 지워 다시 만들어야 하고, 기록은 백업 파일이나 GitHub에서 다시 불러와야 해요. 잊지 않게 적어 두세요.</p>
       </div>
 
-      <div class="card">
+      <div class="card" id="set-proxy-card" hidden>
+        <h3 class="card-title">☁️ Cloudflare 프록시</h3>
+        <p class="hint" id="proxy-summary"></p>
+        <div class="btn-row">
+          <button class="btn" id="proxy-pass-change">🔑 입장 암호 바꾸기 · 나가기</button>
+        </div>
+        <p class="hint">입장 암호(가족·구경용)는 Cloudflare Worker의 <b>Variables</b>에서 바꾼 뒤 Deploy 하면 돼요. 이 앱은 새 암호를 다시 넣으면 됩니다. GitHub 토큰은 Worker에만 있고 이 기기에는 저장되지 않아요.</p>
+      </div>
+
+      <div class="card" id="set-gh-card">
         <h3 class="card-title">GitHub 동기화</h3>
         <p class="hint" id="gh-summary">아직 연결되지 않았어요.</p>
         <div class="btn-row">
@@ -2572,6 +2631,14 @@ var Core = (function () {
   'use strict';
 
   var DB_KEY = 'wri_readnote_db_v1';
+
+  /* ============================================================ Cloudflare Worker 프록시 설정
+     Worker를 배포한 뒤 아래 PROXY_URL 한 줄만 바꿔 주세요 (끝의 / 는 있어도 없어도 됨).
+     예: 'https://reading-proxy.chaeci.workers.dev'
+     비워 두거나 'YOUR_WORKER_URL' 그대로 두면 예전처럼 GitHub 토큰을 직접 넣는 모드로 동작해요. */
+  var PROXY_URL = 'https://chaeci-reading-proxy.cotjdwns0.workers.dev';
+  var PROXY_PASS_KEY = 'wri_readnote_pass_v1';
+  var proxy = { pass: '', role: '', on: false, checking: false };
   var db = null;
   var ui = {
     view: 'shelf',
@@ -2758,7 +2825,9 @@ var Core = (function () {
   function updateLoginGhButton() {
     var wrap = el('login-sync-wrap');
     if (!wrap) return;
-    wrap.hidden = isConnected() || el('login-screen').hidden;
+    wrap.hidden = proxy.on || isConnected() || el('login-screen').hidden;
+    var passWrap = el('login-pass-wrap');
+    if (passWrap) passWrap.hidden = !proxy.on || el('login-screen').hidden;
   }
 
   /* 관리자 로그인 카드 — 아빠·엄마 각자 PIN */
@@ -3021,6 +3090,7 @@ var Core = (function () {
   }
 
   function logout() {
+    if (isGuest()) { exitGate(); return; }
     clearStoredSession();
     session = { role: '', childId: '' };
     ui.view = 'shelf';
@@ -3050,6 +3120,17 @@ var Core = (function () {
   }
 
   function renderUserbar() {
+    if (isGuest()) {
+      el('user-emoji').className = 'u-emoji';
+      el('user-emoji').innerHTML = '<span aria-hidden="true">👀</span>';
+      el('user-name').textContent = '구경 중';
+      el('user-role').textContent = '읽기 전용';
+      el('btn-user').className = 'user-chip guest';
+      el('btn-user').setAttribute('aria-label', '구경 모드 · 읽기 전용 · 나가기');
+      el('btn-logout').textContent = '나가기';
+      return;
+    }
+    el('btn-logout').textContent = '로그아웃';
     var admin = isAdmin();
     var kid = (admin || !session.childId) ? null : Core.childById(db, session.childId);
     if (admin) {
@@ -3091,9 +3172,10 @@ var Core = (function () {
     document.body.classList.remove('locked');
     applyRole();
     renderShelf();
-    renderSettings();
+    if (!isGuest()) renderSettings();
     nav('shelf');
-    setGhStatus(isConnected() && gh.lastSyncAt ? 'synced' : 'local');
+    if (proxy.on) setGhStatus(isGuest() ? 'guest' : 'synced');
+    else setGhStatus(isConnected() && gh.lastSyncAt ? 'synced' : 'local');
   }
 
   /* ---------- seed ---------- */
@@ -3199,6 +3281,8 @@ var Core = (function () {
 
   function save(opts) {
     var o = opts || {};
+    /* 구경 모드: 이 기기에도 서버에도 쓰지 않는다 */
+    if (isGuest()) return false;
     if (db && !o.silent) {
       db.meta = db.meta || {};
       db.meta.updatedAt = new Date().toISOString();
@@ -3234,6 +3318,360 @@ var Core = (function () {
       db = seedDB();
       save();
     }
+  }
+
+  /* ============================================================ Cloudflare Worker 프록시
+     Worker가 GITHUB_TOKEN을 들고 GitHub Contents API를 대신 불러 준다.
+       · 가족 암호(FAMILY_PASS) → family : 개인별 PIN 로그인 + 읽기/쓰기 전부
+       · 구경용 암호(GUEST_PASS) → guest : 보기만 (서버가 PIN·참고답안·검색키를 지워서 내려 줌) */
+  function proxyBase() {
+    var u = Core.trim(PROXY_URL);
+    if (!u) return '';
+    if (u.indexOf('YOUR_WORKER_URL') >= 0) return '';
+    return u.replace(/\/+$/, '');
+  }
+  function proxyOn() { return !!proxyBase(); }
+  function proxyApiUrl() { return proxyBase() + '/api/db'; }
+  function isGuest() { return proxy.role === 'guest'; }
+  function isFamilyProxy() { return proxy.on && proxy.role === 'family'; }
+
+  /* 구경 모드에서 쓰기 동작을 막고 안내한다. 막았으면 true. */
+  function denyGuest(msg) {
+    if (!isGuest()) return false;
+    toast(msg || '구경 모드에서는 볼 수만 있어요.', 'warn');
+    return true;
+  }
+
+  function loadProxyPass() {
+    var raw = null;
+    try { raw = window.localStorage.getItem(PROXY_PASS_KEY); } catch (e) { raw = null; }
+    if (!raw) return null;
+    try {
+      var o = JSON.parse(raw);
+      var pass = Core.trim(o && o.pass);
+      if (!pass) return null;
+      return { pass: pass, role: (o.role === 'guest' ? 'guest' : 'family') };
+    } catch (e) { return null; }
+  }
+
+  function storeProxyPass(pass, role) {
+    try {
+      window.localStorage.setItem(PROXY_PASS_KEY, JSON.stringify({
+        pass: pass, role: role, at: new Date().toISOString()
+      }));
+    } catch (e) { /* 저장 불가하면 이번 화면에서만 유지 */ }
+  }
+
+  function clearStoredProxyPass() {
+    try { window.localStorage.removeItem(PROXY_PASS_KEY); } catch (e) { /* ignore */ }
+  }
+
+  function proxyHttpError(status, data) {
+    var code = data && data.error ? String(data.error) : '';
+    var msg;
+    if (code === 'not_json') msg = String(data.message);
+    else if (status === 401) msg = '입장 암호가 맞지 않아요.';
+    else if (status === 403 && code === 'read_only') msg = '구경용 암호로는 저장할 수 없어요.';
+    else if (status === 403) msg = '서버가 이 주소에서 온 요청을 받아 주지 않았어요. (허용 주소 설정)';
+    else if (status === 404) msg = '서버 주소를 찾을 수 없어요. Worker 주소를 확인해 주세요.';
+    else if (status === 409) msg = '다른 기기에서 먼저 저장했어요. 다시 맞추는 중이에요.';
+    else if (status === 413) msg = '책장 데이터가 너무 커요(2.5MB 초과).';
+    else if (status === 429) msg = '암호를 너무 여러 번 틀렸어요. 10분 뒤에 다시 넣어 주세요.';
+    else if (status >= 500) msg = (data && data.message) ? String(data.message) : '서버에 문제가 있어요. 잠시 뒤 다시 시도해 주세요.';
+    else msg = '서버 요청이 실패했어요 (HTTP ' + status + ')';
+    var e = new Error(msg);
+    e.status = status;
+    e.data = data || {};
+    return e;
+  }
+
+  /* GET/PUT /api/db — cb(err, { status, ok, data }) */
+  function proxyCall(pass, method, body, cb) {
+    var opts = { method: method || 'GET', headers: { 'X-Access-Pass': Core.str(pass) } };
+    if (body) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    httpFetch(proxyApiUrl(), opts, function (err, res) {
+      if (err) {
+        cb(err.status ? err : new Error('서버에 연결하지 못했어요. 인터넷 연결과 Worker 주소를 확인하고, Worker에 worker.js를 Deploy 했는지도 확인해 주세요.'));
+        return;
+      }
+      res.json(function (err2, j) {
+        if (err2 || !j || typeof j !== 'object' || Array.isArray(j)) {
+          /* Worker 에 아직 코드를 안 넣었거나(기본 Hello World) 주소가 틀린 경우 */
+          cb(null, {
+            status: res.status,
+            ok: false,
+            data: {
+              error: 'not_json',
+              message: '서버가 책장 응답(JSON)을 보내지 않았어요. Worker에 worker.js를 붙여 넣고 Deploy 했는지, 주소가 맞는지 확인해 주세요.'
+            }
+          });
+          return;
+        }
+        cb(null, { status: res.status, ok: res.ok, data: j });
+      });
+    });
+  }
+
+  /* 서버에서 DB 받기 — cb(err, { role, sha, db }) */
+  function proxyLoad(pass, cb) {
+    proxyCall(pass, 'GET', null, function (err, res) {
+      if (err) { cb(err); return; }
+      if (!res.ok) { cb(proxyHttpError(res.status, res.data)); return; }
+      var raw = res.data.db;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !Array.isArray(raw.books)) {
+        cb(new Error('서버가 책장 데이터를 보내지 않았어요. 잠시 뒤 다시 시도해 주세요.'));
+        return;
+      }
+      var role = Core.str(res.data.role) === 'guest' ? 'guest' : 'family';
+      cb(null, { role: role, sha: Core.str(res.data.sha), db: Core.normalizeDB(raw) });
+    });
+  }
+
+  /* 서버에 DB 저장 — cb(err, { sha }) */
+  function proxyPush(dbObj, sha, cb) {
+    if (isGuest()) { cb(new Error('구경 모드에서는 저장할 수 없어요.')); return; }
+    var payload = {
+      sha: Core.str(sha),
+      message: Core.ghCommitMessage(dbObj),
+      db: JSON.parse(Core.backupJSON(dbObj))
+    };
+    proxyCall(proxy.pass, 'PUT', payload, function (err, res) {
+      if (err) { cb(err); return; }
+      if (!res.ok) { cb(proxyHttpError(res.status, res.data)); return; }
+      cb(null, { sha: Core.str(res.data.sha) });
+    });
+  }
+
+  /* ghSyncAll과 같은 일(받아서 병합 → 다르면 올리기)을 프록시로 한다. */
+  function proxySyncAll(localDb, mode, cb) {
+    proxyLoad(proxy.pass, function (err, remote) {
+      if (err) { cb(err); return; }
+      var merged = Core.mergeDB(localDb, remote.db, new Date().toISOString());
+      if (mode !== 'sync' || Core.signature(merged.db) === Core.signature(remote.db)) {
+        cb(null, { db: merged.db, sha: remote.sha, pushed: false, created: false, stats: merged.stats });
+        return;
+      }
+      pushTries(merged.db, remote.sha, 0, merged.stats);
+    });
+    function pushTries(cur, sha, tries, stats) {
+      proxyPush(cur, sha, function (err2, out) {
+        if (err2) {
+          if (err2.status === 409 && tries < 2) {
+            /* 다른 기기가 먼저 저장 → 최신본과 합친 뒤 다시 올린다 */
+            proxyLoad(proxy.pass, function (err3, fresh) {
+              if (err3) { cb(err3); return; }
+              var again = Core.mergeDB(cur, fresh.db, new Date().toISOString());
+              pushTries(again.db, fresh.sha, tries + 1, again.stats);
+            });
+            return;
+          }
+          cb(err2);
+          return;
+        }
+        cb(null, { db: cur, sha: out.sha, pushed: true, created: false, stats: stats });
+      });
+    }
+  }
+
+  /* 입장 암호 확인 → 역할별로 화면 열기. cb(err, role) */
+  function enterGate(pass, remember, cb) {
+    var done = cb || function () { };
+    var p = Core.trim(pass);
+    if (!p) { done(new Error('입장 암호를 넣어 주세요.')); return; }
+    if (proxy.checking) return;
+    proxy.checking = true;
+    setGateBusy(true, '불러오는 중…');
+    setGateMsg('', '');
+    proxyLoad(p, function (err, res) {
+      proxy.checking = false;
+      setGateBusy(false);
+      if (err) {
+        setGateMsg(err.message || '입장하지 못했어요.', 'error');
+        if (err.status === 401 || err.status === 403) clearStoredProxyPass();
+        done(err);
+        return;
+      }
+      proxy.on = true;
+      proxy.pass = p;
+      proxy.role = res.role;
+      if (remember === true) storeProxyPass(p, res.role);
+      else if (remember === false) clearStoredProxyPass();
+      applyProxyDb(res);
+      done(null, res.role);
+    });
+  }
+
+  function applyProxyDb(res) {
+    if (res.role === 'guest') {
+      db = res.db;
+      guestOpen();
+      return;
+    }
+    var merged = Core.mergeDB(db || res.db, res.db, new Date().toISOString());
+    db = merged.db;
+    save({ silent: true });
+    hideGate();
+    loadSession();
+    if (session.role) startApp();
+    else showLogin();
+    setGhStatus('synced');
+    /* 이 기기에만 있던 기록이 있으면 서버에도 올려 맞춘다(구경 모드에서는 저장 안 됨) */
+    if (Core.signature(merged.db) !== Core.signature(res.db)) {
+      setTimeout(function () { syncNow('sync', true); }, 200);
+    }
+  }
+
+  function guestOpen() {
+    session = { role: 'guest', childId: '' };
+    clearStoredSession();
+    hideGate();
+    el('login-screen').hidden = true;
+    document.body.classList.remove('locked');
+    document.body.classList.add('guest');
+    el('ro-note').hidden = false;
+    startApp();
+    setGhStatus('guest');
+  }
+
+  /* 구경 모드 종료 · 입장 암호 다시 넣기 */
+  function exitGate(msg) {
+    clearStoredProxyPass();
+    clearStoredSession();
+    session = { role: '', childId: '' };
+    proxy.pass = '';
+    proxy.role = '';
+    db = null;
+    document.body.classList.remove('guest');
+    el('ro-note').hidden = true;
+    el('userbar').hidden = true;
+    el('fab-add').classList.remove('show');
+    showGate(msg || '입장 암호를 다시 넣어 주세요.');
+  }
+
+  function setGateMsg(msg, kind) {
+    var box = el('gate-msg');
+    if (!box) return;
+    box.className = 'login-msg' + (kind ? ' ' + kind : '');
+    box.textContent = msg || '';
+  }
+
+  function setGateBusy(on, label) {
+    var btn = el('gate-submit');
+    if (!btn) return;
+    btn.disabled = !!on;
+    btn.textContent = on ? (label || '불러오는 중…') : '들어가기';
+  }
+
+  function showGate(msg) {
+    document.body.classList.add('locked');
+    el('login-screen').hidden = true;
+    el('userbar').hidden = true;
+    el('fab-add').classList.remove('show');
+    el('gate-screen').hidden = false;
+    setGateBusy(false);
+    setGateMsg(msg || '', msg ? 'error' : '');
+    var input = el('gate-pass');
+    if (input) {
+      input.value = '';
+      setTimeout(function () { try { input.focus(); } catch (e) { /* noop */ } }, 80);
+    }
+  }
+
+  function hideGate() {
+    el('gate-screen').hidden = true;
+  }
+
+  function submitGate() {
+    var pass = el('gate-pass').value;
+    var remember = !!el('gate-remember').checked;
+    if (!Core.trim(pass)) { setGateMsg('입장 암호를 넣어 주세요.', 'error'); return; }
+    enterGate(pass, remember, function (err) {
+      if (err) {
+        setGateMsg(err.message || '입장하지 못했어요.', 'error');
+        el('gate-pass').value = '';
+        return;
+      }
+      el('gate-pass').value = '';
+      if (isGuest()) toast('구경 모드로 열었어요. 책과 기록은 볼 수만 있어요.');
+      else if (document.body.classList.contains('locked')) toast('입장 암호를 확인했어요. 사용할 사람을 골라 주세요.');
+    });
+  }
+
+  function bindGate() {
+    el('gate-submit').onclick = submitGate;
+    el('gate-pass').onkeydown = function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); submitGate(); }
+    };
+    el('login-pass-change').onclick = function () {
+      if (!proxyOn()) return;
+      session = { role: '', childId: '' };
+      clearStoredSession();
+      clearStoredProxyPass();
+      showGate('새 입장 암호를 넣어 주세요.');
+    };
+    var pc = el('proxy-pass-change');
+    if (pc) pc.onclick = function () { exitGate('새 입장 암호를 넣어 주세요.'); };
+  }
+
+  /* 저장된 암호로 조용히 다시 들어오기 */
+  function proxyBoot() {
+    var saved = loadProxyPass();
+    if (!saved) { showGate(); return; }
+    proxy.on = true;
+    proxy.pass = saved.pass;
+    proxy.role = saved.role;
+    showGate();
+    el('gate-submit').disabled = true;
+    enterGate(saved.pass, 'keep', function (err) {
+      if (err) showGate(err.message || '입장하지 못했어요. 암호를 다시 넣어 주세요.');
+    });
+  }
+
+  function proxySyncNow(mode, silent) {
+    if (!proxy.pass) { showGate(); return; }
+    if (syncInFlight) { if (!silent) toast('이미 동기화 중이에요.'); return; }
+    syncInFlight = true;
+    setGhStatus('syncing', '동기화 중…');
+    if (isGuest()) {
+      proxyLoad(proxy.pass, function (err, res) {
+        syncInFlight = false;
+        if (err) {
+          setGhStatus('error', err.message);
+          if (!silent) toast(err.message, 'warn');
+          return;
+        }
+        db = res.db;
+        renderUserbar();
+        renderShelf();
+        refreshOpenDetail();
+        setGhStatus('guest');
+        if (!silent) toast('최신 책장을 다시 불러왔어요.');
+      });
+      return;
+    }
+    proxySyncAll(db, mode === 'pull' ? 'pull' : 'sync', function (err, result) {
+      syncInFlight = false;
+      if (err) {
+        setGhStatus('error', err.message);
+        if (!silent) toast(err.message, 'warn');
+        return;
+      }
+      applySyncResult(result);
+      gh.lastSyncAt = new Date().toISOString();
+      saveGh();
+      setGhStatus('synced');
+      if (!silent) {
+        var added = result.stats ? (result.stats.added + result.stats.updated + result.stats.removed) : 0;
+        var msg;
+        if (result.pushed) msg = '서버에 저장했어요. (' + db.books.length + '권)';
+        else if (added > 0) msg = '서버에서 ' + added + '권을 가져왔어요.';
+        else msg = '이미 최신 상태예요.';
+        toast(msg);
+      }
+    });
   }
 
   /* ---------- GitHub 동기화 ---------- */
@@ -3276,6 +3714,8 @@ var Core = (function () {
   }
 
   function isConnected() {
+    /* 프록시 모드에서는 Worker가 GitHub을 대신하므로 토큰이 없다. 가족 모드만 쓰기를 허용한다. */
+    if (proxy.on) return proxy.role === 'family';
     return !!(Core.trim(gh.owner) && Core.trim(gh.repo) && Core.trim(gh.token));
   }
 
@@ -3325,7 +3765,8 @@ var Core = (function () {
     local: '⚪ 로컬 모드',
     syncing: '🔄 동기화 중',
     synced: '🟢 동기화됨',
-    error: '🔴 오류'
+    error: '🔴 오류',
+    guest: '👀 구경 모드'
   };
 
   function setGhStatus(status, msg) {
@@ -3345,6 +3786,20 @@ var Core = (function () {
   function renderGhSummary() {
     var sum = el('gh-summary');
     if (!sum) return;
+    /* 프록시 모드: GitHub 카드는 숨기고 Cloudflare 카드만 보여 준다 */
+    if (proxy.on) {
+      if (el('set-gh-card')) el('set-gh-card').hidden = true;
+      if (el('set-proxy-card')) el('set-proxy-card').hidden = false;
+      var ps = el('proxy-summary');
+      if (ps) {
+        ps.innerHTML = '☁️ <b>Cloudflare Worker</b>를 통해 책장을 불러와요. ' +
+          (isGuest() ? '지금은 <b>구경 모드</b>(읽기 전용)예요.' : '지금은 <b>가족 모드</b>예요.') +
+          (gh.lastSyncAt ? '<br>마지막 동기화: ' + esc(fmtDateTime(gh.lastSyncAt)) : '');
+      }
+      return;
+    }
+    if (el('set-gh-card')) el('set-gh-card').hidden = false;
+    if (el('set-proxy-card')) el('set-proxy-card').hidden = true;
     var connected = isConnected();
     if (el('gh-share-row')) el('gh-share-row').hidden = !connected;
     if (el('gh-share-hint')) el('gh-share-hint').hidden = !connected;
@@ -3390,6 +3845,7 @@ var Core = (function () {
   }
 
   function openGhModal(fromLogin) {
+    if (proxy.on) { toast('지금은 Cloudflare 프록시로 연결돼 있어요. GitHub 설정은 필요 없어요.'); return; }
     var loginMode = !!fromLogin && !isAdmin() && !el('login-screen').hidden;
     if (!loginMode && !isAdmin()) { deny('GitHub 설정은 관리자만 할 수 있어요.'); return; }
     var wasOpenGh = !el('gh-modal').hidden;
@@ -3462,6 +3918,7 @@ var Core = (function () {
   }
 
   function syncNow(mode, silent) {
+    if (proxy.on) { proxySyncNow(mode, silent); return; }
     if (syncInFlight) { if (!silent) toast('이미 동기화 중이에요.'); return; }
     if (!isConnected()) { openGhModal(); return; }
     syncInFlight = true;
@@ -3701,6 +4158,7 @@ var Core = (function () {
 
   /* ---------- 앱 시작 시 자동 Pull ---------- */
   function pullInBackground() {
+    if (proxy.on) { proxySyncNow('pull', true); return; }
     if (!isConnected() || syncInFlight) return;
     var fromLink = ghFromLink;
     syncInFlight = true;
@@ -3859,7 +4317,7 @@ var Core = (function () {
     for (var i = 0; i < views.length; i++) {
       views[i].classList.toggle('active', views[i].id === 'view-' + view);
     }
-    el('fab-add').classList.toggle('show', view === 'shelf');
+    el('fab-add').classList.toggle('show', view === 'shelf' && !isGuest());
     if (view !== 'editor') { clearSearchResults(); closeCal(); }
     window.scrollTo(0, 0);
   }
@@ -3931,13 +4389,13 @@ var Core = (function () {
         '<span class="p-name">' + esc(c.name) + '</span>' +
         '<span class="p-grade">' + esc(gradeOf(c)) + '</span></button>';
     }
-    html += '<button class="profile-edit" id="btn-edit-names" aria-label="아이 이름 수정">✏️</button>';
+    html += isGuest() ? '' : '<button class="profile-edit" id="btn-edit-names" aria-label="아이 이름 수정">✏️</button>';
     el('profile-bar').innerHTML = html;
     var btns = el('profile-bar').querySelectorAll('[data-child]');
     for (var j = 0; j < btns.length; j++) {
       btns[j].onclick = function () { setChild(this.getAttribute('data-child')); };
     }
-    el('btn-edit-names').onclick = editActiveName;
+    if (el('btn-edit-names')) el('btn-edit-names').onclick = editActiveName;
     renderPinWarnings();
   }
 
@@ -3963,6 +4421,13 @@ var Core = (function () {
   }
 
   function setChild(id) {
+    /* 구경 모드: 이 기기에만 보이는 전환은 허용(저장하지 않음) */
+    if (isGuest()) {
+      if (db.activeChildId === id) return;
+      db.activeChildId = id;
+      renderShelf();
+      return;
+    }
     if (!isAdmin()) { deny('내 책장만 볼 수 있어요.'); return; }
     if (db.activeChildId === id) return;
     db.activeChildId = id;
@@ -4226,6 +4691,7 @@ var Core = (function () {
   }
 
   function openEditor(id) {
+    if (denyGuest('구경 모드에서는 책을 등록하거나 고칠 수 없어요.')) return;
     var src = id ? getBook(id) : null;
     if (src && isKid() && src.childId !== session.childId) { deny('내 책만 고칠 수 있어요.'); return; }
     var c = activeChild();
@@ -4912,6 +5378,7 @@ var Core = (function () {
   function quizChanged(oldList, newList) { return quizSig(oldList) !== quizSig(newList); }
 
   function saveEditor() {
+    if (denyGuest('구경 모드에서는 저장할 수 없어요.')) return;
     var d = ui.draft;
     if (!d) return;
     if (!Core.trim(d.title)) { toast('책 제목을 입력해 주세요.'); el('ed-title').focus(); return; }
@@ -4922,6 +5389,7 @@ var Core = (function () {
   }
 
   function commitEditorSave(rated) {
+    if (denyGuest('구경 모드에서는 저장할 수 없어요.')) return;
     var d = ui.draft;
     if (!d) return;
     if (rated >= 1) d.rating = Core.clampRating(rated);
@@ -5295,6 +5763,7 @@ var Core = (function () {
     }
 
     el('dt-body').innerHTML = h;
+    el('dt-edit').hidden = isGuest();
     bindDetail(b);
     if (ui.retryFocus) {
       ui.retryFocus = false;
@@ -6149,6 +6618,7 @@ var Core = (function () {
 
     /* GitHub 동기화 */
     el('sync-pill').onclick = function () {
+      if (proxy.on) { syncNow('sync'); return; }
       if (!isConnected()) {
         if (isAdmin()) openGhModal();
         else toast('관리자가 GitHub 연결을 해 두면 다른 기기와 기록을 함께 쓸 수 있어요.');
@@ -6442,10 +6912,17 @@ var Core = (function () {
   }
 
   function init() {
-    load();
     loadGh();
-    var linked = consumeGhHash();
     bindGlobal();
+    bindGate();
+    proxy.on = proxyOn();
+    if (proxy.on) {
+      /* Cloudflare 프록시 모드: 토큰 설정 없이 입장 암호 하나로 시작 */
+      proxyBoot();
+      return;
+    }
+    load();
+    var linked = consumeGhHash();
     loadSession();
     if (session.role) {
       startApp();
