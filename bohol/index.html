@@ -415,6 +415,7 @@
   function ymd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
   function compact(d) { return "" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()); }
   function md(iso) { var d = D(iso); return (d.getMonth() + 1) + "/" + d.getDate() + "(" + WD[d.getDay()] + ")"; }
+  function mdS(iso) { var d = D(iso); return (d.getMonth() + 1) + "/" + d.getDate(); }
   function mdFull(iso) { var d = D(iso); return d.getFullYear() + ". " + (d.getMonth() + 1) + ". " + d.getDate() + "(" + WD[d.getDay()] + ")"; }
   function addDays(iso, n) { var d = D(iso); d.setDate(d.getDate() + n); return d; }
   function nightsBetween(a, b) { return Math.round((D(b) - D(a)) / 86400000); }
@@ -493,13 +494,13 @@
     document.getElementById("sLeave").textContent = "화 반차 + 수·목·금 연차 3일 (주말 포함 6일)";
 
     document.getElementById("sub-naver").textContent = md(t.out) + "~" + md(t.back) + " · 3성인+1소아";
-    document.getElementById("sub-trip").textContent = md(t.out) + "~" + md(t.back) + " · 왕복 4명";
-    document.getElementById("sub-skyscanner").textContent = md(t.out) + "~" + md(t.back);
-    document.getElementById("sub-kayak").textContent = md(t.out) + "~" + md(t.back) + " · 성인3+소아1";
-    document.getElementById("sub-jejuair").textContent = md(t.out) + "~" + md(t.back) + " · 인원 직접 선택";
+    document.getElementById("sub-trip").textContent = mdS(t.out) + "~" + mdS(t.back) + " · 4명";
+    document.getElementById("sub-skyscanner").textContent = mdS(t.out) + "~" + mdS(t.back) + " 최저가";
+    document.getElementById("sub-kayak").textContent = mdS(t.out) + "~" + mdS(t.back) + " · 3+1";
+    document.getElementById("sub-jejuair").textContent = mdS(t.out) + "~" + mdS(t.back) + " · 인원 선택";
     document.getElementById("sub-agoda").textContent = md(t.hotelIn) + " 체크인 · " + t.nights + "박";
-    document.getElementById("sub-agoda5").textContent = md(t.out) + " 체크인 · 5박";
-    document.getElementById("sub-tripHotel").textContent = md(t.hotelIn) + "~" + md(t.hotelOut) + " · 성인 4명";
+    document.getElementById("sub-agoda5").textContent = mdS(t.out) + "~" + mdS(t.back) + " · 5박";
+    document.getElementById("sub-tripHotel").textContent = mdS(t.hotelIn) + "~" + mdS(t.hotelOut) + " · 4명";
 
     Array.prototype.forEach.call(document.querySelectorAll("[data-b]"), function (a) {
       var fn = BUILD[a.getAttribute("data-b")];
