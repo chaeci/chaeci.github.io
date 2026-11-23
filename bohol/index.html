@@ -64,7 +64,7 @@
 
   /* ---------- cards ---------- */
   .card{
-    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
     padding:15px 14px 14px;margin:0 0 12px;box-shadow:var(--shadow);
   }
   .card > h2{
@@ -106,10 +106,10 @@
   .summary dd b{color:var(--brand)}
 
   /* ---------- buttons ---------- */
-  .btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
   .btn-grid.one{grid-template-columns:1fr}
   .btn{
-    display:flex;align-items:center;gap:9px;min-height:56px;
+    display:flex;align-items:center;gap:9px;min-height:56px;min-width:0;
     padding:9px 10px;border-radius:13px;text-decoration:none;color:var(--ink);
     background:#fff;border:1px solid var(--line);transition:transform .1s,border-color .15s;
   }
@@ -671,7 +671,7 @@
     if (data.reference && data.reference.tripComHotel) {
       var r = data.reference.tripComHotel;
       html += "<div class='ref' style='margin-top:8px'><div class='ref-t'>참고 · 오늘 직접 확인한 값</div>" +
-        "트립닷컴 패밀리룸 " + esc(r.room || "") + " · " + md(r.checkIn) + "~" + md(r.checkOut) + " (" + r.nights + "박)<br>" +
+        "트립닷컴 " + esc(r.room || "") + " · " + md(r.checkIn) + "~" + md(r.checkOut) + " (" + r.nights + "박)<br>" +
         "1박 <b>" + won(r.perNight) + "</b> · 4박 합계 <b>" + won(r.total) + "</b> <span style='color:#b45309'>(" + esc(r.cancellation || "") + ")</span>" +
         "<br>목표 125만 원보다 약 " + man(r.total - ((data.goals || {}).hotel4Nights || 1250000)) + "원 높음</div>";
     }
