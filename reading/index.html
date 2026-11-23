@@ -91,6 +91,8 @@
   .badge.pending{background:#FFF3DC;color:#9A6A12}
   .badge.graded{background:#E4F0EA;color:#25614F}
   .badge.draft{background:#F0EBE3;color:#7B6A55}
+  .badge.redo{background:#FDEBD6;color:#8A5410;box-shadow:inset 0 0 0 1px #F0CFA3}
+  .badge.keep{background:#F0EBE3;color:#7B6A55}
   .stars{color:var(--gold);font-size:12px;letter-spacing:-1px}
   .date-txt{font-size:11.5px;color:var(--muted);margin-left:auto}
 
@@ -304,6 +306,8 @@
   .banner{background:#F4EEE2;border-radius:13px;padding:10px 12px;font-size:12.5px;color:#6E6252;margin-bottom:9px;line-height:1.5}
   .banner.ok{background:#E4F0EA;color:#25614F}
   .q-card{background:#fff;border-radius:15px;padding:13px;box-shadow:var(--shadow);margin-bottom:9px}
+  .q-card.redo{background:#FFFDF6;box-shadow:0 0 0 2px #EBC98D, var(--shadow)}
+  #btn-grade-only-redo{margin:0 0 9px}
   .q-head{display:flex;gap:8px;align-items:flex-start}
   .q-no{flex:0 0 22px;height:22px;border-radius:8px;background:var(--accent-soft);color:var(--accent);font-size:12px;
     font-weight:700;display:grid;place-items:center;margin-top:1px}
@@ -1311,7 +1315,10 @@ var Core = (function () {
       ref: ref,
       answer: ans,
       mark: mark,
-      feedback: fb
+      feedback: fb,
+      /* 재도전에서 답을 고쳐 다시 낸 문항 — 부모가 이 문항만 다시 채점하면 된다.
+         채점(mark)을 새로 넣거나 채점을 마치면 false 로 돌아간다. */
+      redo: x.redo === true
     };
   }
 
@@ -2262,7 +2269,7 @@ var Core = (function () {
         b.note.scene, b.note.thoughts, b.updatedAt,
         b.quiz.submittedAt, b.quiz.gradedAt, b.quiz.overallFeedback,
         b.quiz.questions.map(function (q) {
-          return [q.id, q.q, q.ref, q.answer, q.mark, q.feedback].join('~');
+          return [q.id, q.q, q.ref, q.answer, q.mark, q.feedback, q.redo ? 'redo' : ''].join('~');
         }).join('^')
       ].join('|'));
     }
@@ -2837,6 +2844,7 @@ var Core = (function () {
     answerEdit: false,
     retryFocus: false,
     regrade: false,
+    gradeOnlyRedo: false,
     draft: null,
     editingId: '',
     dirty: false,
@@ -4037,6 +4045,18 @@ var Core = (function () {
     });
   }
 
+  /* 6자리가 완성되면 확인 버튼을 누르지 않아도 인증 요청을 보낸다.
+     - 2단계 화면이 아니면 아무 것도 하지 않는다
+     - 이미 검증 중이면(proxy.checking) 다시 부르지 않는다 → input 이벤트가 여러 번 와도 요청은 한 번
+     - 실패하면 submitGateOtp 가 입력칸을 비우고 포커스를 돌려주므로 다시 6자리를 치면 또 자동 인증된다 */
+  function autoSubmitOtp() {
+    if (proxy.stage !== 2) return;
+    if (proxy.checking) return;
+    if (!el('gate-otp')) return;
+    if (Core.str(el('gate-otp').value).replace(/[^0-9]/g, '').length !== 6) return;
+    submitGateOtp();
+  }
+
   /* 인증번호 다시 받기 (60초 쿨다운은 서버가 지킨다) */
   function resendGateOtp() {
     if (proxy.checking) return;
@@ -4220,10 +4240,13 @@ var Core = (function () {
       el('gate-otp').onkeydown = function (ev) {
         if (ev.key === 'Enter') { ev.preventDefault(); submitGateOtp(); }
       };
+      /* 6자리가 다 채워지는 순간(input · 붙여넣기 · 자동입력) 확인 버튼 없이 바로 인증한다 */
       el('gate-otp').oninput = function () {
         var v = this.value.replace(/[^0-9]/g, '').slice(0, 6);
         if (v !== this.value) this.value = v;
-        if (v.length === 6) setOtpMsg('', '');
+        if (v.length < 6) return;
+        setOtpMsg('', '');
+        autoSubmitOtp();
       };
     }
     if (el('gate-otp-resend')) el('gate-otp-resend').onclick = resendGateOtp;
@@ -6067,7 +6090,7 @@ var Core = (function () {
     for (var i = 0; i < d.quiz.questions.length; i++) {
       var q = d.quiz.questions[i];
       if (!Core.trim(q.q)) continue;
-      qs.push({ id: q.id, q: Core.trim(q.q), ref: Core.trim(q.ref), answer: q.answer, mark: q.mark, feedback: Core.trim(q.feedback) });
+      qs.push({ id: q.id, q: Core.trim(q.q), ref: Core.trim(q.ref), answer: q.answer, mark: q.mark, feedback: Core.trim(q.feedback), redo: q.redo === true });
     }
 
     var existing = d.id ? getBook(d.id) : null;
@@ -6123,6 +6146,7 @@ var Core = (function () {
             if (!nq.answer) nq.answer = old.answer;
             if (!nq.feedback) nq.feedback = old.feedback;
             if (!nq.mark) nq.mark = old.mark;
+            if (old.redo && !nq.redo) nq.redo = true;   /* 아직 채점 안 한 재풀이 표시는 유지 */
           }
         }
       }
@@ -6224,6 +6248,7 @@ var Core = (function () {
     ui.detailTab = '';
     ui.answerEdit = false;
     ui.regrade = false;
+    ui.gradeOnlyRedo = false;
     /* 채점이 끝났는데 만점이 아니면(△·❌ 포함) '다시 풀기'를 누르지 않아도 바로 답안 고치기로 들어간다 */
     if (found && isKid() && ownsBook(found) && Core.quizNeedsRetry(found)) {
       ui.answerEdit = true;
@@ -6265,7 +6290,13 @@ var Core = (function () {
       h += '<div class="banner retry">🔁 만점이 아니에요. 문제마다 채점 결과와 ' + roleName(bookGradedBy(b)) +
         ' 피드백을 보고 답을 고친 뒤 다시 내 보세요.</div>';
     }
-    if (st === 'pending' && !ui.answerEdit) h += '<div class="banner ok">📮 답안을 냈어요. 채점을 기다리는 중!</div>';
+    if (st === 'pending' && !ui.answerEdit) {
+      var redoNow = 0;
+      for (var rn = 0; rn < qs.length; rn++) if (qs[rn].redo) redoNow += 1;
+      h += redoNow
+        ? '<div class="banner retry">🔄 다시 냈어요. 고친 답 ' + redoNow + '문제만 다시 채점해요. 맞힌 문제는 그대로 남겨 뒀어요.</div>'
+        : '<div class="banner ok">📮 답안을 냈어요. 채점을 기다리는 중!</div>';
+    }
     if (st === 'draft') {
       h += ownsBook(b)
         ? '<div class="banner">✍️ ' + qs.length + '문제예요. 답을 쓰고 제출해 보세요.</div>'
@@ -6274,9 +6305,10 @@ var Core = (function () {
 
     for (var i = 0; i < qs.length; i++) {
       var q = qs[i];
-      h += '<div class="q-card"><div class="q-head"><span class="q-no">' + (i + 1) + '</span>' +
+      h += '<div class="q-card' + (q.redo ? ' redo' : '') + '"><div class="q-head"><span class="q-no">' + (i + 1) + '</span>' +
         '<span class="q-text">' + esc(q.q) + '</span>' +
-        (st === 'graded' ? '<span class="mark-chip ' + (q.mark || 'none') + '">' + markShort(q.mark) + '</span>' : '') + '</div>';
+        (q.redo ? '<span class="badge redo">🔄 재풀이</span>' : '') +
+        ((st === 'graded' || q.mark) ? '<span class="mark-chip ' + (q.mark || 'none') + '">' + markShort(q.mark) + '</span>' : '') + '</div>';
       if (Core.trim(q.feedback)) {
         /* 부모가 피드백 칸에 적은 글은 아이에게 주는 말이다. 참고답안과 같은 문구라도 그대로 보여 준다.
            참고답안(q.ref) 자체는 아이 화면에 그리지 않으므로 부모 전용으로만 남는다. */
@@ -6348,10 +6380,27 @@ var Core = (function () {
     }
 
     var h3 = who + '<div class="banner">문제마다 ⭕ / △ / ❌를 눌러 주세요. 누를 때마다 자동 저장돼요. 피드백은 아이 화면에 그대로 보이고, 참고답안은 아이에게 보이지 않아요.</div>';
+    /* 재도전 제출: 고친 답만 다시 채점하면 되도록 눈에 띄게 표시한다 */
+    var redoNos = [];
+    var keepCount = 0;
+    for (var r = 0; r < qs.length; r++) {
+      if (qs[r].redo) redoNos.push(r + 1);
+      else if (qs[r].mark) keepCount += 1;
+    }
+    if (redoNos.length && st !== 'graded') {
+      h3 += '<div class="banner retry">🔄 <b>재풀이 ' + redoNos.length + '문제</b>(' + redoNos.join('·') + '번)만 다시 채점하면 돼요.' +
+        (keepCount ? ' 나머지 ' + keepCount + '문제는 지난 채점을 그대로 뒀어요.' : '') + '</div>';
+    }
+    if (redoNos.length) {
+      h3 += '<button type="button" class="btn small" id="btn-grade-only-redo" aria-pressed="' +
+        (ui.gradeOnlyRedo ? 'true' : 'false') + '">' + (ui.gradeOnlyRedo ? '전체 문제 보기' : '🔄 재풀이 문제만 보기') + '</button>';
+    }
     for (var k = 0; k < qs.length; k++) {
       var q3 = qs[k];
-      h3 += '<div class="q-card" data-i="' + k + '"><div class="q-head"><span class="q-no">' + (k + 1) + '</span>' +
-        '<span class="q-text">' + esc(q3.q) + '</span></div>' +
+      if (ui.gradeOnlyRedo && redoNos.length && !q3.redo) continue;
+      h3 += '<div class="q-card' + (q3.redo ? ' redo' : '') + '" data-i="' + k + '"><div class="q-head"><span class="q-no">' + (k + 1) + '</span>' +
+        '<span class="q-text">' + esc(q3.q) + '</span>' +
+        (q3.redo ? '<span class="badge redo">🔄 재풀이</span>' : (q3.mark ? '<span class="badge keep">지난 채점</span>' : '')) + '</div>' +
         '<p class="q-label">아이 답안</p><p class="kid-answer">' + (Core.trim(q3.answer) ? esc(q3.answer) : '<span class="muted">(답안 없음)</span>') + '</p>' +
         (q3.ref ? '<details class="ref"><summary>' + esc(adminDisplayName(bookQuizBy(b))) + ' 참고답안 보기 (아이 화면엔 안 보여요)</summary><p>' + esc(q3.ref) + '</p></details>' : '') +
         '<div class="marks">' +
@@ -6484,6 +6533,7 @@ var Core = (function () {
         ui.detailTab = tabBtn.getAttribute('data-tab');
         ui.answerEdit = false;
         ui.regrade = false;
+        ui.gradeOnlyRedo = false;
         renderDetail();
         return;
       }
@@ -6510,6 +6560,11 @@ var Core = (function () {
       if (t.closest && t.closest('#btn-answer-edit')) {
         if (!ownsBook(b)) { deny('답안 고치기는 아이 본인만 할 수 있어요.'); return; }
         ui.answerEdit = true; renderDetail(); return;
+      }
+      if (t.closest && t.closest('#btn-grade-only-redo')) {
+        ui.gradeOnlyRedo = !ui.gradeOnlyRedo;
+        renderDetail();
+        return;
       }
       if (t.closest && t.closest('#btn-grade-done')) {
         if (!isAdmin()) { deny('채점은 아빠·엄마(관리자)만 할 수 있어요.'); return; }
@@ -6590,6 +6645,7 @@ var Core = (function () {
     var q = b.quiz.questions[i];
     if (!q) return;
     q.mark = (q.mark === mark) ? null : mark;
+    if (q.mark) q.redo = false;   /* 채점했으니 재풀이 표시는 지운다 */
     touchBook(b);
     save();
     var btns = document.querySelectorAll('#dt-body [data-mark][data-i="' + i + '"]');
@@ -6603,6 +6659,23 @@ var Core = (function () {
     if (tot) tot.textContent = sc.earned + ' / ' + sc.max;
     if (hun) hun.textContent = sc.score100 + '점';
     if (done) done.classList.toggle('not-ready', !sc.allGraded);
+    /* 방금 채점한 문항의 '🔄 재풀이' 표시만 바로 지운다 */
+    if (q.mark) {
+      var card = document.querySelector('#dt-body .q-card[data-i="' + i + '"]');
+      var bdg = card ? card.querySelector('.badge.redo') : null;
+      if (bdg && bdg.parentNode) bdg.parentNode.removeChild(bdg);
+      if (card) card.classList.remove('redo');
+      /* 남은 재풀이 문항이 없으면 재풀이 안내·필터도 지운다 */
+      var left = 0;
+      for (var z = 0; z < b.quiz.questions.length; z++) if (b.quiz.questions[z].redo) left += 1;
+      if (!left) {
+        var bn = document.querySelector('#dt-body .banner.retry');
+        if (bn && bn.parentNode) bn.parentNode.removeChild(bn);
+        var tg = el('btn-grade-only-redo');
+        if (tg && tg.parentNode) tg.parentNode.removeChild(tg);
+        ui.gradeOnlyRedo = false;
+      }
+    }
   }
 
   function submitAnswers(b) {
@@ -6610,40 +6683,74 @@ var Core = (function () {
     if (isKid() && b.childId !== session.childId) { deny('내 책 답안만 낼 수 있어요.'); return; }
     var areas = document.querySelectorAll('#dt-body [data-ans]');
     var missing = [];
+    var changed = [];
     for (var i = 0; i < areas.length; i++) {
       var idx = parseInt(areas[i].getAttribute('data-ans'), 10);
       var q = b.quiz.questions[idx];
       if (!q) continue;
-      q.answer = Core.trim(areas[i].value);
-      if (!q.answer) missing.push(idx + 1);
+      var val = Core.trim(areas[i].value);
+      /* 지난 답안과 글자가 달라진 문항 — 이 문항만 다시 채점한다 */
+      if (val !== Core.trim(q.answer)) changed.push(idx);
+      q.answer = val;
+      if (!val) missing.push(idx + 1);
     }
     if (missing.length) {
       toast('아직 답하지 않은 문제: ' + missing.join(', ') + '번', 'warn');
       return;
     }
     /* 별점을 아직 안 매긴 책이면 제출 전에 별점 팝업을 먼저 띄운다 */
-    withRatingAsk(b.title, b.rating, function (rated) { commitAnswers(b, rated); });
+    withRatingAsk(b.title, b.rating, function (rated) { commitAnswers(b, rated, changed); });
   }
 
-  /* 별점 팝업에서 고른 별점(0 = 건너뜀)과 함께 실제로 답안을 낸다 */
-  function commitAnswers(b, rated) {
+  /* 답안 제출 · 재도전 제출.
+     재도전할 때 지난 채점을 통째로 지우지 않는다.
+     - 답을 고치지 않은 문항: 그 문항의 채점(⭕/△/❌)과 피드백을 그대로 둔다(⭕ 보존).
+     - 답을 고친 문항: 그 문항만 미채점으로 되돌리고 '재풀이(redo)' 표시를 달아
+       부모가 그 문항만 다시 채점하면 바로 채점을 마칠 수 있게 한다.
+     - 고친 문항이 하나도 없으면 채점을 마친 상태 그대로 둔다(다시 채점할 것이 없음). */
+  function commitAnswers(b, rated, changed) {
     if (rated >= 1) b.rating = Core.clampRating(rated);
     touchBook(b);
-    b.quiz.submittedAt = new Date().toISOString();
-    b.quiz.gradedAt = '';
-    b.gradedByRole = '';
+    var wasGraded = !!b.quiz.gradedAt;
+    var picked = {};
+    var list = Array.isArray(changed) ? changed : [];
+    for (var c = 0; c < list.length; c++) picked[list[c]] = true;
+    var redone = 0;
+    var kept = 0;
     for (var k = 0; k < b.quiz.questions.length; k++) {
-      b.quiz.questions[k].mark = null;
-      b.quiz.questions[k].feedback = '';
+      var q = b.quiz.questions[k];
+      if (picked[k]) {
+        /* 고친 답안 → 이 문항만 미채점으로. 처음 내는 답안이면 재풀이 표시는 달지 않는다. */
+        var hadGrade = wasGraded || !!q.mark || !!Core.trim(q.feedback);
+        q.mark = null;
+        q.feedback = '';
+        q.redo = hadGrade;
+        if (hadGrade) redone += 1;
+      } else if (q.mark) {
+        kept += 1;   /* 지난 채점 그대로 */
+      }
+    }
+    var sc = Core.computeScore(b.quiz);
+    b.quiz.submittedAt = new Date().toISOString();
+    if (!sc.allGraded) {
+      /* 다시 채점할 문항이 남았다 → '📮 채점 대기'로 (부모 채점 화면이 이어받는다) */
+      b.quiz.gradedAt = '';
+      b.gradedByRole = '';
     }
     save();
     ui.answerEdit = false;
     ui.detailTab = 'kid';
     renderDetail();
     renderShelf();
-    toast(rated >= 1
-      ? '별점 ' + rated + '점을 남기고 답안을 제출했어요. 채점을 기다려 주세요!'
-      : '답안을 제출했어요. 채점을 기다려 주세요!');
+    var msg;
+    if (sc.allGraded && wasGraded) {
+      msg = '고친 답안이 없어서 지난 채점을 그대로 뒀어요.';
+    } else if (redone > 0) {
+      msg = '고친 답 ' + redone + '문제만 다시 채점해요.' + (kept ? ' 맞힌 문제 ' + kept + '개는 그대로 뒀어요.' : '');
+    } else {
+      msg = '답안을 제출했어요. 채점을 기다려 주세요!';
+    }
+    toast(rated >= 1 ? ('별점 ' + rated + '점을 남기고 ' + msg) : msg);
   }
 
   function finishGrading(b) {
@@ -6657,8 +6764,10 @@ var Core = (function () {
     touchBook(b);
     b.quiz.gradedAt = new Date().toISOString();
     b.gradedByRole = adminRoleOf();
+    for (var r = 0; r < b.quiz.questions.length; r++) b.quiz.questions[r].redo = false;
     save();
     ui.regrade = false;
+    ui.gradeOnlyRedo = false;
     renderDetail();
     renderShelf();
     toast('채점 완료! ' + sc.score100 + '점');
