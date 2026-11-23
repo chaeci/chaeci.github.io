@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FAF5EA">
+<meta name="robots" content="noindex">
+<title>채씨네 작은도서관</title>
+<meta http-equiv="refresh" content="0; url=./reading/">
+<link rel="canonical" href="./reading/">
+<style>
+  html,body{margin:0;height:100%}
+  body{display:grid;place-items:center;background:#FAF5EA;color:#2B251E;
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",system-ui,sans-serif;
+    text-align:center;padding:24px}
+  .box{max-width:320px}
+  .logo{font-size:40px;line-height:1;margin-bottom:10px}
+  h1{margin:0 0 6px;font-size:17px;letter-spacing:-.3px}
+  p{margin:0 0 14px;font-size:12.5px;color:#847767;line-height:1.6}
+  a{display:inline-block;padding:11px 18px;border-radius:13px;background:#2F6F5E;color:#fff;
+    font-size:14px;font-weight:700;text-decoration:none}
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo" aria-hidden="true">📚</div>
+    <h1>채씨네 작은도서관</h1>
+    <p>책장으로 이동하고 있어요.<br>잠시만 기다려 주세요.</p>
+    <a href="./reading/">책장 열기</a>
+  </div>
+  <script>
+    /* 이전 주소로 들어온 기기의 ?쿼리·#해시(#gh= 연결 링크)를 그대로 들고 이동한다 */
+    (function () {
+      var to = './reading/' + location.search + location.hash;
+      try { location.replace(to); } catch (e) { location.href = to; }
+    })();
+  </script>
+  <noscript><meta http-equiv="refresh" content="0; url=./reading/"></noscript>
+</body>
+</html>
