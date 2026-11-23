@@ -500,6 +500,7 @@
 
   /* ---------- 프로필 아바타 (사진 · 이모지) ---------- */
   .av-img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:center;background:#EFE6D5}
+  .by-av{display:inline-block;width:17px;height:17px;border-radius:50%;object-fit:cover;object-position:center;vertical-align:-4px;background:#EFE6D5}
   .lu-emoji.has-photo{border-radius:50%;overflow:hidden;padding:0;background:#EFE6D5}
   .u-emoji.has-photo{display:inline-block;width:24px;height:24px;border-radius:50%;overflow:hidden;background:#EFE6D5}
   .p-emoji.has-photo{display:inline-block;width:24px;height:24px;border-radius:50%;overflow:hidden;flex:0 0 auto;background:#EFE6D5}
@@ -654,7 +655,7 @@
       <button id="btn-settings" class="icon-btn" aria-label="설정 및 백업">⚙️</button>
     </div>
     <div class="userbar" id="userbar" hidden>
-      <button class="user-chip" id="btn-user" aria-label="현재 사용자 · 계정 전환" title="계정 전환">
+      <button class="user-chip" id="btn-user" aria-label="현재 사용자 · 내 프로필" title="내 프로필 보기 · 수정">
         <span class="u-emoji" id="user-emoji" aria-hidden="true">👨‍💻</span>
         <b id="user-name">아빠</b>
         <span class="u-role" id="user-role">관리자</span>
@@ -839,7 +840,7 @@
       <div class="card">
         <h3 class="card-title">👤 사용자 · PIN 관리</h3>
         <div id="set-users"></div>
-        <p class="hint">아이별 이름 · 출생연도 · 학년, 그리고 프로필 사진·이모지를 여기서 관리해요.</p>
+        <p class="hint">아빠·엄마 프로필(이름·사진·이모지)과 아이별 이름 · 출생연도 · 학년을 여기서 관리해요. 상단 이름을 눌러도 내 프로필을 바꿀 수 있어요.</p>
         <p class="hint">📅 출생연도를 입력하면 매년 3월 새 학기 기준으로 학년이 자동 갱신돼요. (예: 2026년 11월 초6 → 2027년 3월 중1)</p>
         <p class="hint">📷 프로필 편집에서 얼굴 사진이나 이모지를 고를 수 있어요. 사진은 128×128 · JPEG로 압축해 함께 저장돼요.</p>
         <p class="hint">PIN은 4자리 이상 숫자이며, 암호화된 해시(SHA-256)로만 저장돼요. PIN을 바꾸면 다른 기기에도 동기화할 때 함께 반영돼요.</p>
@@ -991,11 +992,12 @@
       <h2 id="profile-title">프로필 편집</h2>
       <button class="icon-btn" id="profile-close" aria-label="닫기">✕</button>
     </div>
-    <p class="hint">아이 얼굴 사진이나 이모지로 프로필을 꾸며요. 사진은 이 기기와 동기화 저장소에 함께 저장돼요.</p>
+    <p class="hint" id="profile-top-hint">아이 얼굴 사진이나 이모지로 프로필을 꾸며요. 사진은 이 기기와 동기화 저장소에 함께 저장돼요.</p>
+    <p class="hint" id="profile-ro-hint" hidden>내 프로필이에요. 이름·사진은 아빠·엄마가 바꿀 수 있어요.</p>
 
-    <div class="avatar-edit">
+    <div class="avatar-edit" id="profile-avatar-edit">
       <div class="avatar-preview" id="profile-preview" aria-hidden="true"></div>
-      <div class="avatar-actions">
+      <div class="avatar-actions" id="profile-avatar-actions">
         <div class="photo-btns">
           <label class="btn small primary">🖼️ 갤러리 / 파일에서 선택
             <input type="file" id="profile-photo" accept="image/*" hidden>
@@ -1025,24 +1027,26 @@
       <p class="hint" id="profile-pin-hint"></p>
     </div>
 
-    <span class="field-label">이모지로 표시</span>
-    <div class="palette" id="profile-emoji" role="group" aria-label="프로필 이모지 선택"></div>
+    <div id="profile-fields">
+      <span class="field-label">이모지로 표시</span>
+      <div class="palette" id="profile-emoji" role="group" aria-label="프로필 이모지 선택"></div>
 
-    <div class="field">
-      <label for="profile-name">이름</label>
-      <input id="profile-name" type="text" maxlength="12" placeholder="예: 지우" autocomplete="off">
-    </div>
-    <div class="row2">
       <div class="field">
-        <label for="profile-birth">출생연도 <span class="opt">(4자리)</span></label>
-        <input id="profile-birth" type="text" inputmode="numeric" maxlength="4" placeholder="예: 2012" autocomplete="off">
+        <label for="profile-name">이름</label>
+        <input id="profile-name" type="text" maxlength="12" placeholder="예: 지우" autocomplete="off">
       </div>
-      <div class="field">
-        <label for="profile-grade">학년 직접 입력</label>
-        <input id="profile-grade" type="text" maxlength="6" placeholder="예: 초6" autocomplete="off">
+      <div class="row2">
+        <div class="field">
+          <label for="profile-birth">출생연도 <span class="opt">(4자리)</span></label>
+          <input id="profile-birth" type="text" inputmode="numeric" maxlength="4" placeholder="예: 2012" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="profile-grade">학년 직접 입력</label>
+          <input id="profile-grade" type="text" maxlength="6" placeholder="예: 초6" autocomplete="off">
+        </div>
       </div>
+      <p class="auto-grade" id="profile-preview-grade"></p>
     </div>
-    <p class="auto-grade" id="profile-preview-grade"></p>
 
     <div class="gh-result" id="profile-msg"></div>
 
@@ -1050,6 +1054,48 @@
       <button class="btn ghost" id="profile-cancel">취소</button>
       <button class="btn primary" id="profile-save">저장</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="admin-profile-modal" hidden>
+  <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="admin-profile-title">
+    <div class="modal-head">
+      <h2 id="admin-profile-title">내 프로필</h2>
+      <button class="icon-btn" id="admin-profile-close" aria-label="닫기">✕</button>
+    </div>
+    <p class="hint" id="admin-profile-desc">내 이름·사진·이모지예요. 로그인(사람 선택) 화면, 상단 이름, 퀴즈 출제자·채점자 표시에 함께 쓰여요. 사진은 이 기기와 동기화 저장소에 함께 저장돼요.</p>
+
+    <div class="avatar-edit">
+      <div class="avatar-preview" id="admin-profile-preview" aria-hidden="true"></div>
+      <div class="avatar-actions">
+        <div class="photo-btns">
+          <label class="btn small primary">🖼️ 갤러리 / 파일에서 선택
+            <input type="file" id="admin-profile-photo" accept="image/*" hidden>
+          </label>
+          <label class="btn small">📷 바로 촬영
+            <input type="file" id="admin-profile-photo-cam" accept="image/*" capture="user" hidden>
+          </label>
+        </div>
+        <button type="button" class="btn small ghost" id="admin-profile-photo-clear">사진 지우기</button>
+        <p class="hint">「갤러리」는 앨범·파일에서, 「바로 촬영」은 카메라를 여는 버튼이에요. 정사각형으로 가운데를 잘라 128×128 · JPEG로 압축해 저장해요(10KB 안팉).</p>
+      </div>
+    </div>
+
+    <span class="field-label">이모지로 표시</span>
+    <div class="palette" id="admin-profile-emoji" role="group" aria-label="내 프로필 이모지 선택"></div>
+
+    <div class="field">
+      <label for="admin-profile-name">이름</label>
+      <input id="admin-profile-name" type="text" maxlength="12" placeholder="예: 아빠" autocomplete="off">
+    </div>
+
+    <div class="gh-result" id="admin-profile-msg"></div>
+
+    <div class="btn-row">
+      <button class="btn ghost" id="admin-profile-cancel">취소</button>
+      <button class="btn primary" id="admin-profile-save">저장</button>
+    </div>
+    <p class="hint">계정을 바꾸거나 나가려면 상단 오른쪽의 <b>로그아웃</b> 버튼을 눌러 주세요.</p>
   </div>
 </div>
 
@@ -1254,6 +1300,43 @@ var Core = (function () {
   var AVATAR_EMOJIS = ['👦', '👧', '🧒', '🐶', '🐱', '🦊', '🐰', '🐼', '🚀', '📚', '🎨', '⚽'];
   var AVATAR_MAX_CHARS = 120 * 1024;
 
+  /* ---------- 관리자(아빠·엄마) 프로필 ----------
+     db.admins = { dad: { name, emoji, avatarEmoji, avatarImage }, mom: { ... } }
+     예전 DB·옛 백업에는 이 칸이 없으므로 읽을 때마다 기본값으로 채운다. */
+  var ADMIN_DEFAULTS = {
+    dad: { name: '아빠', emoji: '👨‍💻' },
+    mom: { name: '엄마', emoji: '👩‍💻' }
+  };
+  var ADMIN_EMOJIS = ['👨‍💻', '👩‍💻', '👨', '👩', '🧑', '🧔', '👩‍🦰', '🐶', '🐱', '📚', '☕', '🌿'];
+
+  function adminRole(role) { return role === 'mom' ? 'mom' : 'dad'; }
+
+  function normalizeAdmin(a, role) {
+    a = (a && typeof a === 'object') ? a : {};
+    var def = ADMIN_DEFAULTS[adminRole(role)];
+    var name = trimStr(a.name).slice(0, 12) || def.name;
+    var em = isAvatarEmoji(a.avatarEmoji) ? trimStr(a.avatarEmoji)
+      : (isAvatarEmoji(a.emoji) ? trimStr(a.emoji) : def.emoji);
+    return {
+      name: name,
+      emoji: em,
+      avatarEmoji: em,
+      avatarImage: normalizeAvatarImage(a.avatarImage || a.photo)
+    };
+  }
+
+  function normalizeAdmins(raw) {
+    raw = (raw && typeof raw === 'object') ? raw : {};
+    return { dad: normalizeAdmin(raw.dad, 'dad'), mom: normalizeAdmin(raw.mom, 'mom') };
+  }
+
+  function isDefaultAdmins(admins) {
+    var a = admins || {};
+    var d = a.dad || {}, m = a.mom || {};
+    return d.name === ADMIN_DEFAULTS.dad.name && d.emoji === ADMIN_DEFAULTS.dad.emoji && !d.avatarImage &&
+      m.name === ADMIN_DEFAULTS.mom.name && m.emoji === ADMIN_DEFAULTS.mom.emoji && !m.avatarImage;
+  }
+
   function isAvatarEmoji(v) {
     var s = trimStr(v);
     if (!s || s.length > 8) return false;
@@ -1450,12 +1533,14 @@ var Core = (function () {
       children: children,
       books: books,
       deletions: deletions,
+      admins: normalizeAdmins(raw.admins),
       auth: normalizeAuth(raw.auth, childIds),
       /* childrenUpdatedAt: 아이 프로필(이름·이모지·사진·출생연도)을 사용자가 실제로 바꾼 시각.
          시드·정규화에서는 절대 현재 시각을 채우지 않는다('' 유지). */
       meta: {
         updatedAt: str(metaIn.updatedAt),
         childrenUpdatedAt: str(metaIn.childrenUpdatedAt),
+        adminsUpdatedAt: str(metaIn.adminsUpdatedAt),
         kakaoRestKey: normalizeKey(metaIn.kakaoRestKey),
         googleBooksKey: normalizeKey(metaIn.googleBooksKey),
         searchKeysUpdatedAt: str(metaIn.searchKeysUpdatedAt)
@@ -1772,6 +1857,7 @@ var Core = (function () {
       children: db.children,
       books: db.books,
       deletions: Array.isArray(db.deletions) ? db.deletions : [],
+      admins: db.admins,
       auth: db.auth,
       meta: (db.meta && typeof db.meta === 'object') ? db.meta : { updatedAt: '' }
     };
@@ -1792,7 +1878,9 @@ var Core = (function () {
       return { ok: false, error: '백업 파일에 책장 정보가 없어요.', db: null, count: 0 };
     }
     var db = normalizeDB(raw);
-    return { ok: true, error: '', db: db, count: db.books.length };
+    /* 옛 백업에는 아빠·엄마 프로필이 없다 — 그때는 지금 기기의 프로필을 지키도록 알려 준다 */
+    var hasAdmins = !!(raw.admins && typeof raw.admins === 'object' && (raw.admins.dad || raw.admins.mom));
+    return { ok: true, error: '', db: db, count: db.books.length, hasAdmins: hasAdmins };
   }
 
 
@@ -2109,6 +2197,10 @@ var Core = (function () {
     }).join(';'));
     parts.push('A:' + d.activeChildId);
     parts.push('K:' + str(d.meta.childrenUpdatedAt));
+    parts.push('AD:' + ['dad', 'mom'].map(function (r) {
+      var a = d.admins[r];
+      return [a.name, a.emoji, a.avatarImage.length + ':' + hashStr(a.avatarImage)].join('|');
+    }).join(';') + '|' + str(d.meta.adminsUpdatedAt));
     parts.push('SK:' + [d.meta.kakaoRestKey, d.meta.googleBooksKey, d.meta.searchKeysUpdatedAt].join('|'));
     for (var i = 0; i < books.length; i++) {
       var b = books[i];
@@ -2253,6 +2345,9 @@ var Core = (function () {
 
     /* 검색 키는 '키를 바꾼 시각'이 더 늦은 쪽을 따른다(한쪽이 비었으면 키가 있는 쪽). */
     var keySrc = pickKeyMeta(local, remote);
+    /* 아빠·엄마 프로필은 아이 프로필과 따로 고른다 — 이름·사진을 고친 시각(adminsUpdatedAt)이 늦은 쪽,
+       둘 다 비었으면 기본값이 아닌 쪽(옛 DB·새 기기의 기본값이 고친 프로필을 덮지 않는다). */
+    var adminSrc = pickAdmins(local, remote);
 
     var merged = normalizeDB({
       schema: SCHEMA,
@@ -2260,16 +2355,31 @@ var Core = (function () {
       children: primary.children,
       books: books,
       deletions: deletions,
+      admins: adminSrc.admins,
       auth: authNewerDb(local, remote),
       meta: {
         updatedAt: str(nowIso) || (remoteTs > localTs ? remoteTs : localTs),
         childrenUpdatedAt: str(primary.meta.childrenUpdatedAt),
+        adminsUpdatedAt: str(adminSrc.meta.adminsUpdatedAt),
         kakaoRestKey: str(keySrc.meta.kakaoRestKey),
         googleBooksKey: str(keySrc.meta.googleBooksKey),
         searchKeysUpdatedAt: str(keySrc.meta.searchKeysUpdatedAt)
       }
     });
     return { db: merged, stats: stats };
+  }
+
+  /* 아빠·엄마 프로필 병합: 고친 시각이 늦은 쪽 → 없으면 기본값이 아닌 쪽 → 그래도 같으면 이 기기 */
+  function pickAdmins(local, remote) {
+    var lt = str(local.meta.adminsUpdatedAt);
+    var rt = str(remote.meta.adminsUpdatedAt);
+    if (lt || rt) {
+      if (lt && rt) return (rt > lt) ? remote : local;
+      return lt ? local : remote;
+    }
+    if (isDefaultAdmins(local.admins) && !isDefaultAdmins(remote.admins)) return remote;
+    if (isDefaultAdmins(remote.admins) && !isDefaultAdmins(local.admins)) return local;
+    return local;
   }
 
   /* PIN 설정은 updatedAt 최신 우선으로 병합 (폰에서 바꾸면 태블릿에도 반영) */
@@ -2564,6 +2674,10 @@ var Core = (function () {
     MAX_Q: MAX_Q,
     AVATAR_EMOJIS: AVATAR_EMOJIS,
     AVATAR_MAX_CHARS: AVATAR_MAX_CHARS,
+    ADMIN_DEFAULTS: ADMIN_DEFAULTS,
+    ADMIN_EMOJIS: ADMIN_EMOJIS,
+    normalizeAdmins: normalizeAdmins,
+    isDefaultAdmins: isDefaultAdmins,
     isAvatarEmoji: isAvatarEmoji,
     normalizeAvatarImage: normalizeAvatarImage,
     normalizeBirthYear: normalizeBirthYear,
@@ -2690,6 +2804,8 @@ var Core = (function () {
   var loginLockUntil = 0;
   var pinTarget = null;
   var profileDraft = null;
+  var profileReadOnly = false;
+  var adminProfileDraft = null;
 
   /* GitHub 동기화 (토큰·설정은 localStorage에만 저장, DB JSON에는 절대 넣지 않음) */
   var GH_KEY = 'wri_readnote_gh_v1';
@@ -2708,13 +2824,14 @@ var Core = (function () {
   function esc(s) { return Core.escapeHtml(s); }
 
   /* ---------- 프로필 아바타 렌더 ---------- */
+  /* 구경 모드에서는 얼굴 사진(상대의 개인정보)은 그리지 않고 이모지로만 보여 준다 */
   function avatarInner(c) {
-    var img = Core.normalizeAvatarImage(c && c.avatarImage);
+    var img = isGuest() ? '' : Core.normalizeAvatarImage(c && c.avatarImage);
     if (img) return '<img class="av-img" src="' + esc(img) + '" alt="">';
     return esc(Core.str(c && (c.avatarEmoji || c.emoji)) || '👦');
   }
   function avatarClass(c, base) {
-    return base + (Core.normalizeAvatarImage(c && c.avatarImage) ? ' has-photo' : '');
+    return base + (!isGuest() && Core.normalizeAvatarImage(c && c.avatarImage) ? ' has-photo' : '');
   }
   function gradeOf(c) { return Core.gradeLabel(c, new Date()); }
 
@@ -2751,11 +2868,40 @@ var Core = (function () {
   function adminRoleOf() { return session.role === 'mom' ? 'mom' : 'dad'; }
   function roleName(role) { return role === 'mom' ? '엄마' : '아빠'; }
   function roleEmoji(role) { return role === 'mom' ? '👩‍💻' : '👨‍💻'; }
-  function adminName() { return roleName(adminRoleOf()); }
+
+  /* 아빠·엄마 프로필(이름·이모지·사진) — db.admins, 없으면 기본값 */
+  function adminProfileOf(role) {
+    var r = (role === 'mom') ? 'mom' : 'dad';
+    var a = (db && db.admins && db.admins[r]) ? db.admins[r] : {};
+    var def = Core.ADMIN_DEFAULTS[r];
+    return {
+      role: r,
+      name: Core.trim(a.name).slice(0, 12) || def.name,
+      emoji: Core.isAvatarEmoji(a.avatarEmoji) ? Core.trim(a.avatarEmoji)
+        : (Core.isAvatarEmoji(a.emoji) ? Core.trim(a.emoji) : def.emoji),
+      avatarImage: Core.normalizeAvatarImage(a.avatarImage)
+    };
+  }
+  function adminDisplayName(role) { return adminProfileOf(role).name; }
+  function adminAvatarInner(role) {
+    var a = adminProfileOf(role);
+    if (!isGuest() && a.avatarImage) return '<img class="av-img" src="' + esc(a.avatarImage) + '" alt="">';
+    return esc(a.emoji);
+  }
+  function adminAvatarClass(role, base) {
+    return base + (!isGuest() && adminProfileOf(role).avatarImage ? ' has-photo' : '');
+  }
+  /* 글 속에 들어가는 작은 아바타(출제자·채점자 표시) */
+  function adminTag(role) {
+    var a = adminProfileOf(role);
+    if (!isGuest() && a.avatarImage) return '<img class="by-av" src="' + esc(a.avatarImage) + '" alt="">';
+    return esc(a.emoji);
+  }
+  function adminName() { return adminDisplayName(adminRoleOf()); }
   /* 책에 기록된 출제자·채점자 — 기존 책은 값이 비어 있으면 아빠 */
   function bookQuizBy(b) { return (b && b.quizByRole === 'mom') ? 'mom' : 'dad'; }
   function bookGradedBy(b) { return (b && b.gradedByRole === 'mom') ? 'mom' : 'dad'; }
-  function byline(role, what) { return roleEmoji(role) + ' ' + roleName(role) + ' ' + what; }
+  function byline(role, what) { return adminTag(role) + ' ' + esc(adminDisplayName(role)) + ' ' + what; }
 
   function deny(msg) {
     toast(msg || '관리자만 할 수 있어요.', 'warn');
@@ -2859,8 +3005,8 @@ var Core = (function () {
       ? '<span class="lu-badges"><span class="lu-badge wait">채점 대기 ' + pending + '권</span></span>'
       : '';
     return '<button type="button" class="login-user" data-user="' + role + '">' +
-      '<span class="lu-emoji" aria-hidden="true">' + roleEmoji(role) + '</span>' +
-      '<span class="lu-main"><span class="lu-name">' + roleName(role) + '</span>' +
+      '<span class="' + adminAvatarClass(role, 'lu-emoji') + '" aria-hidden="true">' + adminAvatarInner(role) + '</span>' +
+      '<span class="lu-main"><span class="lu-name">' + esc(adminDisplayName(role)) + '</span>' +
       '<span class="lu-role">관리자 · 문제 출제 · 채점 · 설정</span>' + badge + '</span>' +
       '<span class="lu-lock' + (pinHash ? ' set' : '') + '">' + (pinHash ? '🔒 PIN' : 'PIN 만들기') + '</span></button>';
   }
@@ -3155,7 +3301,8 @@ var Core = (function () {
       el('user-name').textContent = '구경 중';
       el('user-role').textContent = '읽기 전용';
       el('btn-user').className = 'user-chip guest';
-      el('btn-user').setAttribute('aria-label', '구경 모드 · 읽기 전용 · 나가기');
+      el('btn-user').setAttribute('aria-label', '구경 모드 · 읽기 전용 · 프로필 편집 불가');
+      el('btn-user').title = '구경 모드 — 보기만 할 수 있어요';
       el('btn-logout').textContent = '나가기';
       return;
     }
@@ -3163,8 +3310,8 @@ var Core = (function () {
     var admin = isAdmin();
     var kid = (admin || !session.childId) ? null : Core.childById(db, session.childId);
     if (admin) {
-      el('user-emoji').className = 'u-emoji';
-      el('user-emoji').innerHTML = '<span aria-hidden="true">' + roleEmoji(adminRoleOf()) + '</span>';
+      el('user-emoji').className = adminAvatarClass(adminRoleOf(), 'u-emoji');
+      el('user-emoji').innerHTML = adminAvatarInner(adminRoleOf());
       el('user-name').textContent = adminName();
       el('user-role').textContent = '관리자';
     } else {
@@ -3174,7 +3321,8 @@ var Core = (function () {
       el('user-role').textContent = kid ? (gradeOf(kid) || '아이') : '아이';
     }
     el('btn-user').className = 'user-chip' + (admin ? '' : ' kid');
-    el('btn-user').setAttribute('aria-label', (admin ? adminName() : (kid ? kid.name : '아이')) + '로 로그인됨 · 계정 전환');
+    el('btn-user').setAttribute('aria-label', (admin ? adminName() : (kid ? kid.name : '아이')) + '로 로그인됨 · 내 프로필 보기');
+    el('btn-user').title = admin ? '내 프로필 보기 · 수정' : '내 프로필 보기 (수정은 아빠·엄마가 해요)';
   }
 
   /* 프로필(이름·학년·아바타)을 바꾼 뒤 화면 전체에 바로 반영 */
@@ -3306,6 +3454,13 @@ var Core = (function () {
     if (!db) return;
     db.meta = db.meta || {};
     db.meta.childrenUpdatedAt = new Date().toISOString();
+  }
+
+  /* 아빠·엄마 프로필(이름·이모지·사진)을 실제로 고쳤을 때만 찍는 병합 우선순위 시각 */
+  function touchAdmins() {
+    if (!db) return;
+    db.meta = db.meta || {};
+    db.meta.adminsUpdatedAt = new Date().toISOString();
   }
 
   function save(opts) {
@@ -4544,7 +4699,7 @@ var Core = (function () {
 
   /* 열려 있는 모달 중 가장 위에 있는 것 (pin 은 profile 위에 뜼다) */
   function openModalId() {
-    var ids = ['rate-modal', 'pin-modal', 'profile-modal', 'gh-modal', 'link-modal', 'searchkey-modal'];
+    var ids = ['rate-modal', 'pin-modal', 'profile-modal', 'admin-profile-modal', 'gh-modal', 'link-modal', 'searchkey-modal'];
     for (var i = 0; i < ids.length; i++) {
       if (el(ids[i]) && !el(ids[i]).hidden) return ids[i];
     }
@@ -4555,6 +4710,7 @@ var Core = (function () {
     if (id === 'rate-modal') cancelRatingAsk();
     else if (id === 'pin-modal') closePinModal();
     else if (id === 'profile-modal') closeProfileModal();
+    else if (id === 'admin-profile-modal') closeAdminProfile();
     else if (id === 'gh-modal') closeGhModal();
     else if (id === 'link-modal') closeLinkModal();
     else if (id === 'searchkey-modal') closeSearchKeyModal();
@@ -5918,7 +6074,7 @@ var Core = (function () {
         (st === 'graded' ? '<span class="mark-chip ' + (q.mark || 'none') + '">' + markShort(q.mark) + '</span>' : '') + '</div>';
       if (q.feedback) {
         var kfb = Core.stripHint(q.feedback, q.ref);
-        if (kfb) h += '<p class="fb-line"><span class="fb-who">💬 ' + roleName(bookGradedBy(b)) + ' 피드백</span>' + esc(kfb) + '</p>';
+        if (kfb) h += '<p class="fb-line"><span class="fb-who">💬 ' + esc(adminDisplayName(bookGradedBy(b))) + ' 피드백</span>' + esc(kfb) + '</p>';
       }
       if (editable) {
         if (retry && Core.trim(q.answer)) {
@@ -5935,7 +6091,7 @@ var Core = (function () {
     var overallKid = b.quiz.overallFeedback;
     for (var oi = 0; oi < qs.length; oi++) overallKid = Core.stripHint(overallKid, qs[oi].ref);
     if (st === 'graded' && overallKid) {
-      fbBlock = '<div class="section"><h3>' + roleName(bookGradedBy(b)) + ' 총평</h3><p>' + esc(overallKid) + '</p></div>';
+      fbBlock = '<div class="section"><h3>' + esc(adminDisplayName(bookGradedBy(b))) + ' 총평</h3><p>' + esc(overallKid) + '</p></div>';
     }
 
     if (editable) {
@@ -5979,9 +6135,9 @@ var Core = (function () {
         h2 += '<div class="q-card"><div class="q-head"><span class="q-no">' + (j + 1) + '</span>' +
           '<span class="q-text">' + esc(q2.q) + '</span><span class="mark-chip ' + (q2.mark || 'none') + '">' + markShort(q2.mark) + '</span></div>' +
           '<p class="kid-answer">' + (Core.trim(q2.answer) ? esc(q2.answer) : '<span class="muted">(답안 없음)</span>') + '</p>' +
-          (q2.feedback ? '<p class="fb-line"><span class="fb-who">💬 ' + roleName(bookGradedBy(b)) + ' 피드백</span>' + esc(q2.feedback) + '</p>' : '') + '</div>';
+          (q2.feedback ? '<p class="fb-line"><span class="fb-who">💬 ' + esc(adminDisplayName(bookGradedBy(b))) + ' 피드백</span>' + esc(q2.feedback) + '</p>' : '') + '</div>';
       }
-      if (b.quiz.overallFeedback) h2 += '<div class="section"><h3>' + roleName(bookGradedBy(b)) + ' 총평</h3><p>' + esc(b.quiz.overallFeedback) + '</p></div>';
+      if (b.quiz.overallFeedback) h2 += '<div class="section"><h3>' + esc(adminDisplayName(bookGradedBy(b))) + ' 총평</h3><p>' + esc(b.quiz.overallFeedback) + '</p></div>';
       h2 += '<button class="btn ghost block" id="btn-regrade">채점 수정하기</button>';
       return h2;
     }
@@ -5992,7 +6148,7 @@ var Core = (function () {
       h3 += '<div class="q-card" data-i="' + k + '"><div class="q-head"><span class="q-no">' + (k + 1) + '</span>' +
         '<span class="q-text">' + esc(q3.q) + '</span></div>' +
         '<p class="q-label">아이 답안</p><p class="kid-answer">' + (Core.trim(q3.answer) ? esc(q3.answer) : '<span class="muted">(답안 없음)</span>') + '</p>' +
-        (q3.ref ? '<details class="ref"><summary>' + roleName(bookQuizBy(b)) + ' 참고답안 보기 (아이 화면엔 안 보여요)</summary><p>' + esc(q3.ref) + '</p></details>' : '') +
+        (q3.ref ? '<details class="ref"><summary>' + esc(adminDisplayName(bookQuizBy(b))) + ' 참고답안 보기 (아이 화면엔 안 보여요)</summary><p>' + esc(q3.ref) + '</p></details>' : '') +
         '<div class="marks">' +
           markBtnHtml(k, 'correct', '⭕ 정답', '1점', q3.mark) +
           markBtnHtml(k, 'partial', '△ 부분정답', '0.5점', q3.mark) +
@@ -6059,7 +6215,7 @@ var Core = (function () {
       if (dad) {
         h += '<div class="tabs" role="tablist">' +
           '<button data-tab="kid" class="' + (tab === 'kid' ? 'on' : '') + '">🙋 아이 풀이</button>' +
-          '<button data-tab="grade" class="' + (tab === 'grade' ? 'on' : '') + '">' + roleEmoji(adminRoleOf()) + ' ' + adminName() + ' 채점' +
+          '<button data-tab="grade" class="' + (tab === 'grade' ? 'on' : '') + '">' + adminTag(adminRoleOf()) + ' ' + esc(adminName()) + ' 채점' +
           (st === 'pending' ? ' ⏳' : '') + '</button></div>';
       }
       h += (dad && tab === 'grade') ? quizGradeHtml(b, st, sc) : quizKidHtml(b, st, sc);
@@ -6331,9 +6487,12 @@ var Core = (function () {
   /* 설정 › 사용자·PIN 관리의 관리자 행 (아빠·엄마 각자 PIN) */
   function adminRowHtml(role, pinHash) {
     return '<div class="urow" data-urow="' + role + '">' +
-      '<div class="urow-head"><span>' + roleEmoji(role) + ' ' + roleName(role) + ' (관리자)</span>' +
-      '<span class="u-badge' + (pinHash ? ' on' : '') + '">' + (pinHash ? 'PIN 설정됨' : 'PIN 없음') + '</span></div>' +
+      '<div class="urow-head">' +
+        '<span class="' + adminAvatarClass(role, 'urow-av') + '" aria-hidden="true">' + adminAvatarInner(role) + '</span>' +
+        '<span>' + esc(adminDisplayName(role)) + ' (관리자)</span>' +
+        '<span class="u-badge' + (pinHash ? ' on' : '') + '">' + (pinHash ? 'PIN 설정됨' : 'PIN 없음') + '</span></div>' +
       '<div class="urow-foot"><span class="hint" style="margin:0;flex:1">' + roleName(role) + ' PIN을 아는 사람만 문제·채점·설정을 할 수 있어요.</span>' +
+      '<button type="button" class="btn small" data-admin-profile="' + role + '">📷 프로필 편집</button>' +
       '<button type="button" class="btn small" id="set-' + role + '-pin">' + (pinHash ? 'PIN 변경' : 'PIN 만들기') + '</button></div></div>';
   }
 
@@ -6375,6 +6534,11 @@ var Core = (function () {
 
     if (el('set-dad-pin')) el('set-dad-pin').onclick = function () { openPinModal('dad', ''); };
     if (el('set-mom-pin')) el('set-mom-pin').onclick = function () { openPinModal('mom', ''); };
+
+    var adminEdits = box.querySelectorAll('[data-admin-profile]');
+    for (var ap = 0; ap < adminEdits.length; ap++) {
+      adminEdits[ap].onclick = function () { openAdminProfile(this.getAttribute('data-admin-profile')); };
+    }
 
     var edits = box.querySelectorAll('[data-profile-edit]');
     for (var p = 0; p < edits.length; p++) {
@@ -6575,11 +6739,20 @@ var Core = (function () {
     box.textContent = msg || '';
   }
 
-  function openProfileModal(childId) {
-    if (!isAdmin()) { deny('프로필 편집은 관리자만 할 수 있어요.'); return; }
+  /* readOnly: 아이가 상단 칩을 눌러 자기 프로필을 볼 때(수정은 아빠·엄마만) */
+  function openProfileModal(childId, opts) {
+    var ro = !!(opts && opts.readOnly);
     var c = Core.childById(db, childId);
     if (!c || (childId && c.id !== childId)) return;
+    if (ro) {
+      var me = isKid() ? activeChild() : null;
+      if (!me || me.id !== c.id) { deny('내 프로필만 볼 수 있어요.'); return; }
+    } else if (!isAdmin()) {
+      deny('프로필 편집은 관리자만 할 수 있어요.');
+      return;
+    }
     var wasOpen = !el('profile-modal').hidden;
+    profileReadOnly = ro;
     profileDraft = {
       id: c.id,
       name: c.name,
@@ -6588,12 +6761,19 @@ var Core = (function () {
       avatarEmoji: c.avatarEmoji || c.emoji || '👦',
       avatarImage: Core.normalizeAvatarImage(c.avatarImage)
     };
-    el('profile-title').textContent = '프로필 편집 · ' + c.name;
+    el('profile-title').textContent = (ro ? '내 프로필 · ' : '프로필 편집 · ') + c.name;
     el('profile-name').value = profileDraft.name;
     el('profile-birth').value = profileDraft.birthYear || '';
     el('profile-grade').value = profileDraft.grade;
+    el('profile-avatar-actions').hidden = ro;
+    el('profile-fields').hidden = ro;
+    el('profile-pin').hidden = ro;
+    el('profile-save').hidden = ro;
+    el('profile-top-hint').hidden = ro;
+    el('profile-ro-hint').hidden = !ro;
+    el('profile-cancel').textContent = ro ? '닫기' : '취소';
     setProfileMsg('', '');
-    renderProfilePin();
+    if (!ro) renderProfilePin();
     el('profile-modal').hidden = false;
     document.body.classList.add('modal-open');
     renderProfileEditor();
@@ -6605,6 +6785,7 @@ var Core = (function () {
     el('profile-modal').hidden = true;
     if (el('pin-modal').hidden) document.body.classList.remove('modal-open');
     profileDraft = null;
+    profileReadOnly = false;
     if (wasOpen && !HIST.fromEvent) histPopForUi();
   }
 
@@ -6761,6 +6942,7 @@ var Core = (function () {
 
   function saveProfileModal() {
     if (!profileDraft) return;
+    if (profileReadOnly) { deny('내 프로필은 아빠·엄마만 바꿀 수 있어요.'); return; }
     if (!isAdmin()) { deny('프로필 편집은 관리자만 할 수 있어요.'); return; }
     var c = Core.childById(db, profileDraft.id);
     if (!c) { setProfileMsg('아이 정보를 찾지 못했어요.', 'error'); return; }
@@ -6788,6 +6970,124 @@ var Core = (function () {
     toast(c.avatarImage ? '프로필 사진을 저장했어요.' : '프로필을 저장했어요.');
   }
 
+  /* ---------- 내 프로필 모달 (아빠·엄마 이름 · 사진 · 이모지) ---------- */
+  function setAdminProfileMsg(msg, kind) {
+    var box = el('admin-profile-msg');
+    box.className = 'gh-result' + (kind ? ' ' + kind : '');
+    box.textContent = msg || '';
+  }
+
+  function renderAdminProfileEditor() {
+    var d = adminProfileDraft;
+    if (!d) return;
+    var pv = el('admin-profile-preview');
+    pv.className = 'avatar-preview' + (d.avatarImage ? ' has-photo' : '');
+    pv.innerHTML = d.avatarImage
+      ? '<img class="av-img" src="' + esc(d.avatarImage) + '" alt="프로필 사진 미리보기">'
+      : '<span aria-hidden="true">' + esc(d.emoji) + '</span>';
+    var pal = [];
+    for (var i = 0; i < Core.ADMIN_EMOJIS.length; i++) {
+      var em = Core.ADMIN_EMOJIS[i];
+      var on = (!d.avatarImage && d.emoji === em);
+      pal.push('<button type="button" data-admin-emoji="' + em + '" class="' + (on ? 'on' : '') +
+        '" aria-label="' + em + ' 이모지" aria-pressed="' + (on ? 'true' : 'false') + '">' + em + '</button>');
+    }
+    el('admin-profile-emoji').innerHTML = pal.join('');
+    el('admin-profile-photo-clear').hidden = !d.avatarImage;
+  }
+
+  function openAdminProfile(role) {
+    if (isGuest()) {
+      toast('구경 모드에서는 프로필을 볼 수만 있어요. 수정은 가족으로 들어와 주세요.', 'warn');
+      return;
+    }
+    if (!isAdmin()) { deny('내 프로필은 아빠·엄마만 바꿀 수 있어요.'); return; }
+    var r = (role === 'mom') ? 'mom' : 'dad';
+    var a = adminProfileOf(r);
+    var wasOpen = !el('admin-profile-modal').hidden;
+    adminProfileDraft = { role: r, name: a.name, emoji: a.emoji, avatarImage: a.avatarImage };
+    var mine = (r === adminRoleOf());
+    el('admin-profile-title').textContent = (mine ? '내 프로필 · ' : '프로필 편집 · ') + a.name;
+    el('admin-profile-desc').textContent = (mine ? '내 이름·사진·이모지예요. ' : roleName(r) + ' 프로필이에요. ') +
+      '로그인(사람 선택) 화면, 상단 이름, 퀴즈 출제자·채점자 표시에 함께 쓰여요. 사진은 이 기기와 동기화 저장소에 함께 저장돼요.';
+    el('admin-profile-name').value = a.name;
+    setAdminProfileMsg('', '');
+    el('admin-profile-modal').hidden = false;
+    document.body.classList.add('modal-open');
+    renderAdminProfileEditor();
+    if (!wasOpen) histPush('modal:admin-profile');
+  }
+
+  function closeAdminProfile() {
+    var wasOpen = !el('admin-profile-modal').hidden;
+    el('admin-profile-modal').hidden = true;
+    if (el('pin-modal').hidden) document.body.classList.remove('modal-open');
+    adminProfileDraft = null;
+    if (wasOpen && !HIST.fromEvent) histPopForUi();
+  }
+
+  function handleAdminProfilePhoto(file) {
+    if (!file || !adminProfileDraft) return;
+    if (!/^image\//.test(file.type || '')) { setAdminProfileMsg('이미지 파일만 올릴 수 있어요.', 'error'); return; }
+    if (file.size > 20 * 1024 * 1024) { setAdminProfileMsg('사진이 너무 커요. 20MB 이하로 골라 주세요.', 'error'); return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var data = compressAvatar(img);
+          if (!adminProfileDraft) return;
+          adminProfileDraft.avatarImage = Core.normalizeAvatarImage(data);
+          setAdminProfileMsg('사진을 128×128 · 약 ' + Math.max(1, Math.round(data.length / 1024)) + 'KB로 준비했어요. 저장을 누르면 반영돼요.', 'ok');
+          renderAdminProfileEditor();
+        } catch (e) {
+          setAdminProfileMsg('사진을 처리하지 못했어요. 다른 사진으로 다시 해 주세요.', 'error');
+        }
+      };
+      img.onerror = function () { setAdminProfileMsg('사진을 열지 못했어요.', 'error'); };
+      img.src = reader.result;
+    };
+    reader.onerror = function () { setAdminProfileMsg('사진을 읽지 못했어요.', 'error'); };
+    reader.readAsDataURL(file);
+  }
+
+  function saveAdminProfile() {
+    if (!adminProfileDraft) return;
+    if (isGuest()) { setAdminProfileMsg('구경 모드에서는 저장할 수 없어요.', 'error'); return; }
+    if (!isAdmin()) { deny('내 프로필은 아빠·엄마만 바꿀 수 있어요.'); return; }
+    var r = adminProfileDraft.role;
+    var name = Core.trim(el('admin-profile-name').value);
+    if (!name) { setAdminProfileMsg('이름을 비울 수 없어요.', 'error'); el('admin-profile-name').focus(); return; }
+    var cur = adminProfileOf(r);
+    var em = Core.isAvatarEmoji(adminProfileDraft.emoji) ? Core.trim(adminProfileDraft.emoji) : cur.emoji;
+    var img = Core.normalizeAvatarImage(adminProfileDraft.avatarImage);
+    var touchedOther = (r !== adminRoleOf());
+    db.admins = db.admins || {};
+    db.admins[r] = { name: name.slice(0, 12), emoji: em, avatarEmoji: em, avatarImage: img };
+    touchAdmins();
+    save();
+    closeAdminProfile();
+    refreshIdentity();
+    renderSettings();
+    if (ui.view === 'detail') renderDetail();
+    toast(img ? '프로필 사진을 저장했어요.' : (touchedOther ? '프로필을 저장했어요.' : '내 프로필을 저장했어요.'));
+  }
+
+  /* 상단 사용자 칩: 내 프로필 보기 (계정 전환·로그아웃은 옆 버튼으로만) */
+  function openMyProfile() {
+    if (isGuest()) {
+      toast('구경 모드에서는 프로필을 볼 수만 있어요. 수정은 가족으로 들어와 주세요.', 'warn');
+      return;
+    }
+    if (isAdmin()) { openAdminProfile(adminRoleOf()); return; }
+    if (isKid()) {
+      var me = activeChild();
+      if (me) openProfileModal(me.id, { readOnly: true });
+      return;
+    }
+    showLogin();
+  }
+
   function exportBackup() {
     if (!isAdmin()) { deny('백업은 관리자만 할 수 있어요.'); return; }
     var text = Core.backupJSON(db);
@@ -6812,7 +7112,15 @@ var Core = (function () {
       if (!res.ok) { toast(res.error, 'warn'); return; }
       if (!window.confirm('백업 파일의 기록 ' + res.count + '권으로 바꿀까요?\n지금 기기의 기록은 덮어써져요.')) return;
       var oldAuth = db.auth;
+      var oldAdmins = db.admins;
+      var oldAdminsTs = (db.meta && db.meta.adminsUpdatedAt) || '';
       db = res.db;
+      /* 옛 백업에는 아빠·엄마 프로필이 없다 — 그때는 지금 기기의 이름·사진을 그대로 살린다 */
+      if (!res.hasAdmins && oldAdmins) {
+        db.admins = oldAdmins;
+        db.meta = db.meta || {};
+        db.meta.adminsUpdatedAt = oldAdminsTs;
+      }
       if (db.auth && oldAuth) {
         var filePins = (db.auth.dadPinHash ? 1 : 0) + (db.auth.momPinHash ? 1 : 0);
         for (var fk in db.auth.kids) {
@@ -6870,9 +7178,40 @@ var Core = (function () {
       if (ev.key === 'Enter') { ev.preventDefault(); submitLogin(); }
     };
 
-    /* 현재 사용자 · 로그아웃 / 전환 */
-    el('btn-user').onclick = logout;
+    /* 현재 사용자 칩 = 내 프로필 보기/수정 · 로그아웃은 옆 버튼으로만 */
+    el('btn-user').onclick = openMyProfile;
     el('btn-logout').onclick = logout;
+
+    /* 내 프로필(아빠·엄마) 모달 */
+    el('admin-profile-close').onclick = closeAdminProfile;
+    el('admin-profile-cancel').onclick = closeAdminProfile;
+    el('admin-profile-save').onclick = saveAdminProfile;
+    el('admin-profile-modal').onclick = function (ev) {
+      if (ev.target === el('admin-profile-modal')) closeAdminProfile();
+    };
+    el('admin-profile-photo').onchange = function () {
+      if (this.files && this.files[0]) handleAdminProfilePhoto(this.files[0]);
+      this.value = '';
+    };
+    el('admin-profile-photo-cam').onchange = function () {
+      if (this.files && this.files[0]) handleAdminProfilePhoto(this.files[0]);
+      this.value = '';
+    };
+    el('admin-profile-photo-clear').onclick = function () {
+      if (!adminProfileDraft) return;
+      adminProfileDraft.avatarImage = '';
+      setAdminProfileMsg('사진을 지웠어요. 이모지로 표시돼요. 저장을 누르면 반영돼요.', 'info');
+      renderAdminProfileEditor();
+    };
+    el('admin-profile-emoji').onclick = function (ev) {
+      var b = ev.target.closest('[data-admin-emoji]');
+      if (!b || !adminProfileDraft) return;
+      adminProfileDraft.emoji = b.getAttribute('data-admin-emoji');
+      adminProfileDraft.avatarImage = '';
+      setAdminProfileMsg('', '');
+      renderAdminProfileEditor();
+    };
+    el('admin-profile-name').oninput = function () { if (adminProfileDraft) adminProfileDraft.name = this.value; };
 
     /* 프로필 편집 모달 */
     el('profile-close').onclick = closeProfileModal;
