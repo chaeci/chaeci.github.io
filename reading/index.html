@@ -456,6 +456,8 @@
   /* ---------- 입장 암호 게이트 · 구경 모드 ---------- */
   #gate-screen{z-index:90}
   #gate-screen .login-panel input[type=password]{text-align:center;letter-spacing:2px;font-size:16px;font-weight:700;padding:11px 12px;background:#FDFBF6}
+  #gate-screen #gate-otp{text-align:center;letter-spacing:8px;font-size:22px;font-weight:800;padding:11px 12px;background:#FDFBF6}
+  #gate-screen .btn-row .btn{flex:1;min-width:0}
   .gate-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:0 0 14px}
   .gate-chip{font-size:11px;font-weight:800;border-radius:999px;padding:4px 10px;background:#fff;color:#7B6A55;border:1px solid var(--line)}
   .gate-chip b{color:var(--accent)}
@@ -540,6 +542,8 @@
   .pin-warn .pw-main{flex:1;min-width:0;line-height:1.4}
   .pin-warn b{color:#7A4E05}
   .pin-warn .pw-go{flex:0 0 auto;white-space:nowrap;color:#A5432A}
+  .pin-warn.soft{background:#F1F6FB;border-color:#D6E3EF;color:#2F5A7A;cursor:default;text-align:left}
+  .login-kid-hint{margin:2px 0 10px;padding:8px 10px;background:#F1F6FB;border-radius:10px;border:1px solid #D6E3EF;color:#2F5A7A;line-height:1.5}
   .pin-box{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:13px;box-shadow:var(--shadow);margin-top:10px}
   .pin-box-head{display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap}
   .pin-box-title{font-size:13px;font-weight:800;letter-spacing:-.2px;flex:1}
@@ -557,12 +561,12 @@
     <h1>채씨네 작은도서관</h1>
     <p class="login-sub" id="gate-sub">입장 암호를 넣어 주세요</p>
     <div class="gate-chips" aria-hidden="true">
-      <span class="gate-chip">🏠 <b>가족 암호</b> · 읽기·쓰기</span>
-      <span class="gate-chip">👀 <b>구경용 암호</b> · 보기만</span>
+      <span class="gate-chip">🏠 <b>가족</b> · 암호 + 메일 인증</span>
+      <span class="gate-chip">👀 <b>구경용</b> · 보기만</span>
     </div>
     <div class="login-panel" id="gate-panel">
-      <h2 id="gate-title">입장 암호</h2>
-      <p class="hint">가족이 정한 암호를 넣으면 책장이 열려요. 한 번 넣으면 이 기기에 기억해 둬서 다음부터는 바로 열립니다.</p>
+      <h2 id="gate-title">1단계 · 입장 암호</h2>
+      <p class="hint">가족 암호를 넣으면 등록된 메일로 6자리 인증번호가 와요. 한 번 인증한 기기는 90일 동안 바로 열립니다.</p>
       <div class="field">
         <label for="gate-pass">암호</label>
         <input id="gate-pass" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" maxlength="64">
@@ -571,9 +575,23 @@
       <button class="btn primary block" id="gate-submit">들어가기</button>
       <label class="switch-row login-keep" style="margin-top:12px">
         <input type="checkbox" id="gate-remember" checked>
-        <span>이 기기에 암호 기억하기</span>
+        <span>이 기기에서 90일 동안 기억하기</span>
       </label>
       <p class="gate-state" id="gate-state"></p>
+    </div>
+    <div class="login-panel" id="gate-otp-panel" hidden>
+      <h2 id="gate-otp-title">2단계 · 메일 인증번호</h2>
+      <p class="hint" id="gate-otp-hint">등록된 메일로 6자리 인증번호를 보냈어요. 5분 안에 넣어 주세요.</p>
+      <div class="field">
+        <label for="gate-otp">인증번호 6자리</label>
+        <input id="gate-otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+      </div>
+      <p class="login-msg" id="gate-otp-msg" role="alert"></p>
+      <button class="btn primary block" id="gate-otp-submit">확인하고 들어가기</button>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn" id="gate-otp-resend" type="button">인증번호 다시 받기</button>
+        <button class="btn" id="gate-otp-back" type="button">처음으로</button>
+      </div>
     </div>
     <p class="hint login-note">구경용 암호로 들어오면 책·독서노트·퀴즈 결과는 볼 수 있지만 고치거나 저장할 수는 없어요.</p>
   </div>
@@ -584,6 +602,7 @@
     <div class="login-logo" aria-hidden="true">📚</div>
     <h1>채씨네 작은도서관</h1>
     <p class="login-sub">누가 사용할까요?</p>
+    <p class="hint login-kid-hint" id="login-kid-hint" hidden></p>
     <div class="login-activity" id="login-activity" hidden></div>
     <div class="login-users" id="login-users"></div>
 
@@ -607,11 +626,11 @@
       <input type="checkbox" id="login-keep" checked>
       <span>이 기기에서 로그인 유지</span>
     </label>
-    <p class="hint login-note" id="login-note">로그인하면 기록이 이 기기에 저장되고, 연결해 둔 GitHub 저장소와도 함께 맞춰져요.</p>
+    <p class="hint login-note" id="login-note">로그인하면 기록이 이 기기에 저장되고, 가족 책장(서버)과도 함께 맞춰져요.</p>
 
     <div class="login-sync" id="login-pass-wrap" hidden>
       <button type="button" class="btn ghost block" id="login-pass-change">🔒 가족 로그아웃</button>
-      <p class="hint">이 기기에 기억해 둔 가족 입장 암호를 지우고 입장 화면으로 돌아가요. 다시 들어오려면 가족 암호를 한 번 더 넣어 주세요. <b>암호 자체가 바뀌지는 않아요.</b></p>
+      <p class="hint">이 기기에 저장된 <b>가족 인증(90일)</b>과 암호를 지우고 입장 화면으로 돌아가요. 다시 들어오려면 <b>가족 암호 + 메일 인증번호</b>가 필요해요. <b>암호 자체가 바뀌지는 않아요.</b></p>
     </div>
 
     <div class="login-sync" id="login-sync-wrap" hidden>
@@ -833,7 +852,7 @@
         <div class="btn-row">
           <button class="btn" id="proxy-pass-change">🔒 가족 로그아웃</button>
         </div>
-        <p class="hint">이 버튼은 이 기기에서 <b>가족 로그아웃</b>만 해요. 암호 자체를 바꾸려면 입장 암호(가족·구경용)를 Cloudflare Worker의 <b>Variables</b>에서 바꾼 뒤 Deploy 하면 되고, 이 앱에는 새 암호를 다시 넣으면 됩니다. GitHub 토큰은 Worker에만 있고 이 기기에는 저장되지 않아요.</p>
+        <p class="hint">이 버튼은 이 기기에 저장된 <b>가족 인증(90일)</b>과 암호를 지워요. 다시 들어오려면 가족 암호 + 메일 인증번호가 필요하고, 암호 자체를 바꾸려면 Cloudflare Worker의 <b>Variables</b>에서 바꾼 뒤 Deploy 하면 됩니다. GitHub 토큰과 Resend 키는 Worker에만 있고 이 기기에는 저장되지 않아요.</p>
       </div>
 
       <div class="card" id="set-gh-card">
@@ -2637,8 +2656,12 @@ var Core = (function () {
      예: 'https://reading-proxy.chaeci.workers.dev'
      비워 두거나 'YOUR_WORKER_URL' 그대로 두면 예전처럼 GitHub 토큰을 직접 넣는 모드로 동작해요. */
   var PROXY_URL = 'https://chaeci-reading-proxy.cotjdwns0.workers.dev';
-  var PROXY_PASS_KEY = 'wri_readnote_pass_v1';
-  var proxy = { pass: '', role: '', on: false, checking: false };
+  var PROXY_PASS_KEY = 'wri_readnote_pass_v1';      /* 구경용 암호(또는 OTP 전 임시 가족 암호) */
+  var PROXY_TOKEN_KEY = 'wri_readnote_token_v1';    /* 가족 장기 세션 토큰(90일) */
+  var proxy = {
+    pass: '', token: '', role: '', on: false, checking: false,
+    otpEnabled: null, otpEmail: '', challenge: '', remember: true, stage: 1
+  };
   var db = null;
   var ui = {
     view: 'shelf',
@@ -2897,11 +2920,16 @@ var Core = (function () {
         '<span class="' + avatarClass(c, 'lu-emoji') + '" aria-hidden="true">' + avatarInner(c) + '</span>' +
         '<span class="lu-main"><span class="lu-name">' + esc(c.name) + '</span><span class="lu-role">' +
           esc(gradeOf(c)) + ' · 내 책장 · 독서노트 · 퀴즈 풀기</span>' + badges + '</span>' +
-        '<span class="lu-lock' + (ka.pinEnabled ? ' set' : '') + '">' +
-        (ka.pinEnabled ? '🔒 PIN' : '바로 입장') + '</span></button>';
+        '<span class="lu-lock' + ((ka.pinEnabled && !kidPinSkipped()) ? ' set' : '') + '">' +
+        ((ka.pinEnabled && !kidPinSkipped()) ? '🔒 PIN' : '바로 입장') + '</span></button>';
     }
     renderLoginActivity();
     el('login-users').innerHTML = html;
+    var kh = el('login-kid-hint');
+    if (kh) {
+      kh.hidden = !kidPinSkipped();
+      kh.textContent = kidPinSkipped() ? '🔐 가족 메일 인증을 통과한 기기라 아이는 PIN 없이 카드만 눌러 바로 들어가요. 아빠·엄마는 PIN이 필요해요.' : '';
+    }
     var btns = el('login-users').querySelectorAll('[data-user]');
     for (var j = 0; j < btns.length; j++) {
       btns[j].onclick = function () {
@@ -2936,7 +2964,8 @@ var Core = (function () {
     var c = Core.childById(db, childId);
     if (!c || c.id !== childId) return;
     var ka = db.auth.kids[childId] || { pinEnabled: false, pinHash: '' };
-    if (!ka.pinEnabled || !ka.pinHash) {
+    /* 가족 인증(메일 2단계)을 통과한 기기에서는 아이 PIN을 묻지 않고 카드 한 번으로 들어간다 */
+    if (!ka.pinEnabled || !ka.pinHash || kidPinSkipped()) {
       loginPick = null;
       keepLogin = !!el('login-keep').checked;
       completeLogin('kid', childId);
@@ -3332,8 +3361,15 @@ var Core = (function () {
   }
   function proxyOn() { return !!proxyBase(); }
   function proxyApiUrl() { return proxyBase() + '/api/db'; }
+  function proxyHealthUrl() { return proxyBase() + '/'; }
+  function proxyOtpSendUrl() { return proxyBase() + '/api/otp/send'; }
+  function proxyOtpVerifyUrl() { return proxyBase() + '/api/otp/verify'; }
   function isGuest() { return proxy.role === 'guest'; }
   function isFamilyProxy() { return proxy.on && proxy.role === 'family'; }
+  /* 가족 인증(2단계)을 통과한 기기에서는 아이 PIN을 묻지 않는다. 아빠·엄마 PIN은 그대로. */
+  function kidPinSkipped() { return isFamilyProxy(); }
+  /* 지금 Worker 호출에 쓰는 자격 — 가족은 장기 세션 토큰 우선, 그 밖에는 암호 */
+  function proxyAuth() { return proxy.token ? { token: proxy.token } : { pass: proxy.pass }; }
 
   /* 구경 모드에서 쓰기 동작을 막고 안내한다. 막았으면 true. */
   function denyGuest(msg) {
@@ -3342,7 +3378,11 @@ var Core = (function () {
     return true;
   }
 
-  function loadProxyPass() {
+  /* 저장된 자격: 가족 세션 토큰(장기) 또는 구경용 암호. 가족 암호 평문은 저장하지 않는다. */
+  function loadStoredCreds() {
+    var token = null;
+    try { token = window.localStorage.getItem(PROXY_TOKEN_KEY); } catch (e) { token = null; }
+    if (Core.str(token)) return { token: Core.str(token) };
     var raw = null;
     try { raw = window.localStorage.getItem(PROXY_PASS_KEY); } catch (e) { raw = null; }
     if (!raw) return null;
@@ -3362,21 +3402,47 @@ var Core = (function () {
     } catch (e) { /* 저장 불가하면 이번 화면에서만 유지 */ }
   }
 
+  function storeProxyToken(token) {
+    try {
+      window.localStorage.setItem(PROXY_TOKEN_KEY, Core.str(token));
+    } catch (e) { /* 저장 불가하면 이번 화면에서만 유지 */ }
+  }
+
   function clearStoredProxyPass() {
     try { window.localStorage.removeItem(PROXY_PASS_KEY); } catch (e) { /* ignore */ }
+  }
+
+  function clearStoredProxyToken() {
+    try { window.localStorage.removeItem(PROXY_TOKEN_KEY); } catch (e) { /* ignore */ }
+  }
+
+  function clearStoredCreds() {
+    clearStoredProxyPass();
+    clearStoredProxyToken();
   }
 
   function proxyHttpError(status, data) {
     var code = data && data.error ? String(data.error) : '';
     var msg;
     if (code === 'not_json') msg = String(data.message);
+    else if (code === 'otp_required') msg = '가족 암호를 확인했어요. 메일로 받은 인증번호를 넣어 주세요.';
+    else if (code === 'session_expired') msg = '가족 인증이 만료됐어요. 다시 인증해 주세요.';
+    else if (code === 'bad_session') msg = '가족 인증 정보가 바뀌었어요. 다시 인증해 주세요.';
+    else if (code === 'otp_not_configured') msg = 'Worker에 메일 설정(RESEND_API_KEY·OTP_EMAIL)이 아직 없어요. Worker 설정을 확인해 주세요.';
+    else if (code === 'otp_cooldown') msg = (data.retryAfter ? data.retryAfter + '초 뒤에' : '잠시 뒤에') + ' 다시 받을 수 있어요.';
+    else if (code === 'otp_daily_limit') msg = '오늘 보낼 수 있는 인증번호 횟수를 다 썼어요. 내일 다시 시도해 주세요.';
+    else if (code === 'mail_failed') msg = String(data.message || '인증 메일을 보내지 못했어요.');
+    else if (code === 'wrong_code') msg = '인증번호가 맞지 않아요.';
+    else if (code === 'challenge_expired' || code === 'bad_challenge') msg = '인증번호 유효시간이 지났어요. 다시 받아 주세요.';
+    else if (code === 'too_many_codes') msg = '인증번호를 너무 여러 번 틀렸어요. 다시 받아 주세요.';
     else if (status === 401) msg = '입장 암호가 맞지 않아요.';
     else if (status === 403 && code === 'read_only') msg = '구경용 암호로는 저장할 수 없어요.';
     else if (status === 403) msg = '서버가 이 주소에서 온 요청을 받아 주지 않았어요. (허용 주소 설정)';
     else if (status === 404) msg = '서버 주소를 찾을 수 없어요. Worker 주소를 확인해 주세요.';
     else if (status === 409) msg = '다른 기기에서 먼저 저장했어요. 다시 맞추는 중이에요.';
     else if (status === 413) msg = '책장 데이터가 너무 커요(2.5MB 초과).';
-    else if (status === 429) msg = '암호를 너무 여러 번 틀렸어요. 10분 뒤에 다시 넣어 주세요.';
+    else if (status === 429) msg = '너무 여러 번 시도했어요. 잠시 뒤 다시 넣어 주세요.';
+    else if (status === 503) msg = (data && data.message) ? String(data.message) : '서버 준비가 아직 안 됐어요.';
     else if (status >= 500) msg = (data && data.message) ? String(data.message) : '서버에 문제가 있어요. 잠시 뒤 다시 시도해 주세요.';
     else msg = '서버 요청이 실패했어요 (HTTP ' + status + ')';
     var e = new Error(msg);
@@ -3385,14 +3451,18 @@ var Core = (function () {
     return e;
   }
 
-  /* GET/PUT /api/db — cb(err, { status, ok, data }) */
-  function proxyCall(pass, method, body, cb) {
-    var opts = { method: method || 'GET', headers: { 'X-Access-Pass': Core.str(pass) } };
+  /* Worker 호출 공통 — cb(err, { status, ok, data }) */
+  function proxyRequest(path, method, auth, body, cb) {
+    var a = auth || {};
+    var headers = {};
+    if (Core.str(a.token)) headers['X-Session-Token'] = Core.str(a.token);
+    else headers['X-Access-Pass'] = Core.str(a.pass);
+    var opts = { method: method || 'GET', headers: headers };
     if (body) {
-      opts.headers['Content-Type'] = 'application/json';
+      headers['Content-Type'] = 'application/json';
       opts.body = JSON.stringify(body);
     }
-    httpFetch(proxyApiUrl(), opts, function (err, res) {
+    httpFetch(path === '/api/db' ? proxyApiUrl() : (proxyBase() + path), opts, function (err, res) {
       if (err) {
         cb(err.status ? err : new Error('서버에 연결하지 못했어요. 인터넷 연결과 Worker 주소를 확인하고, Worker에 worker.js를 Deploy 했는지도 확인해 주세요.'));
         return;
@@ -3415,9 +3485,15 @@ var Core = (function () {
     });
   }
 
-  /* 서버에서 DB 받기 — cb(err, { role, sha, db }) */
-  function proxyLoad(pass, cb) {
-    proxyCall(pass, 'GET', null, function (err, res) {
+  /* GET/PUT /api/db (호환용 — 패스만 넘기는 예전 호출) */
+  function proxyCall(pass, method, body, cb) {
+    proxyRequest('/api/db', method || 'GET', { pass: pass }, body, cb);
+  }
+
+  /* 서버에서 DB 받기 — cb(err, { role, sha, db })  (auth: 암호 문자열 또는 { pass } / { token }) */
+  function proxyLoad(auth, cb) {
+    var a = (typeof auth === 'string') ? { pass: auth } : (auth || {});
+    proxyRequest('/api/db', 'GET', a, null, function (err, res) {
       if (err) { cb(err); return; }
       if (!res.ok) { cb(proxyHttpError(res.status, res.data)); return; }
       var raw = res.data.db;
@@ -3438,7 +3514,7 @@ var Core = (function () {
       message: Core.ghCommitMessage(dbObj),
       db: JSON.parse(Core.backupJSON(dbObj))
     };
-    proxyCall(proxy.pass, 'PUT', payload, function (err, res) {
+    proxyRequest('/api/db', 'PUT', proxyAuth(), payload, function (err, res) {
       if (err) { cb(err); return; }
       if (!res.ok) { cb(proxyHttpError(res.status, res.data)); return; }
       cb(null, { sha: Core.str(res.data.sha) });
@@ -3447,7 +3523,7 @@ var Core = (function () {
 
   /* ghSyncAll과 같은 일(받아서 병합 → 다르면 올리기)을 프록시로 한다. */
   function proxySyncAll(localDb, mode, cb) {
-    proxyLoad(proxy.pass, function (err, remote) {
+    proxyLoad(proxyAuth(), function (err, remote) {
       if (err) { cb(err); return; }
       var merged = Core.mergeDB(localDb, remote.db, new Date().toISOString());
       if (mode !== 'sync' || Core.signature(merged.db) === Core.signature(remote.db)) {
@@ -3461,7 +3537,7 @@ var Core = (function () {
         if (err2) {
           if (err2.status === 409 && tries < 2) {
             /* 다른 기기가 먼저 저장 → 최신본과 합친 뒤 다시 올린다 */
-            proxyLoad(proxy.pass, function (err3, fresh) {
+            proxyLoad(proxyAuth(), function (err3, fresh) {
               if (err3) { cb(err3); return; }
               var again = Core.mergeDB(cur, fresh.db, new Date().toISOString());
               pushTries(again.db, fresh.sha, tries + 1, again.stats);
@@ -3476,18 +3552,24 @@ var Core = (function () {
     }
   }
 
-  /* 입장 암호 확인 → 역할별로 화면 열기. cb(err, role) */
+  /* ---------- 1단계: 입장 암호 ----------
+     구경용 암호면 바로 열고, 가족 암호면 Worker 가 otp_required 로 되돌려 2단계(메일 인증)로 넘어간다.
+     (Worker 에 RESEND_API_KEY·OTP_EMAIL 이 아직 없으면 예전처럼 가족 암호만으로 바로 열린다.) */
   function enterGate(pass, remember, cb) {
     var done = cb || function () { };
     var p = Core.trim(pass);
     if (!p) { done(new Error('입장 암호를 넣어 주세요.')); return; }
     if (proxy.checking) return;
     proxy.checking = true;
-    setGateBusy(true, '불러오는 중…');
+    setGateBusy(true, '확인 중…');
     setGateMsg('', '');
-    proxyLoad(p, function (err, res) {
+    proxyLoad({ pass: p }, function (err, res) {
       proxy.checking = false;
       setGateBusy(false);
+      if (err && err.data && err.data.error === 'otp_required') {
+        startOtpSend(p, remember, done);
+        return;
+      }
       if (err) {
         setGateMsg(err.message || '입장하지 못했어요.', 'error');
         if (err.status === 401 || err.status === 403) clearStoredProxyPass();
@@ -3495,12 +3577,113 @@ var Core = (function () {
         return;
       }
       proxy.on = true;
-      proxy.pass = p;
+      proxy.token = '';
       proxy.role = res.role;
-      if (remember === true) storeProxyPass(p, res.role);
-      else if (remember === false) clearStoredProxyPass();
+      proxy.pass = p;
+      if (res.role === 'guest') {
+        if (remember === true) storeProxyPass(p, 'guest');
+        else if (remember === false) clearStoredProxyPass();
+      } else {
+        /* 가족 암호는 기기에 남기지 않는다 — 메일 OTP 전 임시 모드에서만 기억 */
+        if (proxy.otpEnabled === false && remember === true) storeProxyPass(p, 'family');
+        else clearStoredProxyPass();
+      }
       applyProxyDb(res);
       done(null, res.role);
+    });
+  }
+
+  /* 2단계 a: 인증번호 메일 보내기 */
+  function startOtpSend(pass, remember, cb) {
+    var done = cb || function () { };
+    var p = Core.trim(pass);
+    if (!p) { done(new Error('입장 암호를 넣어 주세요.')); return; }
+    if (proxy.checking) return;
+    proxy.checking = true;
+    setGateBusy(true, '메일 보내는 중…');
+    setGateMsg('', '');
+    proxyRequest('/api/otp/send', 'POST', { pass: p }, { pass: p }, function (err, res) {
+      proxy.checking = false;
+      setGateBusy(false);
+      if (err) { setGateMsg(err.message || '인증번호를 보내지 못했어요.', 'error'); done(err); return; }
+      if (!res.ok) {
+        var e = proxyHttpError(res.status, res.data);
+        setGateMsg(e.message, 'error');
+        /* 이미 보낸 인증번호가 아직 살아 있으면 2단계 화면으로 돌려준다(60초 쿨다운) */
+        if (res.data && res.data.error === 'otp_cooldown' && proxy.challenge) showGateOtp(e.message);
+        done(e);
+        return;
+      }
+      proxy.on = true;
+      proxy.pass = p;                 /* 인증 단계에서만 쓰는 메모리 값 (저장 안 함) */
+      proxy.remember = !!remember;
+      proxy.challenge = Core.str(res.data.challengeToken);
+      proxy.otpEmail = Core.str(res.data.email);
+      showGateOtp();
+      done(null, 'otp');
+    });
+  }
+
+  /* 2단계 b: 인증번호 확인 → 장기 세션 토큰 저장 → 책장 불러오기 */
+  function submitGateOtp() {
+    var code = Core.str(el('gate-otp').value).replace(/[^0-9]/g, '');
+    if (code.length !== 6) { setOtpMsg('인증번호 6자리를 넣어 주세요.', 'error'); return; }
+    if (proxy.checking) return;
+    if (!proxy.challenge) { setOtpMsg('인증번호 유효시간이 지났어요. 다시 받아 주세요.', 'error'); return; }
+    proxy.checking = true;
+    setOtpBusy(true, '확인 중…');
+    setOtpMsg('', '');
+    proxyRequest('/api/otp/verify', 'POST', { pass: proxy.pass }, { challengeToken: proxy.challenge, code: code }, function (err, res) {
+      if (err) {
+        proxy.checking = false;
+        setOtpBusy(false);
+        setOtpMsg(err.message || '인증하지 못했어요.', 'error');
+        return;
+      }
+      if (!res.ok) {
+        var e = proxyHttpError(res.status, res.data);
+        proxy.checking = false;
+        setOtpBusy(false);
+        setOtpMsg(e.message, 'error');
+        var ec = res.data && res.data.error;
+        if (ec === 'challenge_expired' || ec === 'bad_challenge' || ec === 'too_many_codes') proxy.challenge = '';
+        el('gate-otp').value = '';
+        try { el('gate-otp').focus(); } catch (e2) { /* noop */ }
+        return;
+      }
+      proxy.token = Core.str(res.data.sessionToken);
+      if (!proxy.token) {
+        proxy.checking = false;
+        setOtpBusy(false);
+        setOtpMsg('인증 응답이 올바르지 않아요. 다시 시도해 주세요.', 'error');
+        return;
+      }
+      if (proxy.remember) storeProxyToken(proxy.token);
+      else clearStoredProxyToken();
+      clearStoredProxyPass();
+      proxyLoad({ token: proxy.token }, function (err2, out) {
+        proxy.checking = false;
+        setOtpBusy(false);
+        if (err2) {
+          setOtpMsg(err2.message || '인증은 됐지만 책장을 불러오지 못했어요.', 'error');
+          return;
+        }
+        proxy.on = true;
+        proxy.role = 'family';
+        proxy.pass = '';
+        proxy.challenge = '';
+        applyProxyDb(out);
+      });
+    });
+  }
+
+  /* 인증번호 다시 받기 (60초 쿨다운은 서버가 지킨다) */
+  function resendGateOtp() {
+    if (proxy.checking) return;
+    if (!proxy.pass) { showGate('입장 암호를 다시 넣어 주세요.'); return; }
+    startOtpSend(proxy.pass, proxy.remember, function (err) {
+      if (err) { setOtpMsg(err.message || '인증번호를 보내지 못했어요.', 'error'); return; }
+      setOtpMsg('인증번호를 다시 보냈어요.', 'ok');
     });
   }
 
@@ -3538,10 +3721,12 @@ var Core = (function () {
 
   /* 구경 모드 종료 · 입장 암호 다시 넣기 */
   function exitGate(msg) {
-    clearStoredProxyPass();
+    clearStoredCreds();
     clearStoredSession();
     session = { role: '', childId: '' };
     proxy.pass = '';
+    proxy.token = '';
+    proxy.challenge = '';
     proxy.role = '';
     db = null;
     document.body.classList.remove('guest');
@@ -3565,36 +3750,101 @@ var Core = (function () {
     btn.textContent = on ? (label || '불러오는 중…') : '들어가기';
   }
 
-  function showGate(msg) {
-    document.body.classList.add('locked');
-    el('login-screen').hidden = true;
-    el('userbar').hidden = true;
-    el('fab-add').classList.remove('show');
-    el('gate-screen').hidden = false;
+  function setOtpMsg(msg, kind) {
+    var box = el('gate-otp-msg');
+    if (!box) return;
+    box.className = 'login-msg' + (kind === 'ok' ? ' ok' : (kind ? ' ' + kind : ''));
+    box.textContent = msg || '';
+  }
+
+  function setOtpBusy(on, label) {
+    var btn = el('gate-otp-submit');
+    if (!btn) return;
+    btn.disabled = !!on;
+    btn.textContent = on ? (label || '확인 중…') : '확인하고 들어가기';
+  }
+
+  /* 1단계 화면으로 */
+  function showGatePass() {
+    proxy.stage = 1;
+    if (el('gate-otp-panel')) el('gate-otp-panel').hidden = true;
+    if (el('gate-panel')) el('gate-panel').hidden = false;
     setGateBusy(false);
-    setGateMsg(msg || '', msg ? 'error' : '');
-    var input = el('gate-pass');
+  }
+
+  /* 2단계(인증번호) 화면으로 */
+  function showGateOtp(msg) {
+    proxy.stage = 2;
+    if (el('gate-panel')) el('gate-panel').hidden = true;
+    if (el('gate-otp-panel')) el('gate-otp-panel').hidden = false;
+    setOtpBusy(false);
+    setOtpMsg(msg || '', msg ? 'error' : '');
+    var hint = el('gate-otp-hint');
+    if (hint) hint.textContent = (proxy.otpEmail ? proxy.otpEmail : '등록된 메일') + ' 로 6자리 인증번호를 보냈어요. 5분 안에 넣어 주세요.';
+    var input = el('gate-otp');
     if (input) {
       input.value = '';
       setTimeout(function () { try { input.focus(); } catch (e) { /* noop */ } }, 80);
     }
   }
 
+  function showGate(msg) {
+    document.body.classList.add('locked');
+    el('login-screen').hidden = true;
+    el('userbar').hidden = true;
+    el('fab-add').classList.remove('show');
+    el('gate-screen').hidden = false;
+    showGatePass();
+    setGateMsg(msg || '', msg ? 'error' : '');
+    var input = el('gate-pass');
+    if (input) {
+      input.value = '';
+      setTimeout(function () { try { input.focus(); } catch (e) { /* noop */ } }, 80);
+    }
+    refreshOtpState();
+  }
+
   function hideGate() {
     el('gate-screen').hidden = true;
+    proxy.stage = 1;
+  }
+
+  /* 메일 인증이 켜져 있는지 확인해 1단계 화면에 안내한다 */
+  function refreshOtpState() {
+    if (!proxyOn()) return;
+    httpFetch(proxyHealthUrl(), { cache: 'no-store' }, function (err, res) {
+      if (err) { paintGateState(); return; }
+      res.json(function (err2, j) {
+        if (!err2 && j && typeof j === 'object' && typeof j.otpEnabled === 'boolean') proxy.otpEnabled = j.otpEnabled;
+        paintGateState();
+      });
+    });
+  }
+
+  function paintGateState() {
+    var box = el('gate-state');
+    if (!box) return;
+    if (proxy.otpEnabled === true) {
+      box.textContent = '🔐 메일 인증이 켜져 있어요 · 인증한 기기는 90일 동안 바로 열립니다.';
+    } else if (proxy.otpEnabled === false) {
+      box.textContent = '지금은 메일 인증이 꺼져 있어 가족 암호만으로 들어갑니다. (Worker에 RESEND_API_KEY·OTP_EMAIL을 넣으면 켜져요.)';
+    } else {
+      box.textContent = '';
+    }
   }
 
   function submitGate() {
     var pass = el('gate-pass').value;
     var remember = !!el('gate-remember').checked;
     if (!Core.trim(pass)) { setGateMsg('입장 암호를 넣어 주세요.', 'error'); return; }
-    enterGate(pass, remember, function (err) {
+    enterGate(pass, remember, function (err, role) {
       if (err) {
         setGateMsg(err.message || '입장하지 못했어요.', 'error');
         el('gate-pass').value = '';
         return;
       }
       el('gate-pass').value = '';
+      if (role === 'otp') return;      /* 2단계 화면으로 넘어감 */
       if (isGuest()) toast('구경 모드로 열었어요. 책과 기록은 볼 수만 있어요.');
       else if (document.body.classList.contains('locked')) toast('입장 암호를 확인했어요. 사용할 사람을 골라 주세요.');
     });
@@ -3605,38 +3855,86 @@ var Core = (function () {
     el('gate-pass').onkeydown = function (ev) {
       if (ev.key === 'Enter') { ev.preventDefault(); submitGate(); }
     };
+    if (el('gate-otp-submit')) el('gate-otp-submit').onclick = submitGateOtp;
+    if (el('gate-otp')) {
+      el('gate-otp').onkeydown = function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); submitGateOtp(); }
+      };
+      el('gate-otp').oninput = function () {
+        var v = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+        if (v !== this.value) this.value = v;
+        if (v.length === 6) setOtpMsg('', '');
+      };
+    }
+    if (el('gate-otp-resend')) el('gate-otp-resend').onclick = resendGateOtp;
+    if (el('gate-otp-back')) el('gate-otp-back').onclick = function () {
+      /* 인증번호는 5분 유효하므로 지우지 않는다 — 들어가기를 다시 눌러도 쿨다운 안내 뒤 2단계로 돌아온다 */
+      showGatePass();
+      setGateMsg('', '');
+    };
     el('login-pass-change').onclick = function () {
       if (!proxyOn()) return;
       session = { role: '', childId: '' };
       clearStoredSession();
-      clearStoredProxyPass();
-      showGate('가족 로그아웃했어요. 다시 들어오려면 가족 암호를 넣어 주세요.');
+      clearStoredCreds();
+      proxy.token = '';
+      proxy.pass = '';
+      showGate('가족 로그아웃했어요. 다시 들어오려면 가족 암호와 메일 인증이 필요해요.');
     };
     var pc = el('proxy-pass-change');
-    if (pc) pc.onclick = function () { exitGate('가족 로그아웃했어요. 다시 들어오려면 가족 암호를 넣어 주세요.'); };
+    if (pc) pc.onclick = function () { exitGate('가족 로그아웃했어요. 다시 들어오려면 가족 암호와 메일 인증이 필요해요.'); };
   }
 
-  /* 저장된 암호로 조용히 다시 들어오기 */
+  /* 저장된 자격(가족 세션 토큰 · 구경용 암호)으로 조용히 다시 들어오기 */
   function proxyBoot() {
-    var saved = loadProxyPass();
-    if (!saved) { showGate(); return; }
-    proxy.on = true;
-    proxy.pass = saved.pass;
-    proxy.role = saved.role;
     showGate();
+    var cred = loadStoredCreds();
+    if (!cred) return;
     el('gate-submit').disabled = true;
-    enterGate(saved.pass, 'keep', function (err) {
+    if (cred.token) {
+      proxy.on = true;
+      proxy.role = 'family';
+      proxy.token = cred.token;
+      setGateBusy(true, '인증 확인 중…');
+      proxyLoad({ token: cred.token }, function (err, res) {
+        setGateBusy(false);
+        if (err) {
+          proxy.token = '';
+          clearStoredProxyToken();
+          showGate(err.data && err.data.error === 'session_expired'
+            ? '가족 인증이 만료됐어요. 메일로 다시 인증해 주세요.'
+            : '가족 인증 정보가 바뀌었어요. 메일로 다시 인증해 주세요.');
+          return;
+        }
+        proxy.pass = '';
+        proxy.role = res.role;
+        applyProxyDb(res);
+      });
+      return;
+    }
+    /* 저장된 암호 (구경용, 또는 메일 인증 전 임시 가족 모드) */
+    proxy.on = true;
+    proxy.pass = cred.pass;
+    proxy.role = cred.role;
+    setGateBusy(true, '불러오는 중…');
+    enterGate(cred.pass, 'keep', function (err) {
       if (err) showGate(err.message || '입장하지 못했어요. 암호를 다시 넣어 주세요.');
     });
   }
 
+  /* 응답이 “세션이 없어졌다”고 하면 토큰을 지우고 다시 인증하게 한다 */
+  function proxySessionLost(err) {
+    var c = err && err.data ? err.data.error : '';
+    return c === 'session_expired' || c === 'bad_session';
+  }
+
   function proxySyncNow(mode, silent) {
-    if (!proxy.pass) { showGate(); return; }
+    if (!proxy.pass && !proxy.token) { showGate(); return; }
     if (syncInFlight) { if (!silent) toast('이미 동기화 중이에요.'); return; }
     syncInFlight = true;
     setGhStatus('syncing', '동기화 중…');
     if (isGuest()) {
-      proxyLoad(proxy.pass, function (err, res) {
+      proxyLoad(proxyAuth(), function (err, res) {
         syncInFlight = false;
         if (err) {
           setGhStatus('error', err.message);
@@ -3656,6 +3954,12 @@ var Core = (function () {
       syncInFlight = false;
       if (err) {
         setGhStatus('error', err.message);
+        if (proxySessionLost(err)) {
+          proxy.token = '';
+          clearStoredProxyToken();
+          showGate('가족 인증이 만료됐어요. 메일로 다시 인증해 주세요.');
+          return;
+        }
         if (!silent) toast(err.message, 'warn');
         return;
       }
@@ -4404,6 +4708,10 @@ var Core = (function () {
     var box = el('pin-warn-wrap');
     if (!box) return;
     if (!isAdmin()) { box.innerHTML = ''; return; }
+    if (kidPinSkipped()) {
+      box.innerHTML = '<div class="pin-warn soft"><span class="pw-main">🔐 <b>가족 메일 인증</b>을 통과한 기기에서는 아이 PIN을 묻지 않아요. 아빠·엄마 PIN은 그대로 필요해요.</span></div>';
+      return;
+    }
     var h = '';
     for (var i = 0; i < db.children.length; i++) {
       var c = db.children[i];
@@ -6034,6 +6342,9 @@ var Core = (function () {
     if (!box) return;
     if (!isAdmin()) { box.innerHTML = ''; return; }
     var h = adminRowHtml('dad', db.auth.dadPinHash) + adminRowHtml('mom', db.auth.momPinHash);
+    if (kidPinSkipped()) {
+      h += '<p class="hint" style="margin:10px 0 6px">🔐 가족 메일 인증을 통과한 기기에서는 아이 PIN을 묻지 않고 카드만 눌러 들어가요. 아래 아이 PIN 설정은 다른 방식(예전 GitHub 직접 연결)으로 열었을 때만 쓰여요.</p>';
+    }
 
     for (var i = 0; i < db.children.length; i++) {
       var c = db.children[i];
@@ -6315,6 +6626,9 @@ var Core = (function () {
     el('profile-pin-hint').textContent = ka.pinEnabled
       ? '이 아이는 로그인할 때 PIN을 넣어야 책장·독서노트·퀴즈를 볼 수 있어요. PIN은 해시(SHA-256)로만 저장돼요.'
       : 'PIN이 꺼져 있어 이 기기에서는 누구나 이 아이 책장을 열 수 있어요. PIN을 켜면 다른 사람이 내용을 볼 수 없어요.';
+    if (kidPinSkipped()) {
+      el('profile-pin-hint').textContent += ' 지금은 가족 메일 인증으로 들어와 있어 아이 PIN은 묻지 않아요(아빠·엄마 PIN은 그대로).';
+    }
   }
 
   /* PIN을 바꿔도 다른 화면(설정·책장 안내·프로필 모달)이 바로 갱신되게 */
