@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updatedAt": "2026-11-23T10:00:00+09:00",
+  "updatedAt": "2026-11-24T10:02:00+09:00",
   "source": "🐢 4월 보홀 항공·헤난 리조트 가격 스캔 (매일 오전 10:00)",
   "trip": {
     "route": "ICN ↔ TAG (인천 ↔ 보홀 팡라오 직항)",
@@ -12,15 +12,15 @@
     "hotel4Nights": 1250000
   },
   "latest": {
-    "scannedAt": "2026-11-23T10:00:00+09:00",
+    "scannedAt": "2026-11-24T10:02:00+09:00",
     "headline": "4월 하계 특가 오픈 전 · 의미 있는 변동 없음",
     "alert": false,
     "air": {
       "source": "엔조이스카이",
       "url": "https://enjoysky.net/destinations/bohol",
-      "perPersonRoundTrip": 354800,
-      "prevPerPersonRoundTrip": 352977,
-      "observations": 237,
+      "perPersonRoundTrip": 352586,
+      "prevPerPersonRoundTrip": 354800,
+      "observations": 266,
       "basis": "2027년 4월 출발 왕복 최저가 · 4월 중 가장 싼 날짜 조합 기준(1인)",
       "note": "4/13~18처럼 날짜를 고정한 값이 아니라, 4월 안에서 가장 싼 조합의 관측값입니다."
     },
@@ -72,6 +72,15 @@
       "observations": 237,
       "alert": false,
       "note": "진에어 블랙프라이데이 프로모션은 탑승 2027-03-27(동계)까지. 4월 하계 특가 공지 미발표."
+    },
+    {
+      "date": "2026-11-24",
+      "time": "10:00",
+      "title": "일일 스캔",
+      "airPerPerson": 352586,
+      "observations": 266,
+      "alert": false,
+      "note": "엔조이스카이 4월 최저가 352,586원(전일 대비 -2,214원). 진마켓·찜특가 4월 하계 공지 미발표."
     }
   ]
 }
