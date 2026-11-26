@@ -6326,22 +6326,6 @@ table.data.claims { min-width: 780px; }
         renderModal();
         break;
       }
-      case 'remove-image': {
-        var rowImg = el.closest('.extra-row');
-        if (rowImg) rowImg.remove();
-        break;
-      }
-      case 'coupon-target-all': {
-        var picker = $('#cf-target-picker');
-        var allOn = !!el.checked;
-        ui.couponTargetAll = allOn;
-        if (picker) picker.classList.toggle('off', allOn);
-        if (allOn) {
-          $$('#cf-target-users input[type=checkbox]').forEach(function (i) { i.checked = false; });
-          ui.couponTargetSel = [];
-        }
-        break;
-      }
       case 'create-coupon': {
         if (!isAdmin()) break;
         var picked = readTargetPicker('cf');
@@ -6690,27 +6674,6 @@ table.data.claims { min-width: 780px; }
         if (!badgeInput.disabled) { try { badgeInput.focus(); } catch (e) {} }
       }
       return;
-    }
-    if (t.name === 'cf-target-user') {
-      var allBox = $('#cf-target-all');
-      var pk = $('#cf-target-picker');
-      if (t.checked && allBox && allBox.checked) {
-        allBox.checked = false;
-        ui.couponTargetAll = false;
-        if (pk) pk.classList.remove('off');
-      }
-      ui.couponTargetSel = $$('#cf-target-users input[type=checkbox]:checked').map(function (i) { return i.value; });
-      if (!ui.couponTargetSel.length && allBox) {
-        allBox.checked = true;
-        ui.couponTargetAll = true;
-        if (pk) pk.classList.add('off');
-      }
-      return;
-    }
-    if (t.name === 'extra-image') {
-      var box = t.parentNode;
-      var thumb = box ? box.querySelector('.extra-thumb') : null;
-      if (thumb) thumb.src = imgSrc(t.value);
     }
     if (t.dataset && t.dataset.action === 'admin-claim-status') {
       if (!isAdmin()) return;
