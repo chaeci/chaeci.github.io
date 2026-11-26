@@ -25,9 +25,22 @@ CREATE TABLE products (
   original_price INTEGER CHECK (original_price IS NULL OR original_price >= price),
   badge          TEXT CHECK (badge IS NULL OR badge IN ('NEW','BEST','SALE')),
   description    TEXT NOT NULL DEFAULT '',
-  image          TEXT NOT NULL,
+  image          TEXT NOT NULL,                              -- 대표 이미지
+  free_shipping_threshold INTEGER
+                 CHECK (free_shipping_threshold IS NULL OR free_shipping_threshold >= 0),
+                 -- NULL = 스토어 기본(100,000원), 0 = 무조건 무료배송, N = 해당 상품 합계 N원 이상 무료
   created_at     TEXT NOT NULL,
   is_active      INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))
+);
+
+-- 상품 갤러리 이미지 (products.image = 대표, 이 테이블 = 대표 + 디테일 컷 전체)
+CREATE TABLE product_images (
+  id         TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  image      TEXT NOT NULL,
+  alt        TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0 CHECK (sort_order >= 0),
+  UNIQUE (product_id, image)
 );
 
 CREATE TABLE product_variants (
@@ -58,6 +71,8 @@ CREATE TABLE orders (
                    CHECK (status IN ('paid','preparing','shipping','delivered','cancelled')),
   total_amount     INTEGER NOT NULL CHECK (total_amount >= 0),
   shipping_fee     INTEGER NOT NULL DEFAULT 0 CHECK (shipping_fee >= 0),
+  coupon_code      TEXT,                                    -- 적용된 쿠폰 코드 (없으면 NULL)
+  discount_amount  INTEGER NOT NULL DEFAULT 0 CHECK (discount_amount >= 0),
   recipient_name   TEXT NOT NULL,
   recipient_phone  TEXT NOT NULL,
   shipping_address TEXT NOT NULL,
@@ -79,12 +94,28 @@ CREATE TABLE order_items (
   quantity     INTEGER NOT NULL CHECK (quantity > 0)
 );
 
+-- 할인 쿠폰 — 관리자 콘솔에서 발행/중지, 체크아웃에서 코드 또는 원클릭 적용
+CREATE TABLE coupons (
+  id               TEXT PRIMARY KEY,
+  code             TEXT NOT NULL UNIQUE,
+  name             TEXT NOT NULL,
+  discount_type    TEXT NOT NULL CHECK (discount_type IN ('percent','fixed')),
+  discount_value   INTEGER NOT NULL CHECK (discount_value > 0),
+                   -- percent 이면 할인율(%), fixed 이면 할인 금액(원)
+  min_order_amount INTEGER NOT NULL DEFAULT 0 CHECK (min_order_amount >= 0),
+  expires_at       TEXT,                                    -- NULL = 무기한
+  is_active        INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  created_at       TEXT NOT NULL
+);
+
 CREATE INDEX idx_variants_product ON product_variants(product_id);
 CREATE INDEX idx_products_category ON products(category, is_active);
+CREATE INDEX idx_product_images ON product_images(product_id, sort_order);
 CREATE INDEX idx_cart_user ON cart_items(user_id);
 CREATE INDEX idx_orders_user ON orders(user_id, created_at DESC);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_order_items_order ON order_items(order_id);
+CREATE INDEX idx_coupons_code ON coupons(code);
 
 -- 재고 확인용 뷰: 상품별 총 재고
 CREATE VIEW v_product_stock AS
@@ -95,9 +126,10 @@ FROM products p
 LEFT JOIN product_variants v ON v.product_id = p.id
 GROUP BY p.id;
 
--- 주문 요약 뷰: 상품 합계와 배송비 합이 total_amount 와 일치하는지 바로 확인
+-- 주문 요약 뷰: 상품 합계 + 배송비 − 쿠폰 할인 = total_amount 인지 바로 확인
 CREATE VIEW v_order_summary AS
 SELECT o.id, o.order_no, o.status, o.total_amount, o.shipping_fee,
+       o.coupon_code, o.discount_amount,
        COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS subtotal,
        COUNT(oi.id) AS item_count
 FROM orders o

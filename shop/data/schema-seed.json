@@ -1,7 +1,7 @@
 {
   "meta": {
     "app": "MONO ATELIER",
-    "schema_version": 1,
+    "schema_version": 2,
     "generated_at": "2026-11-26T18:55:00+09:00",
     "currency": "KRW",
     "free_shipping_threshold": 100000,
@@ -41,6 +41,12 @@
       "badge": "BEST",
       "description": "두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.",
       "image": "coat.webp",
+      "images": [
+        "coat.webp",
+        "coat-detail.webp",
+        "coat-fabric.webp"
+      ],
+      "free_shipping_threshold": null,
       "created_at": "2026-11-10T09:20:00+09:00",
       "is_active": true
     },
@@ -54,6 +60,12 @@
       "badge": "NEW",
       "description": "캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.",
       "image": "knit.webp",
+      "images": [
+        "knit.webp",
+        "knit-detail.webp",
+        "knit-fabric.webp"
+      ],
+      "free_shipping_threshold": 50000,
       "created_at": "2026-11-18T11:05:00+09:00",
       "is_active": true
     },
@@ -67,6 +79,12 @@
       "badge": null,
       "description": "허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.",
       "image": "pants.webp",
+      "images": [
+        "pants.webp",
+        "pants-detail.webp",
+        "pants-fabric.webp"
+      ],
+      "free_shipping_threshold": null,
       "created_at": "2026-10-25T16:30:00+09:00",
       "is_active": true
     },
@@ -80,6 +98,12 @@
       "badge": "SALE",
       "description": "빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.",
       "image": "dress.webp",
+      "images": [
+        "dress.webp",
+        "dress-detail.webp",
+        "dress-fabric.webp"
+      ],
+      "free_shipping_threshold": null,
       "created_at": "2026-11-02T13:10:00+09:00",
       "is_active": true
     },
@@ -93,6 +117,12 @@
       "badge": "BEST",
       "description": "이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.",
       "image": "bag.webp",
+      "images": [
+        "bag.webp",
+        "bag-detail.webp",
+        "bag-fabric.webp"
+      ],
+      "free_shipping_threshold": 0,
       "created_at": "2026-11-08T10:00:00+09:00",
       "is_active": true
     },
@@ -106,6 +136,12 @@
       "badge": "NEW",
       "description": "가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.",
       "image": "jacket.webp",
+      "images": [
+        "jacket.webp",
+        "jacket-detail.webp",
+        "jacket-fabric.webp"
+      ],
+      "free_shipping_threshold": null,
       "created_at": "2026-11-20T09:45:00+09:00",
       "is_active": true
     },
@@ -119,6 +155,12 @@
       "badge": null,
       "description": "두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.",
       "image": "shirt.webp",
+      "images": [
+        "shirt.webp",
+        "shirt-detail.webp",
+        "shirt-fabric.webp"
+      ],
+      "free_shipping_threshold": null,
       "created_at": "2026-10-28T15:20:00+09:00",
       "is_active": true
     },
@@ -132,6 +174,12 @@
       "badge": "SALE",
       "description": "곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.",
       "image": "skirt.webp",
+      "images": [
+        "skirt.webp",
+        "skirt-detail.webp",
+        "skirt-fabric.webp"
+      ],
+      "free_shipping_threshold": null,
       "created_at": "2026-10-20T12:00:00+09:00",
       "is_active": true
     },
@@ -145,6 +193,12 @@
       "badge": "BEST",
       "description": "묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.",
       "image": "trench.webp",
+      "images": [
+        "trench.webp",
+        "trench-detail.webp",
+        "trench-fabric.webp"
+      ],
+      "free_shipping_threshold": 0,
       "created_at": "2026-11-15T10:30:00+09:00",
       "is_active": true
     },
@@ -158,6 +212,12 @@
       "badge": null,
       "description": "울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.",
       "image": "cardigan.webp",
+      "images": [
+        "cardigan.webp",
+        "cardigan-detail.webp",
+        "cardigan-fabric.webp"
+      ],
+      "free_shipping_threshold": 50000,
       "created_at": "2026-10-15T09:10:00+09:00",
       "is_active": true
     },
@@ -171,6 +231,12 @@
       "badge": "NEW",
       "description": "워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.",
       "image": "denim.webp",
+      "images": [
+        "denim.webp",
+        "denim-detail.webp",
+        "denim-fabric.webp"
+      ],
+      "free_shipping_threshold": 50000,
       "created_at": "2026-11-23T14:00:00+09:00",
       "is_active": true
     },
@@ -184,6 +250,12 @@
       "badge": null,
       "description": "블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.",
       "image": "loafers.webp",
+      "images": [
+        "loafers.webp",
+        "loafers-detail.webp",
+        "loafers-fabric.webp"
+      ],
+      "free_shipping_threshold": 0,
       "created_at": "2026-11-05T11:40:00+09:00",
       "is_active": true
     },
@@ -197,8 +269,289 @@
       "badge": null,
       "description": "실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)",
       "image": "dress.webp",
+      "images": [
+        "dress.webp",
+        "dress-detail.webp",
+        "dress-fabric.webp"
+      ],
+      "free_shipping_threshold": null,
       "created_at": "2026-11-25T17:30:00+09:00",
       "is_active": false
+    }
+  ],
+  "product_images": [
+    {
+      "id": "pi_001",
+      "product_id": "p_001",
+      "image": "coat.webp",
+      "alt": "울 더블 브레스티드 코트",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_002",
+      "product_id": "p_001",
+      "image": "coat-detail.webp",
+      "alt": "울 더블 브레스티드 코트 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_003",
+      "product_id": "p_001",
+      "image": "coat-fabric.webp",
+      "alt": "울 더블 브레스티드 코트 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_004",
+      "product_id": "p_002",
+      "image": "knit.webp",
+      "alt": "캐시미어 리브 니트",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_005",
+      "product_id": "p_002",
+      "image": "knit-detail.webp",
+      "alt": "캐시미어 리브 니트 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_006",
+      "product_id": "p_002",
+      "image": "knit-fabric.webp",
+      "alt": "캐시미어 리브 니트 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_007",
+      "product_id": "p_003",
+      "image": "pants.webp",
+      "alt": "와이드 테일러드 트라우저",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_008",
+      "product_id": "p_003",
+      "image": "pants-detail.webp",
+      "alt": "와이드 테일러드 트라우저 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_009",
+      "product_id": "p_003",
+      "image": "pants-fabric.webp",
+      "alt": "와이드 테일러드 트라우저 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_010",
+      "product_id": "p_004",
+      "image": "dress.webp",
+      "alt": "사틴 슬립 미디 드레스",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_011",
+      "product_id": "p_004",
+      "image": "dress-detail.webp",
+      "alt": "사틴 슬립 미디 드레스 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_012",
+      "product_id": "p_004",
+      "image": "dress-fabric.webp",
+      "alt": "사틴 슬립 미디 드레스 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_013",
+      "product_id": "p_005",
+      "image": "bag.webp",
+      "alt": "스무스 레더 숄더백",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_014",
+      "product_id": "p_005",
+      "image": "bag-detail.webp",
+      "alt": "스무스 레더 숄더백 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_015",
+      "product_id": "p_005",
+      "image": "bag-fabric.webp",
+      "alt": "스무스 레더 숄더백 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_016",
+      "product_id": "p_006",
+      "image": "jacket.webp",
+      "alt": "나일론 봄버 재킷",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_017",
+      "product_id": "p_006",
+      "image": "jacket-detail.webp",
+      "alt": "나일론 봄버 재킷 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_018",
+      "product_id": "p_006",
+      "image": "jacket-fabric.webp",
+      "alt": "나일론 봄버 재킷 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_019",
+      "product_id": "p_007",
+      "image": "shirt.webp",
+      "alt": "오버사이즈 코튼 셔츠",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_020",
+      "product_id": "p_007",
+      "image": "shirt-detail.webp",
+      "alt": "오버사이즈 코튼 셔츠 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_021",
+      "product_id": "p_007",
+      "image": "shirt-fabric.webp",
+      "alt": "오버사이즈 코튼 셔츠 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_022",
+      "product_id": "p_008",
+      "image": "skirt.webp",
+      "alt": "플리츠 미디 스커트",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_023",
+      "product_id": "p_008",
+      "image": "skirt-detail.webp",
+      "alt": "플리츠 미디 스커트 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_024",
+      "product_id": "p_008",
+      "image": "skirt-fabric.webp",
+      "alt": "플리츠 미디 스커트 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_025",
+      "product_id": "p_009",
+      "image": "trench.webp",
+      "alt": "개버딘 트렌치 코트",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_026",
+      "product_id": "p_009",
+      "image": "trench-detail.webp",
+      "alt": "개버딘 트렌치 코트 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_027",
+      "product_id": "p_009",
+      "image": "trench-fabric.webp",
+      "alt": "개버딘 트렌치 코트 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_028",
+      "product_id": "p_010",
+      "image": "cardigan.webp",
+      "alt": "울 블렌드 오픈 가디건",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_029",
+      "product_id": "p_010",
+      "image": "cardigan-detail.webp",
+      "alt": "울 블렌드 오픈 가디건 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_030",
+      "product_id": "p_010",
+      "image": "cardigan-fabric.webp",
+      "alt": "울 블렌드 오픈 가디건 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_031",
+      "product_id": "p_011",
+      "image": "denim.webp",
+      "alt": "와이드 데님 팬츠",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_032",
+      "product_id": "p_011",
+      "image": "denim-detail.webp",
+      "alt": "와이드 데님 팬츠 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_033",
+      "product_id": "p_011",
+      "image": "denim-fabric.webp",
+      "alt": "와이드 데님 팬츠 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_034",
+      "product_id": "p_012",
+      "image": "loafers.webp",
+      "alt": "레더 페니 로퍼",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_035",
+      "product_id": "p_012",
+      "image": "loafers-detail.webp",
+      "alt": "레더 페니 로퍼 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_036",
+      "product_id": "p_012",
+      "image": "loafers-fabric.webp",
+      "alt": "레더 페니 로퍼 소재 클로즈업",
+      "sort_order": 2
+    },
+    {
+      "id": "pi_037",
+      "product_id": "p_013",
+      "image": "dress.webp",
+      "alt": "실크 크레이프 미디 원피스",
+      "sort_order": 0
+    },
+    {
+      "id": "pi_038",
+      "product_id": "p_013",
+      "image": "dress-detail.webp",
+      "alt": "실크 크레이프 미디 원피스 디테일",
+      "sort_order": 1
+    },
+    {
+      "id": "pi_039",
+      "product_id": "p_013",
+      "image": "dress-fabric.webp",
+      "alt": "실크 크레이프 미디 원피스 소재 클로즈업",
+      "sort_order": 2
     }
   ],
   "product_variants": [
@@ -1004,6 +1357,8 @@
       "status": "delivered",
       "total_amount": 278000,
       "shipping_fee": 0,
+      "coupon_code": null,
+      "discount_amount": 0,
       "recipient_name": "홍길동",
       "recipient_phone": "010-0000-0000",
       "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1203호",
@@ -1018,8 +1373,10 @@
       "order_no": "MA20261124-3917",
       "user_id": "u_001",
       "status": "paid",
-      "total_amount": 178000,
+      "total_amount": 173000,
       "shipping_fee": 0,
+      "coupon_code": "MONO5000",
+      "discount_amount": 5000,
       "recipient_name": "홍길동",
       "recipient_phone": "010-0000-0000",
       "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1203호",
@@ -1036,6 +1393,8 @@
       "status": "preparing",
       "total_amount": 289000,
       "shipping_fee": 0,
+      "coupon_code": null,
+      "discount_amount": 0,
       "recipient_name": "홍길동",
       "recipient_phone": "010-0000-0000",
       "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1203호",
@@ -1086,6 +1445,30 @@
       "size": "S",
       "unit_price": 289000,
       "quantity": 1
+    }
+  ],
+  "coupons": [
+    {
+      "id": "c_001",
+      "code": "WELCOME10",
+      "name": "신규 회원 10% 할인",
+      "discount_type": "percent",
+      "discount_value": 10,
+      "min_order_amount": 30000,
+      "expires_at": "2027-12-31T23:59:59+09:00",
+      "is_active": true,
+      "created_at": "2026-11-01T10:00:00+09:00"
+    },
+    {
+      "id": "c_002",
+      "code": "MONO5000",
+      "name": "5,000원 할인 쿠폰",
+      "discount_type": "fixed",
+      "discount_value": 5000,
+      "min_order_amount": 50000,
+      "expires_at": "2027-06-30T23:59:59+09:00",
+      "is_active": true,
+      "created_at": "2026-11-05T10:00:00+09:00"
     }
   ]
 }
