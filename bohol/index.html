@@ -200,31 +200,36 @@
     100%{transform:scale(1)}
   }
   .track{
-    position:relative;height:26px;margin:10px 0 0;
+    position:relative;height:28px;margin:10px 0 0;
   }
   /* 전체 길이 트랙: 바다 배경 위에서도 보이도록 어두운 반투명 바탕 + 밝은 테두리 */
   .track::before{
     content:"";position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);
-    height:13px;border-radius:999px;
-    background:linear-gradient(180deg,rgba(0,22,34,.72),rgba(0,34,48,.58));
-    border:1px solid rgba(255,255,255,.6);
+    height:14px;border-radius:999px;
+    background:linear-gradient(180deg,rgba(0,20,32,.78),rgba(0,34,48,.62));
+    border:1px solid rgba(255,255,255,.7);
     box-shadow:inset 0 1px 4px rgba(0,0,0,.55),0 1px 8px rgba(0,20,30,.45);
   }
   .track .fill{
-    position:absolute;left:2px;top:50%;transform:translateY(-50%);height:13px;width:4%;
+    position:absolute;left:2px;top:50%;transform:translateY(-50%);height:14px;width:4%;
     max-width:calc(100% - 4px);
     background:linear-gradient(90deg,#2fe3c9,#7ef7e2 55%,#ffffff);
     box-shadow:0 0 12px rgba(126,247,226,.95),inset 0 0 0 1px rgba(255,255,255,.85);
     transition:width .6s cubic-bezier(.3,.9,.3,1);border-radius:999px;
   }
   .track .swimmer{
-    position:absolute;top:50%;left:4%;font-size:16px;line-height:1;
+    position:absolute;top:50%;left:4%;font-size:17px;line-height:1;
     transform:translate(-50%,-50%);
     transition:left .6s cubic-bezier(.3,.9,.3,1);
-    filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 2px 4px rgba(0,20,30,.65));
+    filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 0 1px rgba(255,255,255,.9)) drop-shadow(0 2px 4px rgba(0,20,30,.7));
   }
-  .track .end{position:absolute;right:-7px;top:50%;transform:translateY(-50%);font-size:13px;
-    filter:drop-shadow(0 1px 3px rgba(0,20,30,.6))}
+  .track .end{position:absolute;right:-8px;top:50%;transform:translateY(-50%);font-size:13px;
+    filter:drop-shadow(0 0 3px rgba(255,255,255,.8)) drop-shadow(0 1px 3px rgba(0,20,30,.65))}
+  .track .pct{
+    position:absolute;right:11px;top:50%;transform:translateY(-50%);
+    font-size:9.5px;font-weight:800;letter-spacing:.02em;line-height:1;
+    color:rgba(234,254,255,.92);text-shadow:0 1px 3px rgba(0,20,30,.85);
+  }
 
   .facts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
   .fact{
@@ -654,6 +659,7 @@
             <span class="fill" id="ddayFill"></span>
             <span class="swimmer" id="ddaySwimmer">🐢</span>
             <span class="end">🏝️</span>
+            <span class="pct" id="ddayPct">4%</span>
           </span>
         </span>
       </div>
@@ -1081,6 +1087,8 @@
     pct = Math.max(4, Math.min(100, pct));
     document.getElementById("ddayFill").style.width = pct + "%";
     document.getElementById("ddaySwimmer").style.left = pct + "%";
+    var pctEl = document.getElementById("ddayPct");
+    if (pctEl) pctEl.textContent = pct + "%";
   }
 
   function popBox() {
