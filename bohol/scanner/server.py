@@ -97,15 +97,22 @@ class Handler(BaseHTTPRequestHandler):
         self.send_no_content()
 
     def do_HEAD(self):  # noqa: N802
-        self.do_GET()
+        # HEAD 로 스캔이 실행되지 않도록 health 만 받는다.
+        if route_path(self.path) == "/api/health":
+            self.send_json(200, {"ok": True})
+        else:
+            self.send_json(405, {"ok": False, "error": "method_not_allowed"})
 
     def do_GET(self):  # noqa: N802
-        self._handle(read_only=False)
+        self._handle()
 
     def do_POST(self):  # noqa: N802
-        self._handle(read_only=False)
+        length = int(self.headers.get("Content-Length") or 0)
+        if length:
+            self.rfile.read(length)  # 본문은 쓰지 않지만 연결을 깨끗하게 비운다
+        self._handle()
 
-    def _handle(self, read_only: bool) -> None:
+    def _handle(self) -> None:
         path = route_path(self.path)
         if path == "/api/health":
             self.send_json(200, {"ok": True})
