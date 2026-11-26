@@ -1,7 +1,7 @@
 {
   "meta": {
     "app": "MONO ATELIER",
-    "schema_version": 2,
+    "schema_version": 3,
     "generated_at": "2026-11-26T18:55:00+09:00",
     "currency": "KRW",
     "free_shipping_threshold": 100000,
@@ -190,7 +190,7 @@
       "category": "outer",
       "price": 319000,
       "original_price": 369000,
-      "badge": "BEST",
+      "badge": "LIMITED",
       "description": "묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.",
       "image": "trench.webp",
       "images": [
@@ -1457,6 +1457,7 @@
       "min_order_amount": 30000,
       "expires_at": "2027-12-31T23:59:59+09:00",
       "is_active": true,
+      "target_user_ids": [],
       "created_at": "2026-11-01T10:00:00+09:00"
     },
     {
@@ -1468,7 +1469,22 @@
       "min_order_amount": 50000,
       "expires_at": "2027-06-30T23:59:59+09:00",
       "is_active": true,
+      "target_user_ids": [],
       "created_at": "2026-11-05T10:00:00+09:00"
+    },
+    {
+      "id": "c_003",
+      "code": "VIP15",
+      "name": "VIP 회원 전용 15% 할인",
+      "discount_type": "percent",
+      "discount_value": 15,
+      "min_order_amount": 50000,
+      "expires_at": "2027-03-31T23:59:59+09:00",
+      "is_active": true,
+      "target_user_ids": [
+        "u_001"
+      ],
+      "created_at": "2026-11-20T10:00:00+09:00"
     }
   ]
 }

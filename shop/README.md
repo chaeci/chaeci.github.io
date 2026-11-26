@@ -2,8 +2,12 @@
 
 프론트엔드만으로 완결되는 모던 컨템포러리 의류 쇼핑몰입니다.
 모든 데이터는 **정규화된 8개 테이블(JSON)** 로 관리되고 브라우저 `localStorage`에 저장되며,
-`data/schema.sql`로 **SQLite에 1:1 이식**할 수 있게 설계했습니다.
+`data/schema.sql`(SQLite 9개 테이블 — `coupon_targets` 정규화 포함)로 **1:1 이식**할 수 있게 설계했습니다.
 
+> **v1.3 (2026-11-26 2차 실기기 QA 반영)** — 상품 상세 모바일 잘림 완전 제거(이미지 고정 + 정보만 스크롤)·
+> 「주문하기/바로 구매」 결제 화면 유지 버그 수정·관리자 실제 사진 파일 업로드(Canvas 리사이즈)·
+> 모바일 상품 등록 모달 가로 넘침 0·상품 뱃지 관리(프리셋+직접 입력)·회원 지정 쿠폰 발급과 마이페이지 보유 쿠폰을 추가했습니다.
+>
 > **v1.2 (2026-11-26 실기기 QA 반영)** — 모바일 관리자 진입·검색 UI 정리·대표 이미지 잘림 제거·다중 이미지 갤러리·
 > 브라우저 뒤로가기(History API)·할인 쿠폰 발행/적용·제품별 무료배송 기준을 추가했습니다.
 
@@ -35,6 +39,9 @@ python3 fashion-shop/build.py
 로그인 모달의 **「일반 회원 (데모)」 / 「관리자 (데모)」** 버튼으로 원클릭 로그인할 수 있습니다.
 관리자로 로그인하면 데스크톱은 상단 메뉴에 `관리자` 탭이, **모바일(≤980px)은 헤더 오른쪽에 `관리자` 버튼과 마이페이지 상단 관리자 배너**가 나타납니다.
 
+> 데모 회원(`demo@mono.kr`)에게는 **전용 쿠폰 `VIP15`** 가 발급되어 있어 마이페이지 → **보유 쿠폰**에서 확인할 수 있습니다.
+> 다른 계정으로 로그인하면 이 쿠폰은 목록에 보이지 않고, 코드를 직접 입력하면 `이 계정에 발급된 쿠폰이 아닙니다.`로 거부됩니다.
+
 ---
 
 ## 2. 파일 구조
@@ -56,8 +63,8 @@ fashion-shop/
 │  ├─ payment_confirm_example.py # 토스페이먼츠 결제 승인(서버) 예제 — 시크릿 키는 환경변수
 │  └─ mono-atelier.db          # 위 스크립트로 만든 샘플 SQLite DB (144KB)
 └─ tests/
-   ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (265 checks)
-   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412 / 토스 결제 / file:// 프리뷰, 217 checks)
+   ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (317 checks)
+   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412 · 360 / 토스 결제 / file:// 프리뷰, 288 checks)
    ├─ make_screenshots.py      # 대표 스크린샷 생성
    ├─ verify_deploy.py         # 배포본 검수 (HTTP 200·콘솔 에러 0·이미지 깨짐 0·개인정보 0)
    └─ smoke.py                 # 단일 페이지 스모크(콘솔 에러 확인)
@@ -85,19 +92,23 @@ orders.coupon_code ───────────────< coupons (code 
 | `cart_items` | id, user_id, variant_id, quantity, added_at | (user,variant) UNIQUE |
 | `orders` | id, order_no, user_id, status, total_amount, shipping_fee, **coupon_code**, **discount_amount**, recipient_name, recipient_phone, shipping_address, payment_method, payment_provider, payment_key, payment_mode, created_at | status: paid/preparing/shipping/delivered/cancelled · payment_provider: demo/tosspayments · payment_mode: demo/demo-fallback/test-client/server |
 | `order_items` | id, order_id, variant_id, product_name, color, size, unit_price, quantity | 상품명·컬러·사이즈·가격은 **주문 시점 스냅샷** |
-| `coupons` | id, code, name, discount_type, discount_value, min_order_amount, expires_at, is_active, created_at | discount_type: percent(%)/fixed(원) · expires_at NULL = 무기한 |
+| `coupons` | id, code, name, discount_type, discount_value, min_order_amount, expires_at, is_active, **target_user_ids**, created_at | discount_type: percent(%)/fixed(원) · expires_at NULL = 무기한 · `target_user_ids` = 발급 대상(빈 배열 = 전체 공용) |
+| `coupon_targets` | id, coupon_id, user_id, created_at | 전용 쿠폰 발급 대상 정규화 테이블(SQLite) · (coupon,user) UNIQUE |
 
 * `total_amount` = 상품금액 합계 + `shipping_fee` − `discount_amount` (전 건 검증됨).
 * `free_shipping_threshold`: `NULL` = 스토어 기본 100,000원, `0` = 무조건 무료배송, `N` = 해당 상품 합계 N원 이상 무료배송.
-* 시드 규모: users 2 · products 13(판매중 12, 숨김 1) · product_images 39 · product_variants 88 · orders 3 · order_items 4 · coupons 2.
+* `products.badge`: 프리셋(`BEST`/`NEW`/`SALE`/`LIMITED`) 또는 관리자가 입력한 16자 이내 문구. `NULL` = 뱃지 없음.
+* `coupons.target_user_ids`: `[]` = 전체 공용. 값이 있으면 그 회원만 목록 노출·코드 적용이 가능하고 다른 계정은 `이 계정에 발급된 쿠폰이 아닙니다.`로 거부됩니다. SQLite에서는 `coupon_targets` 행으로 전개됩니다.
+* 시드 규모: users 2 · products 13(판매중 12, 숨김 1) · product_images 39 · product_variants 88 · orders 3 · order_items 4 · coupons 3(공용 2 + 전용 1) · coupon_targets 1.
 * 비밀번호는 데모용 `sha256('mono-atelier$' + password)` 해시로 저장합니다(앱 내 동기 SHA-256 구현, 시드와 동일 값 검증 완료).
 
 ### SQLite로 옮길 때
 
-1. `data/schema.sql` 실행 (`PRAGMA foreign_keys = ON` 포함, FK·CHECK·SKU UNIQUE·뷰 2종).
+1. `data/schema.sql` 실행 (`PRAGMA foreign_keys = ON` 포함, FK·CHECK·SKU UNIQUE·뷰 3종).
 2. `data/schema-seed.json`(또는 앱의 **JSON 다운로드**)을 테이블별로 `INSERT`.
    금액은 정수, 시각은 ISO-8601 TEXT, `is_active`는 0/1로 변환하면 그대로 들어갑니다.
-3. `v_product_stock`, `v_order_summary` 뷰로 상품별 재고·주문 합계를 바로 검수할 수 있습니다.
+   `coupons.target_user_ids`(배열)는 `coupon_targets` 테이블의 행으로 전개합니다.
+3. `v_product_stock`, `v_order_summary`, `v_coupon_targets` 뷰로 상품별 재고·주문 합계·전용 쿠폰 발급 대상을 바로 검수할 수 있습니다.
 
 자동 변환도 가능합니다:
 
@@ -132,27 +143,38 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0
 - **토스페이먼츠 SDK v2 결제창(테스트)** — 결제하기 → 대기 주문 저장 → 결제창 → `?tossResult=success` 복귀 시 `paymentKey`·`orderId`·`amount` 검증 → **재고 재검증·차감 → 주문/주문항목 생성(결제키 기록) → 장바구니 비우기 → 영수증 모달**(주문번호 `MAYYYYMMDD-NNNN`)
 - `file://`·오프라인·SDK 로드 실패 환경은 자동으로 **데모 모의 결제**로 이어집니다(안내 토스트). 무통장 계좌 안내 유지.
 
-**상품 상세 / 갤러리 (v1.2)**
+**상품 상세 / 갤러리 (v1.2 · v1.3)**
 - 대표 이미지 + 디테일 컷 2장(총 3장) 썸네일 갤러리 — 썸네일 클릭·`‹ ›` 로 대표 이미지만 부분 전환(모달·옵션 상태 유지)
-- 대표 이미지는 `object-fit: contain` + 아이보리 배경으로 **잘림 0%**(데스크톱 모달·모바일 바텀시트 동일), `1 / 3` 카운터
+- 대표 이미지는 `object-fit: contain` + 아이보리 배경으로 **잘림 0%**. 모바일(≤720px)은 **이미지 영역 고정 + 정보 영역만 스크롤**하는 2단 시트라 이미지가 위로 밀려 잘리지 않습니다.
 - 상품별 배송 조건 표시: `무료배송` / `50,000원 이상 무료배송` / `100,000원 이상 무료배송`
+- 상세 상단·상품 카드·관리자 목록에 상품 뱃지 표시
 
-**할인 쿠폰 / 배송비 (v1.2)**
+**상품 뱃지 관리 (v1.3)**
+- 관리자 상품 등록/수정에서 `없음` · `BEST` · `NEW` · `SALE` · `LIMITED` 선택 또는 **직접 입력(16자 이내)** — 저장 즉시 카드·상세 상단·관리자 목록에 반영(`products.badge`)
+
+**사진 파일 업로드 (v1.3)**
+- 관리자 상품 등록/수정에서 `<input type="file" accept="image/*" multiple>` 로 **실제 사진 파일**을 올려 대표 이미지·갤러리(최대 6장)로 사용
+- 올린 파일은 브라우저 `Canvas` 로 **긴 변 900px · JPEG 82%** 로 축소해 Data URL 로 저장 → 즉시 썸네일 미리보기/삭제, `localStorage` 5MB 초과 방지(1장당 보통 30~150KB)
+
+**할인 쿠폰 / 배송비 (v1.2 · v1.3)**
 - 장바구니·체크아웃에 **쿠폰 코드 입력 + 사용 가능 쿠폰 원클릭 칩**, `해제` 버튼, 조건 미달·중복·만료 사유 안내
+- **회원 지정 쿠폰**: 관리자가 발행할 때 `전체 공용` 또는 회원(복수 선택 가능)을 지정. 지정된 회원의 칩 목록·마이페이지 쿠폰함에만 보이고, 다른 계정이 코드를 직접 입력하면 `이 계정에 발급된 쿠폰이 아닙니다.`로 거부됩니다.
+- **마이페이지 「보유 쿠폰」 탭**: 내가 쓸 수 있는 쿠폰(공용 + 나에게 발급)을 카드로 확인하고 `장바구니에 적용` 한 번으로 결제에 적용
 - 할인은 상품금액 기준(정률은 내림, 정액은 상품금액 한도)으로 계산되어 **최종 결제금액·토스페이먼츠 `setAmount`·영수증·주문 레코드**에 모두 반영
 - 배송비는 **상품별 무료배송 기준**으로 계산: 상품을 묶어 합계가 그 상품 기준을 넘으면 무료, 미달 상품이 하나라도 있으면 3,000원(한 주문 1회). 장바구니 게이지·결제 요약에 남은 금액 안내
 
 **관리자**
 - 대시보드(판매 중 상품·전체 주문·처리 대기·누적 매출)
-- 상품 관리: 등록/수정(옵션별 컬러·컬러코드·사이즈·재고), **대표 + 갤러리 추가 이미지(최대 6장) 추가·삭제**, **무료배송 기준 금액 입력**, 전체 품절, 숨김/판매재개
-- **쿠폰 관리(신규)**: 쿠폰 코드·이름·정률/정액·할인값·최소 주문금액·만료일로 발행, 목록에서 사용 중지/재개, 사용 건수 표시
+- 상품 관리: 등록/수정(옵션별 컬러·컬러코드·사이즈·재고), **대표 + 갤러리 추가 이미지(최대 6장) — 기존 컷 선택 또는 사진 파일 업로드**, **무료배송 기준 금액**, **상품 뱃지(프리셋/직접 입력)**, 전체 품절, 숨김/판매재개
+- **쿠폰 관리**: 쿠폰 코드·이름·정률/정액·할인값·최소 주문금액·만료일 + **발급 대상(전체 공용 / 회원 지정)** 으로 발행, 목록에서 발급 대상·사용 건수·중지/재개
 - 주문 관리: 상태 변경(결제완료 → 배송준비 → 배송중 → 배송완료 / 취소)
 - 데이터: **JSON 다운로드·클립보드 복사·시드 초기화·무결성 검사·테이블 현황·현재 JSON 미리보기** + **결제 설정 카드**(현재 결제 모드·클라이언트 키 마스킹·승인 서버 유무·키 교체 방법)
 - **모바일(≤980px) 진입 경로**: 헤더 `관리자` 버튼 / 마이페이지 헤더 `관리자 콘솔` 버튼 / 마이페이지 상단 관리자 배너. 412px에서도 탭 4종(상품 관리·주문 관리·쿠폰 관리·데이터 관리)과 `+ 상품 등록` 이 잘리지 않습니다.
 
-**화면 이동 / 검색 (v1.2)**
+**화면 이동 / 검색 (v1.2 · v1.3)**
 - 상품 상세·로그인·주문 상세·영수증 모달, 장바구니 드로어가 열린 상태의 **브라우저 뒤로가기 → 해당 레이어만 닫힘**(사이트 이탈 없음, `pushState`+`popstate`)
 - 마이페이지·관리자·결제 화면에서 뒤로가기 → 스토어 복귀
+- **「주문하기」·「바로 구매」는 언제나 결제 화면으로 직행** — 드로어·상세 모달을 함께 닫고 열기 때문에 결제 화면이 가려지거나 닫히지 않습니다(v1.3에서 드로어 잔존·히스토리 오버슛 수정)
 - **상품 검색 UI는 스토어(home) 화면에만** 표시 — 마이페이지·관리자·장바구니(열림)·결제 화면에서는 검색창·검색 아이콘이 렌더링되지 않습니다.
 
 **토스페이먼츠 결제 연동 (사업자 없이 테스트)**
@@ -186,8 +208,8 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0
 ## 5. 검증 결과
 
 ```
-static_check.py        265 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·v1.2 8기능 가드)
-e2e_fashion_shop.py    217 checks passed (데스크톱 1280 / 모바일 412 / v1.2 기능 / 토스 결제 스텁 / 단일 프리뷰)
+static_check.py        317 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·v1.2/v1.3 기능 가드)
+e2e_fashion_shop.py    288 checks passed (데스크톱 1280 / 모바일 412·360 / v1.2·v1.3 기능 / 토스 결제 스텁 / 단일 프리뷰)
 콘솔 에러              0건
 ```
 
@@ -215,11 +237,20 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 - 쿠폰: 10% 적용 시 89,000 → 83,100원(배송비 3,000 포함), 최소금액 미달·없는 코드 안내, 소문자 코드 허용, 관리자 발행/중지, 토스 `setAmount` 83,100원
 - 무료배송: 기준 0원 상품 무료, 50,000원 기준 상품 표시, 기준 미달 상품만 있는 주문은 3,000원
 
+**v1.3 신규 검증 (E2E `run_v13`)**
+- 412px 상세: 대표/디테일 컷의 이미지가 이미지 영역·모달 안에 온전히 들어오고, 정보 영역을 끝까지 스크롤해도 이미지가 움직이지 않음(모달 자체 스크롤 0)
+- 주문하기: 드로어→주문하기, 상품→바로 구매, 뒤로가기 후 재주문 모두 결제 화면이 열린 채 유지되고 드로어가 남지 않음 → 결제 완료(영수증)까지 통과
+- 업로드: 1200×1600·1600×1000 PNG 2장을 실제 파일로 올려 Data URL(JPEG)·긴 변 900px 이하·1장 400KB 미만 확인, 저장 후 `products.image/images`·`product_images` 동기화
+- 412px·360px 상품 등록 모달: `documentElement.scrollWidth <= innerWidth`, 모달 `scrollWidth <= clientWidth`, 화면 밖으로 나간 요소 0개
+- 뱃지: LIMITED 프리셋 → 카드·상세·관리자 목록 반영, 직접 입력(`단독`) 저장, `없음`으로 해제
+- 전용 쿠폰: 관리자가 A 회원 지정 발행 → A는 마이페이지 쿠폰함·칩에 노출되고 20% 적용, B는 미노출·코드 입력 거부, 신규 회원은 공용 쿠폰만 보유
+
 대표 스크린샷은 `/workspace/downloads/`에 있습니다:
 `fashion-shop-home.png`, `fashion-shop-detail-cart.png`, `fashion-shop-detail-gallery.png`, `fashion-shop-admin.png`,
 `fashion-shop-cart.png`, `fashion-shop-checkout.png`, `fashion-shop-receipt.png`, `fashion-shop-mypage.png`,
 `fashion-shop-admin-orders.png`, `fashion-shop-admin-data.png`, `fashion-shop-mobile-admin.png`,
 `fashion-shop-mobile-admin-entry.png`, `fashion-shop-mobile-coupons.png`, `fashion-shop-mobile-gallery.png`, `fashion-shop-mobile-*.png`
+(v1.3 추가: `fashion-shop-mobile-product-form.png`, `fashion-shop-mobile-product-upload.png`, `fashion-shop-mobile-mycoupons.png`)
 
 ---
 

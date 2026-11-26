@@ -23,7 +23,8 @@ CREATE TABLE products (
   category       TEXT NOT NULL CHECK (category IN ('outer','top','bottom','dress','acc')),
   price          INTEGER NOT NULL CHECK (price >= 0),
   original_price INTEGER CHECK (original_price IS NULL OR original_price >= price),
-  badge          TEXT CHECK (badge IS NULL OR badge IN ('NEW','BEST','SALE')),
+  badge          TEXT CHECK (badge IS NULL OR (length(trim(badge)) BETWEEN 1 AND 16)),
+                 -- 프리셋(BEST/NEW/SALE/LIMITED) 또는 관리자가 입력한 짧은 문구
   description    TEXT NOT NULL DEFAULT '',
   image          TEXT NOT NULL,                              -- 대표 이미지
   free_shipping_threshold INTEGER
@@ -95,6 +96,7 @@ CREATE TABLE order_items (
 );
 
 -- 할인 쿠폰 — 관리자 콘솔에서 발행/중지, 체크아웃에서 코드 또는 원클릭 적용
+-- 발급 대상: coupon_targets 에 행이 없으면 전체 공용, 있으면 지정된 회원만 사용 가능
 CREATE TABLE coupons (
   id               TEXT PRIMARY KEY,
   code             TEXT NOT NULL UNIQUE,
@@ -108,6 +110,15 @@ CREATE TABLE coupons (
   created_at       TEXT NOT NULL
 );
 
+-- 쿠폰 발급 대상 (행 1개 = 대상 회원 1명). 행이 없으면 전체 공용 쿠폰.
+CREATE TABLE coupon_targets (
+  id         TEXT PRIMARY KEY,
+  coupon_id  TEXT NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  UNIQUE (coupon_id, user_id)
+);
+
 CREATE INDEX idx_variants_product ON product_variants(product_id);
 CREATE INDEX idx_products_category ON products(category, is_active);
 CREATE INDEX idx_product_images ON product_images(product_id, sort_order);
@@ -116,6 +127,8 @@ CREATE INDEX idx_orders_user ON orders(user_id, created_at DESC);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_order_items_order ON order_items(order_id);
 CREATE INDEX idx_coupons_code ON coupons(code);
+CREATE INDEX idx_coupon_targets_user ON coupon_targets(user_id);
+CREATE INDEX idx_coupon_targets_coupon ON coupon_targets(coupon_id);
 
 -- 재고 확인용 뷰: 상품별 총 재고
 CREATE VIEW v_product_stock AS
@@ -135,3 +148,10 @@ SELECT o.id, o.order_no, o.status, o.total_amount, o.shipping_fee,
 FROM orders o
 LEFT JOIN order_items oi ON oi.order_id = o.id
 GROUP BY o.id;
+
+-- 쿠폰 발급 대상 보기: 전용 쿠폰이 누구에게 발급됐는지 한눈에 확인
+CREATE VIEW v_coupon_targets AS
+SELECT c.code, c.name, t.user_id, u.name AS user_name, u.email
+FROM coupons c
+JOIN coupon_targets t ON t.coupon_id = c.id
+JOIN users u ON u.id = t.user_id;
