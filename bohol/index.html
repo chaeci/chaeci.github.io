@@ -1450,7 +1450,8 @@
       return String(a.date + (a.time || "")).localeCompare(String(b.date + (b.time || "")));
     });
 
-    var rows = "";
+    /* 행은 오래된→최신 순으로 만들며 전일 대비(▲▼)를 계산하고, 표시는 최신→과거 순으로 뒤집는다 */
+    var rowList = [];
     logs.forEach(function (g, i) {
       var prev = i > 0 ? logs[i - 1].airPerPerson : null;
       var d = "";
@@ -1463,19 +1464,20 @@
           d = "<small style='color:var(--muted)'>–</small>";
         }
       }
-      rows += "<tr><td class='dt'>" + esc((g.date || "").slice(5).replace("-", "/")) +
+      rowList.push("<tr><td class='dt'>" + esc((g.date || "").slice(5).replace("-", "/")) +
         "<small>" + esc(g.time || "") + "</small></td>" +
         "<td class='num'>" + (typeof g.airPerPerson === "number" ? g.airPerPerson.toLocaleString("ko-KR") + "원" : "—") + d + "</td>" +
         "<td class='num'>" + (g.observations || "—") + "</td>" +
-        "<td class='memo'>" + esc(g.note || "") + "</td></tr>";
+        "<td class='memo'>" + esc(g.note || "") + "</td></tr>");
     });
+    var rows = rowList.reverse().join("");
 
     var html = "";
     html += "<div class='ref' style='margin:0 0 9px'><div class='ref-t'>스캔 출처</div>" + esc(data.source || "") +
       "<br>최근 갱신 <b>" + stamp(data.updatedAt || L.scannedAt) + "</b> · 목표 항공 4인 " +
       man((data.goals || {}).air4Total || 1650000) + "원 / 숙소 4박 " + man((data.goals || {}).hotel4Nights || 1250000) + "원 이하</div>";
     if (L.headline) html += "<p class='tiny' style='margin:0 0 8px'><b>" + esc(L.headline) + "</b></p>";
-    html += "<div class='tablewrap'><table class='logtable'><thead><tr><th>날짜·시각</th><th class='num'>항공 1인</th><th class='num'>관측</th><th>메모</th></tr></thead><tbody>" +
+    html += "<p class='tiny' style='margin:0 0 6px;color:var(--muted)'>최신 스캔이 맨 위에 표시됩니다. ▲▼는 전일 대비 변동입니다.</p><div class='tablewrap'><table class='logtable'><thead><tr><th>날짜·시각</th><th class='num'>항공 1인</th><th class='num'>관측</th><th>메모</th></tr></thead><tbody>" +
       rows + "</tbody></table></div>";
     html += "<p class='tiny' style='margin:8px 0 0'>엔조이스카이 2027년 4월 출발 왕복 최저가(1인) 기록입니다. 날짜를 고정한 값이 아니라 4월 안에서 가장 싼 날짜 조합의 관측값이에요.</p>";
 
