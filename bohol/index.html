@@ -1608,6 +1608,10 @@
       b.tabIndex = (j === i) ? 0 : -1;
     });
     mpanels.forEach(function (p, j) { p.hidden = (j !== i); });
+    var bar = document.querySelector(".maintabs");
+    if (bar && window.scrollY > bar.offsetTop + 4) {
+      window.scrollTo({ top: bar.offsetTop, behavior: "smooth" });
+    }
   }
 
   mtabs.forEach(function (b, i) {
