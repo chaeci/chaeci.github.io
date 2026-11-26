@@ -74,7 +74,7 @@ fashion-shop/
 │  └─ mono-atelier.db          # 위 스크립트로 만든 샘플 SQLite DB (192KB)
 └─ tests/
    ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (508 checks)
-   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / 라이트박스 / v1.7 19가지 / file:// 프리뷰, 543 checks)
+   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / 라이트박스 / v1.7 19가지 / file:// 프리뷰, 544 checks)
    ├─ make_screenshots.py      # 대표 스크린샷 생성
    ├─ verify_deploy.py         # 배포본 검수 (HTTP 200·콘솔 에러 0·이미지 깨짐 0·개인정보 0)
    └─ smoke.py                 # 단일 페이지 스모크(콘솔 에러 확인)
@@ -249,7 +249,7 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 
 ```
 static_check.py        508 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·모델 정보·라이트박스·v1.7 19가지 가드)
-e2e_fashion_shop.py    543 checks passed (데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.7 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
+e2e_fashion_shop.py    544 checks passed (데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.7 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
 콘솔 에러              0건
 ```
 
@@ -268,7 +268,7 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 
 > 테스트는 `LD_LIBRARY_PATH`를 워크스페이스의 `.cache/browserlibs`로 지정해 headless Chromium을 실행합니다(스크립트에 포함).
 
-**v1.7 신규 검증 (E2E `run_v17` · 87 checks)**
+**v1.7 신규 검증 (E2E `run_v17` · 88 checks)**
 - 상세: 왼쪽/오른쪽 **스와이프로 2/3 · 1/3 컷 전환**, **더블탭 → 2x(scale 2) → 다시 더블탭 1x**, 짧은 탭 → 라이트박스, 힌트 문구 노출
 - 라이트박스: **좌우 스와이프로 컷 전환**, **더블탭 1x↔2x**
 - 상품 등록: 판매 상태 **OFF → `is_active:false`** 저장·스토어 미노출·관리자 「숨김」, **최신 등록이 목록 첫 행/스토어 첫 카드**
