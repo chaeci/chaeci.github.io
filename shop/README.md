@@ -59,6 +59,7 @@ fashion-shop/
    ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (265 checks)
    ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412 / 토스 결제 / file:// 프리뷰, 217 checks)
    ├─ make_screenshots.py      # 대표 스크린샷 생성
+   ├─ verify_deploy.py         # 배포본 검수 (HTTP 200·콘솔 에러 0·이미지 깨짐 0·개인정보 0)
    └─ smoke.py                 # 단일 페이지 스모크(콘솔 에러 확인)
 ```
 
@@ -200,6 +201,7 @@ E2E 시나리오: 홈·검색·정렬·품절 표시 → **회원가입 → 로�
 python3 fashion-shop/tests/static_check.py
 python3 fashion-shop/tests/e2e_fashion_shop.py
 python3 fashion-shop/tests/make_screenshots.py
+python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이브 검수
 ```
 
 > 테스트는 `LD_LIBRARY_PATH`를 워크스페이스의 `.cache/browserlibs`로 지정해 headless Chromium을 실행합니다(스크립트에 포함).
