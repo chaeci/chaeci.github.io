@@ -1325,8 +1325,11 @@ table.data.coupons { min-width: 640px; }
     return [image || 'coat.webp', stem + '-detail.webp', stem + '-fabric.webp'];
   }
   function save() {
-    try { localStorage.setItem(LS_DB, JSON.stringify(db)); }
-    catch (e) { storageOk = false; }
+    try { localStorage.setItem(LS_DB, JSON.stringify(db)); storageOk = true; return true; }
+    catch (e) { storageOk = false; return false; }
+  }
+  function quotaMessage() {
+    return '저장 공간이 부족합니다. 업로드한 사진 수를 줄이거나 사용하지 않는 상품을 정리해 주세요.';
   }
   function loadSession() {
     try { session = JSON.parse(localStorage.getItem(LS_SESSION) || 'null'); }
@@ -2285,7 +2288,15 @@ table.data.coupons { min-width: 640px; }
         });
       });
     }
-    save();
+    if (!save()) {
+      // 저장 실패(용량 초과) — 새로 만들던 상품은 되돌려 중복 생성을 막는다
+      if (!input.id) {
+        db.products = db.products.filter(function (x) { return x.id !== p.id; });
+        db.product_variants = db.product_variants.filter(function (x) { return x.product_id !== p.id; });
+        db.product_images = db.product_images.filter(function (x) { return x.product_id !== p.id; });
+      }
+      return { ok: false, message: quotaMessage() };
+    }
     return { ok: true, product: p };
   }
   function toggleProductActive(pid) {
