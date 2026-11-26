@@ -4,6 +4,8 @@
 모든 데이터는 **정규화된 8개 테이블(JSON)** 로 관리되고 브라우저 `localStorage`에 저장되며,
 `data/schema.sql`(SQLite 9개 테이블 — `coupon_targets` 정규화 포함)로 **1:1 이식**할 수 있게 설계했습니다.
 
+> **v1.4 (2026-11-26 3차 실기기 QA 반영)** — 삼성 인터넷 주소창·하단 툴바 때문에 `94vh` 가 실제 가시 영역보다 커져 상세 모달 상단(닫기·`1 / 3` 배지·대표 이미지)이 화면 위로 잘리던 문제를 고쳤습니다. 모바일 모달 레이어 높이를 `--app-height`(=`window.innerHeight`) / `100dvh` 로 잡고 상세 모달을 가시 영역에 꽉 채워 `top = 0` 을 고정했습니다. 함께 강제 다크모드 색반전에서도 선택 옵션이 보이도록 `color-scheme: light only` + 선택 칩/사이즈 `2px` 테두리·채움·`✓`, 라벨 배지, 구매 버튼 위 `선택: 컬러 / 사이즈 · 수량` 요약을 넣었습니다.
+>
 > **v1.3 (2026-11-26 2차 실기기 QA 반영)** — 상품 상세 모바일 잘림 완전 제거(이미지 고정 + 정보만 스크롤)·
 > 「주문하기/바로 구매」 결제 화면 유지 버그 수정·관리자 실제 사진 파일 업로드(Canvas 리사이즈)·
 > 모바일 상품 등록 모달 가로 넘침 0·상품 뱃지 관리(프리셋+직접 입력)·회원 지정 쿠폰 발급과 마이페이지 보유 쿠폰을 추가했습니다.
@@ -63,8 +65,8 @@ fashion-shop/
 │  ├─ payment_confirm_example.py # 토스페이먼츠 결제 승인(서버) 예제 — 시크릿 키는 환경변수
 │  └─ mono-atelier.db          # 위 스크립트로 만든 샘플 SQLite DB (144KB)
 └─ tests/
-   ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (317 checks)
-   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412 · 360 / 토스 결제 / file:// 프리뷰, 288 checks)
+   ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (328 checks)
+   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360 / 모바일 가시 높이 720 / 토스 결제 / file:// 프리뷰, 326 checks)
    ├─ make_screenshots.py      # 대표 스크린샷 생성
    ├─ verify_deploy.py         # 배포본 검수 (HTTP 200·콘솔 에러 0·이미지 깨짐 0·개인정보 0)
    └─ smoke.py                 # 단일 페이지 스모크(콘솔 에러 확인)
@@ -237,6 +239,13 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 - 쿠폰: 10% 적용 시 89,000 → 83,100원(배송비 3,000 포함), 최소금액 미달·없는 코드 안내, 소문자 코드 허용, 관리자 발행/중지, 토스 `setAmount` 83,100원
 - 무료배송: 기준 0원 상품 무료, 50,000원 기준 상품 표시, 기준 미달 상품만 있는 주문은 3,000원
 
+**v1.4 신규 검증 (E2E `run_v14`)**
+- 412×720(삼성 인터넷 주소창·하단 툴바 제외 실제 가시 높이)에서 상세 모달 `top = 0`, `bottom ≤ 720` — 예전 `height: 94vh` + 하단 정렬이면 vh 가 가시 영역보다 큰 기기에서 상단이 화면 위로 밀려 잘렸다
+- 닫기(×)·`1 / 3` 배지·대표 이미지의 `rect.top ≥ 0`, `rect.bottom ≤ 720`, 이미지가 이미지 영역·모달 안에 온전히. 정보 영역을 끝까지 스크롤해도 모달 top 0·이미지 위치 유지, 구매 바는 가시 영역 안
+- 상세·로그인·관리자 상품 등록 모달 모두 레이어 높이 = 실제 가시 높이, 상단 잘림 0 / 412×915(툴바 없음)에서도 동일
+- 선택 옵션 가시성: 선택 컬러 칩·사이즈가 `2px` 테두리 + 채움 + `✓` + 굵은 글씨, 컬러/사이즈 라벨 우측에 `✓ 블랙`·`✓ XL` 배지, 구매 버튼 위 `선택: 블랙 / XL · 1개` 요약이 클릭 즉시 갱신. `color-scheme: light only` 로 강제 다크모드 색반전을 막고, 반전·고대비(forced-colors) 환경에서도 `✓`·테두리로 선택이 구분됨
+- 갤러리로 디테일 컷을 봐도 상단 잘림 0, 선택 상태·요약 유지, 수량 변경도 요약에 즉시 반영
+
 **v1.3 신규 검증 (E2E `run_v13`)**
 - 412px 상세: 대표/디테일 컷의 이미지가 이미지 영역·모달 안에 온전히 들어오고, 정보 영역을 끝까지 스크롤해도 이미지가 움직이지 않음(모달 자체 스크롤 0)
 - 주문하기: 드로어→주문하기, 상품→바로 구매, 뒤로가기 후 재주문 모두 결제 화면이 열린 채 유지되고 드로어가 남지 않음 → 결제 완료(영수증)까지 통과
@@ -251,6 +260,7 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 `fashion-shop-admin-orders.png`, `fashion-shop-admin-data.png`, `fashion-shop-mobile-admin.png`,
 `fashion-shop-mobile-admin-entry.png`, `fashion-shop-mobile-coupons.png`, `fashion-shop-mobile-gallery.png`, `fashion-shop-mobile-*.png`
 (v1.3 추가: `fashion-shop-mobile-product-form.png`, `fashion-shop-mobile-product-upload.png`, `fashion-shop-mobile-mycoupons.png`)
+(v1.4 추가: `fashion-shop-mobile-detail-fixed.png`, `fashion-shop-mobile-detail-fixed-options.png`)
 
 ---
 

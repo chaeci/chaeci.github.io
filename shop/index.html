@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbfaf7">
+<!-- 삼성 인터넷 강제 다크모드의 색 반전으로 선택 옵션 대비가 사라지지 않도록 라이트 전용으로 고정 -->
+<meta name="color-scheme" content="light only">
 <title>MONO ATELIER — 모노 아틀리에</title>
 <meta name="description" content="단정한 실루엣과 좋은 소재. 서울에서 만드는 모던 컨템포러리 브랜드 모노 아틀리에의 데모 스토어입니다.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2317170f'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='16' fill='%23fbfaf7' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
@@ -11,6 +13,8 @@
    MONO ATELIER — design system
    ============================================================ */
 :root {
+  /* 라이트 전용 — 강제 다크모드(삼성 인터넷 등)의 자동 반전 대상에서 제외한다 */
+  color-scheme: light only;
   --bg: #fbfaf7;
   --bg-warm: #f3efe7;
   --surface: #ffffff;
@@ -391,6 +395,13 @@ ul, ol { list-style: none; }
   display: grid; place-items: center; font-size: 20px; color: var(--ink); background: rgba(251, 250, 247, 0.8);
 }
 .modal-close:hover { background: #fff; }
+/* 상품 상세 닫기 버튼은 사진 위에 떠 있으므로 다크 반전과 무관하게 형태로 보이게 한다 */
+.product-modal .modal-close {
+  top: 12px; right: 12px; width: 40px; height: 40px; z-index: 6;
+  color: #fbfaf7; background: rgba(23, 23, 15, 0.72);
+  border: 1px solid rgba(251, 250, 247, 0.55); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+.product-modal .modal-close:hover { background: rgba(23, 23, 15, 0.9); color: #fff; }
 .modal-head { padding: 26px 30px 18px; border-bottom: 1px solid var(--line-soft); }
 .modal-head .eyebrow { margin-bottom: 6px; }
 .modal-head h2 { font-family: var(--serif); font-size: 24px; font-weight: 400; }
@@ -433,6 +444,13 @@ ul, ol { list-style: none; }
 .pm-divider { height: 1px; background: var(--line-soft); margin: 22px 0; }
 .opt-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; }
 .opt-label b { color: var(--ink); font-weight: 600; letter-spacing: 0.02em; text-transform: none; font-size: 12px; }
+/* 라벨 우측의 선택값(컬러·사이즈)도 배지 + ✓ 로 항상 보이게 한다 */
+.opt-label b[data-selected="true"] {
+  display: inline-block; background: var(--ink); color: #fbfaf7; font-weight: 700;
+  padding: 2px 8px; box-shadow: inset 0 0 0 1px rgba(251, 250, 247, 0.45);
+}
+.opt-label b[data-selected="true"]::before { content: "✓ "; font-size: 10px; }
+.opt-label .opt-right { display: flex; align-items: center; gap: 8px; }
 .chips { display: flex; gap: 10px; flex-wrap: wrap; }
 .chip {
   display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px 7px 8px;
@@ -440,15 +458,25 @@ ul, ol { list-style: none; }
 }
 .chip .sw { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16); }
 .chip:hover { border-color: #b8b0a0; }
-.chip.active { border-color: var(--ink); background: #f7f4ec; }
-.chip.active .sw { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16), 0 0 0 2px #fff, 0 0 0 3px var(--ink); }
+/* 선택된 컬러: 반전(강제 다크모드)에서도 구분되도록 굵은 테두리 + 채움 + ✓ 마크 */
+.chip.active {
+  border: 2px solid var(--ink); background: var(--ink); color: #fbfaf7; font-weight: 700;
+  padding: 6px 11px 6px 7px;
+  box-shadow: inset 0 0 0 1px #fbfaf7, 0 0 0 1px var(--ink);
+}
+.chip.active::before { content: "✓"; font-size: 11px; font-weight: 700; line-height: 1; }
+.chip.active .sw { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 0 1px #fbfaf7; }
 .sizes { display: flex; gap: 8px; flex-wrap: wrap; }
 .size-btn {
   min-width: 62px; height: 42px; padding: 0 12px; border: 1px solid var(--line);
   font-size: 11px; letter-spacing: 0.06em; transition: all 0.2s;
 }
 .size-btn:hover:not(:disabled) { border-color: #b8b0a0; }
-.size-btn.active { border-color: var(--ink); background: var(--ink); color: #fff; }
+.size-btn.active {
+  border: 2px solid var(--ink); background: var(--ink); color: #fff; font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(251, 250, 247, 0.55), 0 0 0 1px var(--ink);
+}
+.size-btn.active::before { content: "✓"; margin-right: 5px; font-size: 11px; font-weight: 700; }
 .size-btn:disabled { color: #c6bfb0; border-color: var(--line-soft); cursor: not-allowed; text-decoration: line-through; background: #faf8f3; }
 .stock-hint { font-size: 11px; color: var(--ok); letter-spacing: 0; text-transform: none; }
 .stock-hint.low { color: var(--accent); }
@@ -456,7 +484,17 @@ ul, ol { list-style: none; }
 .pm-qty-row { display: flex; align-items: center; justify-content: space-between; margin-top: 22px; gap: 14px; }
 .qty-total { font-size: 13px; color: var(--muted); }
 .qty-total b { font-size: 16px; color: var(--ink); margin-left: 8px; }
-.pm-actions { display: grid; grid-template-columns: 1fr 1.2fr; gap: 8px; margin-top: 14px; }
+.pm-buybar { margin-top: 14px; }
+/* 현재 선택 요약 — 장바구니/바로 구매 버튼 바로 위에서 스크롤과 무관하게 유지된다 */
+.pm-selected { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 11px; color: var(--ink-soft); min-height: 20px; }
+.pm-selected b {
+  display: inline-block; background: var(--ink); color: #fbfaf7; font-weight: 700;
+  font-size: 11px; padding: 2px 8px; box-shadow: inset 0 0 0 1px rgba(251, 250, 247, 0.45);
+}
+.pm-selected i { font-style: normal; color: var(--muted); }
+.pm-selected b.qty { background: none; color: var(--ink); box-shadow: none; padding: 0; font-size: 11.5px; }
+.pm-selected .empty { color: var(--muted); text-decoration: underline dotted; }
+.pm-actions { display: grid; grid-template-columns: 1fr 1.2fr; gap: 8px; margin-top: 10px; }
 .pm-meta { margin-top: 26px; border-top: 1px solid var(--line-soft); padding-top: 18px; display: grid; gap: 9px; }
 .pm-meta div { display: flex; gap: 12px; font-size: 11px; color: var(--ink-soft); }
 .pm-meta dt { width: 74px; color: var(--muted); flex: none; letter-spacing: 0.04em; }
@@ -749,6 +787,9 @@ table.data tr:hover td { background: #fdfcf9; }
   .side-nav .side-foot { display: none; }
   .checkout { grid-template-columns: 1fr; }
   .co-summary { position: static; }
+  /* 태블릿·모바일 공통: 모달 레이어 높이를 실제 가시 높이로 잡아 어떤 모달도 상단이 잘리지 않게 한다 */
+  .modal-layer { height: 100%; height: var(--app-height, 100dvh); }
+  .modal-layer .modal { max-height: 100%; }
   .product-modal { grid-template-columns: 1fr; }
   .pm-media { min-height: 0; }
   .pm-stage { min-height: 380px; max-height: 52vh; }
@@ -811,16 +852,24 @@ table.data tr:hover td { background: #fdfcf9; }
   .checkout-main h1 { font-size: 27px; }
   .pay-list { grid-template-columns: 1fr; }
   .field-row { grid-template-columns: 1fr; }
-  .modal-layer { padding: 0; align-items: flex-end; }
-  .modal { max-height: 94vh; width: 100%; }
-  /* 모바일 상품 상세: 이미지 영역은 고정, 정보 영역만 스크롤.
-     (예전에는 모달 전체가 스크롤되어 상단 대표 이미지가 잘려 보였다) */
-  .modal.product-modal {
-    display: flex; flex-direction: column; height: 94vh; max-height: 94vh; overflow: hidden;
+  /* 모바일 모달 레이어: 100vh 는 삼성 인터넷·사파리의 주소창/하단 툴바가 있는 실제 가시 영역보다
+     커서 모달 상단이 화면 위로 밀려 잘렸다. --app-height(=window.innerHeight·visualViewport,
+     JS 가 갱신) → 없으면 100dvh → 그것도 모르는 구형은 100% 순으로 실제 높이를 쓴다. */
+  .modal-layer {
+    padding: 0; align-items: flex-end;
+    height: 100%;
+    height: var(--app-height, 100dvh);
   }
-  .product-modal .pm-media { flex: none; min-height: 0; }
+  .modal-layer .modal { max-height: 100%; width: 100%; }
+  /* 모바일 상품 상세: 모달은 가시 영역을 꽉 채우고(top = 0 고정), 정보 영역만 스크롤.
+     이전에는 height:94vh + 하단 정렬이라 vh 가 실제 높이보다 큰 기기에서 상단이 잘렸다. */
+  .modal.product-modal {
+    display: flex; flex-direction: column; align-self: stretch;
+    height: 100%; max-height: 100%; overflow: hidden;
+  }
+  .product-modal .pm-media { flex: 0 0 auto; height: 46%; min-height: 0; }
   .product-modal .pm-stage {
-    flex: none; height: 40vh; min-height: 0; max-height: none; padding: 8px;
+    flex: 1 1 auto; height: auto; min-height: 0; max-height: none; padding: 8px;
   }
   .product-modal .pm-stage img { width: 100%; height: 100%; max-height: 100%; object-fit: contain; }
   .product-modal .pm-info {
@@ -831,17 +880,20 @@ table.data tr:hover td { background: #fdfcf9; }
   .pm-thumb { width: 50px; }
   .pm-nav { width: 34px; height: 34px; font-size: 19px; }
   .pm-title { font-size: 18px; }
-  .pm-actions {
-    grid-template-columns: 1fr 1.15fr; order: 9; position: sticky; bottom: 0;
-    background: var(--surface); padding: 10px 0 calc(8px + env(safe-area-inset-bottom));
-    box-shadow: 0 -12px 20px rgba(23, 23, 15, 0.07); margin-top: 12px;
-    border-top: 1px solid var(--line-soft);
+  /* 선택 요약 + 구매 버튼: 불투명 배경으로 아래 글자가 비치지 않게 하고 하단 안전영역 확보 */
+  .pm-buybar {
+    order: 9; position: sticky; bottom: 0; z-index: 4;
+    margin: 10px -26px 0; padding: 8px 26px calc(8px + env(safe-area-inset-bottom));
+    background: var(--surface); border-top: 1px solid var(--line);
+    box-shadow: 0 -10px 18px rgba(23, 23, 15, 0.08);
   }
+  .pm-actions { grid-template-columns: 1fr 1.15fr; position: static; margin-top: 6px; }
   .pm-actions .btn { height: 46px; padding: 0 10px; font-size: 10.5px; letter-spacing: 0.08em; }
-  .pm-info { padding-bottom: 2px; }
+  .pm-selected { font-size: 11px; }
+  .pm-info { padding-bottom: 0; }
   .toast-host { bottom: auto; top: 74px; }
   .auth-modal, .receipt-modal, .confirm-modal { align-self: center; margin: 16px; width: calc(100% - 32px); }
-  .modal-layer .auth-modal { max-height: 90vh; }
+  .modal-layer .auth-modal { max-height: calc(var(--app-height, 100dvh) - 32px); }
   .drawer { width: 100%; }
   .cart-row { grid-template-columns: 18px 72px 1fr; padding: 16px 16px; gap: 10px; }
   .cart-thumb { width: 72px; }
@@ -1115,7 +1167,7 @@ table.data.coupons { min-width: 640px; }
 
   var SEED = {"meta":{"app":"MONO ATELIER","schema_version":3,"generated_at":"2026-11-26T18:55:00+09:00","currency":"KRW","free_shipping_threshold":100000,"shipping_fee":3000,"password_hashing":"sha256('mono-atelier$' + password) — demo only"},"users":[{"id":"u_001","email":"demo@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길동","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","created_at":"2026-11-09T10:42:00+09:00"},{"id":"u_002","email":"admin@mono.kr","password_hash":"b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1","name":"관리자","phone":"02-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호 3층","role":"admin","created_at":"2026-10-01T09:00:00+09:00"}],"products":[{"id":"p_001","name":"울 더블 브레스티드 코트","brand":"MONO ATELIER","category":"outer","price":289000,"original_price":349000,"badge":"BEST","description":"두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.","image":"coat.webp","images":["coat.webp","coat-detail.webp","coat-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-10T09:20:00+09:00","is_active":true},{"id":"p_002","name":"캐시미어 리브 니트","brand":"MONO ATELIER","category":"top","price":129000,"original_price":159000,"badge":"NEW","description":"캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.","image":"knit.webp","images":["knit.webp","knit-detail.webp","knit-fabric.webp"],"free_shipping_threshold":50000,"created_at":"2026-11-18T11:05:00+09:00","is_active":true},{"id":"p_003","name":"와이드 테일러드 트라우저","brand":"MONO ATELIER","category":"bottom","price":149000,"original_price":null,"badge":null,"description":"허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.","image":"pants.webp","images":["pants.webp","pants-detail.webp","pants-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-10-25T16:30:00+09:00","is_active":true},{"id":"p_004","name":"사틴 슬립 미디 드레스","brand":"MONO ATELIER","category":"dress","price":189000,"original_price":220000,"badge":"SALE","description":"빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-02T13:10:00+09:00","is_active":true},{"id":"p_005","name":"스무스 레더 숄더백","brand":"MONO ATELIER","category":"acc","price":259000,"original_price":null,"badge":"BEST","description":"이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.","image":"bag.webp","images":["bag.webp","bag-detail.webp","bag-fabric.webp"],"free_shipping_threshold":0,"created_at":"2026-11-08T10:00:00+09:00","is_active":true},{"id":"p_006","name":"나일론 봄버 재킷","brand":"MONO ATELIER","category":"outer","price":179000,"original_price":210000,"badge":"NEW","description":"가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.","image":"jacket.webp","images":["jacket.webp","jacket-detail.webp","jacket-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-20T09:45:00+09:00","is_active":true},{"id":"p_007","name":"오버사이즈 코튼 셔츠","brand":"MONO ATELIER","category":"top","price":89000,"original_price":null,"badge":null,"description":"두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.","image":"shirt.webp","images":["shirt.webp","shirt-detail.webp","shirt-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-10-28T15:20:00+09:00","is_active":true},{"id":"p_008","name":"플리츠 미디 스커트","brand":"MONO ATELIER","category":"bottom","price":139000,"original_price":168000,"badge":"SALE","description":"곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.","image":"skirt.webp","images":["skirt.webp","skirt-detail.webp","skirt-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-10-20T12:00:00+09:00","is_active":true},{"id":"p_009","name":"개버딘 트렌치 코트","brand":"MONO ATELIER","category":"outer","price":319000,"original_price":369000,"badge":"LIMITED","description":"묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.","image":"trench.webp","images":["trench.webp","trench-detail.webp","trench-fabric.webp"],"free_shipping_threshold":0,"created_at":"2026-11-15T10:30:00+09:00","is_active":true},{"id":"p_010","name":"울 블렌드 오픈 가디건","brand":"MONO ATELIER","category":"top","price":119000,"original_price":null,"badge":null,"description":"울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.","image":"cardigan.webp","images":["cardigan.webp","cardigan-detail.webp","cardigan-fabric.webp"],"free_shipping_threshold":50000,"created_at":"2026-10-15T09:10:00+09:00","is_active":true},{"id":"p_011","name":"와이드 데님 팬츠","brand":"MONO ATELIER","category":"bottom","price":109000,"original_price":129000,"badge":"NEW","description":"워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.","image":"denim.webp","images":["denim.webp","denim-detail.webp","denim-fabric.webp"],"free_shipping_threshold":50000,"created_at":"2026-11-23T14:00:00+09:00","is_active":true},{"id":"p_012","name":"레더 페니 로퍼","brand":"MONO ATELIER","category":"acc","price":219000,"original_price":249000,"badge":null,"description":"블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.","image":"loafers.webp","images":["loafers.webp","loafers-detail.webp","loafers-fabric.webp"],"free_shipping_threshold":0,"created_at":"2026-11-05T11:40:00+09:00","is_active":true},{"id":"p_013","name":"실크 크레이프 미디 원피스","brand":"MONO ATELIER","category":"dress","price":209000,"original_price":null,"badge":null,"description":"실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-25T17:30:00+09:00","is_active":false}],"product_images":[{"id":"pi_001","product_id":"p_001","image":"coat.webp","alt":"울 더블 브레스티드 코트","sort_order":0},{"id":"pi_002","product_id":"p_001","image":"coat-detail.webp","alt":"울 더블 브레스티드 코트 디테일","sort_order":1},{"id":"pi_003","product_id":"p_001","image":"coat-fabric.webp","alt":"울 더블 브레스티드 코트 소재 클로즈업","sort_order":2},{"id":"pi_004","product_id":"p_002","image":"knit.webp","alt":"캐시미어 리브 니트","sort_order":0},{"id":"pi_005","product_id":"p_002","image":"knit-detail.webp","alt":"캐시미어 리브 니트 디테일","sort_order":1},{"id":"pi_006","product_id":"p_002","image":"knit-fabric.webp","alt":"캐시미어 리브 니트 소재 클로즈업","sort_order":2},{"id":"pi_007","product_id":"p_003","image":"pants.webp","alt":"와이드 테일러드 트라우저","sort_order":0},{"id":"pi_008","product_id":"p_003","image":"pants-detail.webp","alt":"와이드 테일러드 트라우저 디테일","sort_order":1},{"id":"pi_009","product_id":"p_003","image":"pants-fabric.webp","alt":"와이드 테일러드 트라우저 소재 클로즈업","sort_order":2},{"id":"pi_010","product_id":"p_004","image":"dress.webp","alt":"사틴 슬립 미디 드레스","sort_order":0},{"id":"pi_011","product_id":"p_004","image":"dress-detail.webp","alt":"사틴 슬립 미디 드레스 디테일","sort_order":1},{"id":"pi_012","product_id":"p_004","image":"dress-fabric.webp","alt":"사틴 슬립 미디 드레스 소재 클로즈업","sort_order":2},{"id":"pi_013","product_id":"p_005","image":"bag.webp","alt":"스무스 레더 숄더백","sort_order":0},{"id":"pi_014","product_id":"p_005","image":"bag-detail.webp","alt":"스무스 레더 숄더백 디테일","sort_order":1},{"id":"pi_015","product_id":"p_005","image":"bag-fabric.webp","alt":"스무스 레더 숄더백 소재 클로즈업","sort_order":2},{"id":"pi_016","product_id":"p_006","image":"jacket.webp","alt":"나일론 봄버 재킷","sort_order":0},{"id":"pi_017","product_id":"p_006","image":"jacket-detail.webp","alt":"나일론 봄버 재킷 디테일","sort_order":1},{"id":"pi_018","product_id":"p_006","image":"jacket-fabric.webp","alt":"나일론 봄버 재킷 소재 클로즈업","sort_order":2},{"id":"pi_019","product_id":"p_007","image":"shirt.webp","alt":"오버사이즈 코튼 셔츠","sort_order":0},{"id":"pi_020","product_id":"p_007","image":"shirt-detail.webp","alt":"오버사이즈 코튼 셔츠 디테일","sort_order":1},{"id":"pi_021","product_id":"p_007","image":"shirt-fabric.webp","alt":"오버사이즈 코튼 셔츠 소재 클로즈업","sort_order":2},{"id":"pi_022","product_id":"p_008","image":"skirt.webp","alt":"플리츠 미디 스커트","sort_order":0},{"id":"pi_023","product_id":"p_008","image":"skirt-detail.webp","alt":"플리츠 미디 스커트 디테일","sort_order":1},{"id":"pi_024","product_id":"p_008","image":"skirt-fabric.webp","alt":"플리츠 미디 스커트 소재 클로즈업","sort_order":2},{"id":"pi_025","product_id":"p_009","image":"trench.webp","alt":"개버딘 트렌치 코트","sort_order":0},{"id":"pi_026","product_id":"p_009","image":"trench-detail.webp","alt":"개버딘 트렌치 코트 디테일","sort_order":1},{"id":"pi_027","product_id":"p_009","image":"trench-fabric.webp","alt":"개버딘 트렌치 코트 소재 클로즈업","sort_order":2},{"id":"pi_028","product_id":"p_010","image":"cardigan.webp","alt":"울 블렌드 오픈 가디건","sort_order":0},{"id":"pi_029","product_id":"p_010","image":"cardigan-detail.webp","alt":"울 블렌드 오픈 가디건 디테일","sort_order":1},{"id":"pi_030","product_id":"p_010","image":"cardigan-fabric.webp","alt":"울 블렌드 오픈 가디건 소재 클로즈업","sort_order":2},{"id":"pi_031","product_id":"p_011","image":"denim.webp","alt":"와이드 데님 팬츠","sort_order":0},{"id":"pi_032","product_id":"p_011","image":"denim-detail.webp","alt":"와이드 데님 팬츠 디테일","sort_order":1},{"id":"pi_033","product_id":"p_011","image":"denim-fabric.webp","alt":"와이드 데님 팬츠 소재 클로즈업","sort_order":2},{"id":"pi_034","product_id":"p_012","image":"loafers.webp","alt":"레더 페니 로퍼","sort_order":0},{"id":"pi_035","product_id":"p_012","image":"loafers-detail.webp","alt":"레더 페니 로퍼 디테일","sort_order":1},{"id":"pi_036","product_id":"p_012","image":"loafers-fabric.webp","alt":"레더 페니 로퍼 소재 클로즈업","sort_order":2},{"id":"pi_037","product_id":"p_013","image":"dress.webp","alt":"실크 크레이프 미디 원피스","sort_order":0},{"id":"pi_038","product_id":"p_013","image":"dress-detail.webp","alt":"실크 크레이프 미디 원피스 디테일","sort_order":1},{"id":"pi_039","product_id":"p_013","image":"dress-fabric.webp","alt":"실크 크레이프 미디 원피스 소재 클로즈업","sort_order":2}],"product_variants":[{"id":"v_001","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"S","stock":5,"sku":"MA-OUT-001-차콜-S"},{"id":"v_002","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"M","stock":3,"sku":"MA-OUT-001-차콜-M"},{"id":"v_003","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"L","stock":2,"sku":"MA-OUT-001-차콜-L"},{"id":"v_004","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"XL","stock":1,"sku":"MA-OUT-001-차콜-XL"},{"id":"v_005","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"S","stock":4,"sku":"MA-OUT-001-카멜-S"},{"id":"v_006","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"M","stock":6,"sku":"MA-OUT-001-카멜-M"},{"id":"v_007","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"L","stock":3,"sku":"MA-OUT-001-카멜-L"},{"id":"v_008","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"XL","stock":0,"sku":"MA-OUT-001-카멜-XL"},{"id":"v_009","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-001-블랙-S"},{"id":"v_010","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":0,"sku":"MA-OUT-001-블랙-M"},{"id":"v_011","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-OUT-001-블랙-L"},{"id":"v_012","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-OUT-001-블랙-XL"},{"id":"v_013","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"S","stock":8,"sku":"MA-TOP-002-크림-S"},{"id":"v_014","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"M","stock":12,"sku":"MA-TOP-002-크림-M"},{"id":"v_015","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"L","stock":5,"sku":"MA-TOP-002-크림-L"},{"id":"v_016","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"S","stock":3,"sku":"MA-TOP-002-오트-S"},{"id":"v_017","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"M","stock":2,"sku":"MA-TOP-002-오트-M"},{"id":"v_018","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"L","stock":6,"sku":"MA-TOP-002-오트-L"},{"id":"v_019","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"S","stock":4,"sku":"MA-TOP-002-블랙-S"},{"id":"v_020","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"M","stock":1,"sku":"MA-TOP-002-블랙-M"},{"id":"v_021","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"L","stock":0,"sku":"MA-TOP-002-블랙-L"},{"id":"v_022","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":6,"sku":"MA-BTM-003-블랙-S"},{"id":"v_023","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":9,"sku":"MA-BTM-003-블랙-M"},{"id":"v_024","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-BTM-003-블랙-L"},{"id":"v_025","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-BTM-003-블랙-XL"},{"id":"v_026","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":2,"sku":"MA-BTM-003-차콜-S"},{"id":"v_027","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":5,"sku":"MA-BTM-003-차콜-M"},{"id":"v_028","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":7,"sku":"MA-BTM-003-차콜-L"},{"id":"v_029","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"XL","stock":1,"sku":"MA-BTM-003-차콜-XL"},{"id":"v_030","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":3,"sku":"MA-DRS-004-샴페-S"},{"id":"v_031","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":0,"sku":"MA-DRS-004-샴페-M"},{"id":"v_032","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":2,"sku":"MA-DRS-004-샴페-L"},{"id":"v_033","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-DRS-004-블랙-S"},{"id":"v_034","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":5,"sku":"MA-DRS-004-블랙-M"},{"id":"v_035","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-DRS-004-블랙-L"},{"id":"v_036","product_id":"p_005","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":6,"sku":"MA-ACC-005-블랙-FREE"},{"id":"v_037","product_id":"p_005","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":2,"sku":"MA-ACC-005-다크-FREE"},{"id":"v_038","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"M","stock":5,"sku":"MA-OUT-006-올리-M"},{"id":"v_039","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"L","stock":4,"sku":"MA-OUT-006-올리-L"},{"id":"v_040","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"XL","stock":2,"sku":"MA-OUT-006-올리-XL"},{"id":"v_041","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":3,"sku":"MA-OUT-006-블랙-M"},{"id":"v_042","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":0,"sku":"MA-OUT-006-블랙-L"},{"id":"v_043","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":5,"sku":"MA-OUT-006-블랙-XL"},{"id":"v_044","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"M","stock":2,"sku":"MA-OUT-006-샌드-M"},{"id":"v_045","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"L","stock":3,"sku":"MA-OUT-006-샌드-L"},{"id":"v_046","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"XL","stock":1,"sku":"MA-OUT-006-샌드-XL"},{"id":"v_047","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"S","stock":10,"sku":"MA-TOP-007-화이-S"},{"id":"v_048","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"M","stock":14,"sku":"MA-TOP-007-화이-M"},{"id":"v_049","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"L","stock":6,"sku":"MA-TOP-007-화이-L"},{"id":"v_050","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"S","stock":4,"sku":"MA-TOP-007-스카-S"},{"id":"v_051","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"M","stock":3,"sku":"MA-TOP-007-스카-M"},{"id":"v_052","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"L","stock":2,"sku":"MA-TOP-007-스카-L"},{"id":"v_053","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":5,"sku":"MA-BTM-008-차콜-S"},{"id":"v_054","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":3,"sku":"MA-BTM-008-차콜-M"},{"id":"v_055","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":2,"sku":"MA-BTM-008-차콜-L"},{"id":"v_056","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-BTM-008-블랙-S"},{"id":"v_057","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":6,"sku":"MA-BTM-008-블랙-M"},{"id":"v_058","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":1,"sku":"MA-BTM-008-블랙-L"},{"id":"v_059","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"S","stock":0,"sku":"MA-OUT-009-베이-S"},{"id":"v_060","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"M","stock":3,"sku":"MA-OUT-009-베이-M"},{"id":"v_061","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"L","stock":4,"sku":"MA-OUT-009-베이-L"},{"id":"v_062","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"XL","stock":2,"sku":"MA-OUT-009-베이-XL"},{"id":"v_063","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-009-블랙-S"},{"id":"v_064","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":4,"sku":"MA-OUT-009-블랙-M"},{"id":"v_065","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-OUT-009-블랙-L"},{"id":"v_066","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":1,"sku":"MA-OUT-009-블랙-XL"},{"id":"v_067","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"S","stock":4,"sku":"MA-TOP-010-그레-S"},{"id":"v_068","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"M","stock":5,"sku":"MA-TOP-010-그레-M"},{"id":"v_069","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"L","stock":3,"sku":"MA-TOP-010-그레-L"},{"id":"v_070","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"S","stock":2,"sku":"MA-TOP-010-아이-S"},{"id":"v_071","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"M","stock":2,"sku":"MA-TOP-010-아이-M"},{"id":"v_072","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"L","stock":4,"sku":"MA-TOP-010-아이-L"},{"id":"v_073","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"S","stock":6,"sku":"MA-BTM-011-미드-S"},{"id":"v_074","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"M","stock":8,"sku":"MA-BTM-011-미드-M"},{"id":"v_075","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"L","stock":5,"sku":"MA-BTM-011-미드-L"},{"id":"v_076","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"XL","stock":3,"sku":"MA-BTM-011-미드-XL"},{"id":"v_077","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"S","stock":3,"sku":"MA-BTM-011-워시-S"},{"id":"v_078","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"M","stock":4,"sku":"MA-BTM-011-워시-M"},{"id":"v_079","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"L","stock":2,"sku":"MA-BTM-011-워시-L"},{"id":"v_080","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"XL","stock":0,"sku":"MA-BTM-011-워시-XL"},{"id":"v_081","product_id":"p_012","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":0,"sku":"MA-ACC-012-블랙-FREE"},{"id":"v_082","product_id":"p_012","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":0,"sku":"MA-ACC-012-다크-FREE"},{"id":"v_083","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":2,"sku":"MA-DRS-013-샴페-S"},{"id":"v_084","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":2,"sku":"MA-DRS-013-샴페-M"},{"id":"v_085","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":1,"sku":"MA-DRS-013-샴페-L"},{"id":"v_086","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":3,"sku":"MA-DRS-013-블랙-S"},{"id":"v_087","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":2,"sku":"MA-DRS-013-블랙-M"},{"id":"v_088","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":2,"sku":"MA-DRS-013-블랙-L"}],"cart_items":[],"orders":[{"id":"o_001","order_no":"MA20261112-4821","user_id":"u_001","status":"delivered","total_amount":278000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-12T10:24:00+09:00"},{"id":"o_002","order_no":"MA20261124-3917","user_id":"u_001","status":"paid","total_amount":173000,"shipping_fee":0,"coupon_code":"MONO5000","discount_amount":5000,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-24T15:40:00+09:00"},{"id":"o_003","order_no":"MA20261125-6042","user_id":"u_001","status":"preparing","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"bank","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-25T09:12:00+09:00"}],"order_items":[{"id":"oi_001","order_id":"o_001","variant_id":"v_008","product_name":"캐시미어 리브 니트","color":"크림","size":"M","unit_price":129000,"quantity":1},{"id":"oi_002","order_id":"o_001","variant_id":"v_012","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1},{"id":"oi_003","order_id":"o_002","variant_id":"v_020","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":2},{"id":"oi_004","order_id":"o_003","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1}],"coupons":[{"id":"c_001","code":"WELCOME10","name":"신규 회원 10% 할인","discount_type":"percent","discount_value":10,"min_order_amount":30000,"expires_at":"2027-12-31T23:59:59+09:00","is_active":true,"target_user_ids":[],"created_at":"2026-11-01T10:00:00+09:00"},{"id":"c_002","code":"MONO5000","name":"5,000원 할인 쿠폰","discount_type":"fixed","discount_value":5000,"min_order_amount":50000,"expires_at":"2027-06-30T23:59:59+09:00","is_active":true,"target_user_ids":[],"created_at":"2026-11-05T10:00:00+09:00"},{"id":"c_003","code":"VIP15","name":"VIP 회원 전용 15% 할인","discount_type":"percent","discount_value":15,"min_order_amount":50000,"expires_at":"2027-03-31T23:59:59+09:00","is_active":true,"target_user_ids":["u_001"],"created_at":"2026-11-20T10:00:00+09:00"}]};
   var EMBEDDED = {};
-  var APP_VERSION = '1.3.0';
+  var APP_VERSION = '1.4.0';
 
   var LS_DB = 'mono_atelier_db_v1';
   var LS_SESSION = 'mono_atelier_session_v1';
@@ -1130,6 +1182,23 @@ table.data.coupons { min-width: 640px; }
   var BADGE_PRESETS = ['BEST', 'NEW', 'SALE', 'LIMITED'];
   var BADGE_CUSTOM_MAX = 16;
   var DB_TABLES = ['users', 'products', 'product_images', 'product_variants', 'cart_items', 'orders', 'order_items', 'coupons'];
+
+  /* --------------------------------------------------- 실제 가시 높이 보정
+     모바일 브라우저(삼성 인터넷·사파리)는 100vh 를 주소창·하단 툴바를 뺀 실제 가시 높이보다
+     크게 계산한다. 그만큼 상세 모달을 하단 정렬하면 상단(닫기·1/3 배지·대표 이미지 머리)이
+     화면 위로 밀려 잘렸다. 실제 가시 높이를 --app-height 로 노출해 CSS 가 그대로 쓰게 한다.
+     window.innerHeight 는 주소창·툴바를 반영하고 소프트 키보드에는 줄지 않아 기준으로 적합하다. */
+  function syncAppHeight() {
+    var h = Math.round(window.innerHeight ||
+                        (window.visualViewport && window.visualViewport.height) || 0);
+    if (h > 0) document.documentElement.style.setProperty('--app-height', h + 'px');
+  }
+  syncAppHeight();
+  window.addEventListener('resize', syncAppHeight);
+  window.addEventListener('orientationchange', function () { setTimeout(syncAppHeight, 150); });
+  if (window.visualViewport && window.visualViewport.addEventListener) {
+    window.visualViewport.addEventListener('resize', syncAppHeight);
+  }
 
   /* ============================================================ 결제 설정
      토스페이먼츠 SDK v2 '결제창형(구 결제위젯)' — 사업자 등록 없이 공개 테스트 키로 연동합니다.
@@ -2767,6 +2836,12 @@ table.data.coupons { min-width: 640px; }
         (sv.stock <= 0 ? ' disabled aria-disabled="true"' : '') + '>' + sv.size + '</button>';
     }).join('');
   }
+  /* 현재 선택 옵션 요약 — 구매 버튼 바로 위에서 한눈에 보이게 한다 */
+  function selectedSummaryHTML(m) {
+    var color = m.color ? '<b>' + esc(m.color) + '</b>' : '<span class="empty">컬러</span>';
+    var size = m.size ? '<b>' + esc(m.size) + '</b>' : '<span class="empty">사이즈</span>';
+    return '선택: ' + color + ' <i>/</i> ' + size + ' <i>·</i> <b class="qty">' + (m.qty || 1) + '개</b>';
+  }
   function productModalHTML() {
     var m = ui.modal;
     var p = productById(m.pid);
@@ -2806,11 +2881,14 @@ table.data.coupons { min-width: 640px; }
           '<p class="pm-desc">' + esc(p.description) + '</p>' +
           '<div class="pm-divider"></div>' +
           '<div class="opt-group">' +
-            '<div class="opt-label"><span>컬러</span><b data-hook="color-name">' + esc(m.color || '선택') + '</b></div>' +
+            '<div class="opt-label"><span>컬러</span><b data-hook="color-name" data-selected="' + (m.color ? 'true' : 'false') + '">' + esc(m.color || '선택') + '</b></div>' +
             '<div class="chips" data-hook="chips">' + colorChipsHTML(p, m) + '</div>' +
           '</div>' +
           '<div class="opt-group" style="margin-top:20px">' +
-            '<div class="opt-label"><span>사이즈</span><span class="stock-hint' + hint.cls + '" data-hook="stock" aria-live="polite">' + hint.text + '</span></div>' +
+            '<div class="opt-label"><span>사이즈</span><span class="opt-right">' +
+              '<span class="stock-hint' + hint.cls + '" data-hook="stock" aria-live="polite">' + hint.text + '</span>' +
+              '<b data-hook="size-name" data-selected="' + (m.size ? 'true' : 'false') + '">' + esc(m.size || '선택') + '</b>' +
+            '</span></div>' +
             '<div class="sizes" data-hook="sizes">' + sizesHTML(p, m) + '</div>' +
           '</div>' +
           '<div class="pm-qty-row">' +
@@ -2821,9 +2899,12 @@ table.data.coupons { min-width: 640px; }
             '</div>' +
             '<div class="qty-total">총 상품금액<b data-hook="total">' + won(p.price * m.qty) + '</b></div>' +
           '</div>' +
-          '<div class="pm-actions">' +
-            '<button class="btn ghost" data-action="add-cart"' + (soldout ? ' disabled' : '') + '>장바구니 담기</button>' +
-            '<button class="btn" data-action="buy-now"' + (soldout ? ' disabled' : '') + '>바로 구매</button>' +
+          '<div class="pm-buybar">' +
+            '<div class="pm-selected" data-hook="selected-summary" aria-live="polite">' + selectedSummaryHTML(m) + '</div>' +
+            '<div class="pm-actions">' +
+              '<button class="btn ghost" data-action="add-cart"' + (soldout ? ' disabled' : '') + '>장바구니 담기</button>' +
+              '<button class="btn" data-action="buy-now"' + (soldout ? ' disabled' : '') + '>바로 구매</button>' +
+            '</div>' +
           '</div>' +
           '<div class="pm-shipnote" data-hook="shipnote"><b>' + esc(shipLabel) + '</b>' +
             (th === 0 ? ' · 이 상품은 배송비가 없습니다' : ' · 미만 3,000원') + ' · 평일 오후 2시 이전 결제 시 당일 출고</div>' +
@@ -2868,7 +2949,15 @@ table.data.coupons { min-width: 640px; }
       chip.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
     var nameEl = $('[data-hook=color-name]', root);
-    if (nameEl) nameEl.textContent = m.color || '선택';
+    if (nameEl) {
+      nameEl.textContent = m.color || '선택';
+      nameEl.setAttribute('data-selected', m.color ? 'true' : 'false');
+    }
+    var sizeNameEl = $('[data-hook=size-name]', root);
+    if (sizeNameEl) {
+      sizeNameEl.textContent = m.size || '선택';
+      sizeNameEl.setAttribute('data-selected', m.size ? 'true' : 'false');
+    }
     var sizesEl = $('[data-hook=sizes]', root);
     if (sizesEl) sizesEl.innerHTML = sizesHTML(p, m);
     var hint = stockHintOf(p, m);
@@ -2878,6 +2967,8 @@ table.data.coupons { min-width: 640px; }
     if (qtyEl) qtyEl.textContent = m.qty;
     var totalEl = $('[data-hook=total]', root);
     if (totalEl) totalEl.textContent = won(p.price * m.qty);
+    var summaryEl = $('[data-hook=selected-summary]', root);
+    if (summaryEl) summaryEl.innerHTML = selectedSummaryHTML(m);
   }
 
   /* ------------------------------------------------------------ cart drawer */
