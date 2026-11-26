@@ -1,0 +1,1082 @@
+{
+  "meta": {
+    "app": "MONO ATELIER",
+    "schema_version": 1,
+    "generated_at": "2026-11-26T18:55:00+09:00",
+    "currency": "KRW",
+    "free_shipping_threshold": 100000,
+    "shipping_fee": 3000,
+    "password_hashing": "sha256('mono-atelier$' + password) — demo only"
+  },
+  "users": [
+    {
+      "id": "u_001",
+      "email": "demo@mono.kr",
+      "password_hash": "3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb",
+      "name": "홍길동",
+      "phone": "010-0000-0000",
+      "address": "서울특별시 송파구 올림픽로 300 101동 1001호",
+      "role": "customer",
+      "created_at": "2026-11-09T10:42:00+09:00"
+    },
+    {
+      "id": "u_002",
+      "email": "admin@mono.kr",
+      "password_hash": "b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1",
+      "name": "관리자",
+      "phone": "02-1544-0000",
+      "address": "서울특별시 중구 세종대로 110 3층",
+      "role": "admin",
+      "created_at": "2026-10-01T09:00:00+09:00"
+    }
+  ],
+  "products": [
+    {
+      "id": "p_001",
+      "name": "울 더블 브레스티드 코트",
+      "brand": "MONO ATELIER",
+      "category": "outer",
+      "price": 289000,
+      "original_price": 349000,
+      "badge": "BEST",
+      "description": "두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.",
+      "image": "coat.webp",
+      "created_at": "2026-11-10T09:20:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_002",
+      "name": "캐시미어 리브 니트",
+      "brand": "MONO ATELIER",
+      "category": "top",
+      "price": 129000,
+      "original_price": 159000,
+      "badge": "NEW",
+      "description": "캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.",
+      "image": "knit.webp",
+      "created_at": "2026-11-18T11:05:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_003",
+      "name": "와이드 테일러드 트라우저",
+      "brand": "MONO ATELIER",
+      "category": "bottom",
+      "price": 149000,
+      "original_price": null,
+      "badge": null,
+      "description": "허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.",
+      "image": "pants.webp",
+      "created_at": "2026-10-25T16:30:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_004",
+      "name": "사틴 슬립 미디 드레스",
+      "brand": "MONO ATELIER",
+      "category": "dress",
+      "price": 189000,
+      "original_price": 220000,
+      "badge": "SALE",
+      "description": "빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.",
+      "image": "dress.webp",
+      "created_at": "2026-11-02T13:10:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_005",
+      "name": "스무스 레더 숄더백",
+      "brand": "MONO ATELIER",
+      "category": "acc",
+      "price": 259000,
+      "original_price": null,
+      "badge": "BEST",
+      "description": "이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.",
+      "image": "bag.webp",
+      "created_at": "2026-11-08T10:00:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_006",
+      "name": "나일론 봄버 재킷",
+      "brand": "MONO ATELIER",
+      "category": "outer",
+      "price": 179000,
+      "original_price": 210000,
+      "badge": "NEW",
+      "description": "가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.",
+      "image": "jacket.webp",
+      "created_at": "2026-11-20T09:45:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_007",
+      "name": "오버사이즈 코튼 셔츠",
+      "brand": "MONO ATELIER",
+      "category": "top",
+      "price": 89000,
+      "original_price": null,
+      "badge": null,
+      "description": "두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.",
+      "image": "shirt.webp",
+      "created_at": "2026-10-28T15:20:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_008",
+      "name": "플리츠 미디 스커트",
+      "brand": "MONO ATELIER",
+      "category": "bottom",
+      "price": 139000,
+      "original_price": 168000,
+      "badge": "SALE",
+      "description": "곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.",
+      "image": "skirt.webp",
+      "created_at": "2026-10-20T12:00:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_009",
+      "name": "개버딘 트렌치 코트",
+      "brand": "MONO ATELIER",
+      "category": "outer",
+      "price": 319000,
+      "original_price": 369000,
+      "badge": "BEST",
+      "description": "묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.",
+      "image": "trench.webp",
+      "created_at": "2026-11-15T10:30:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_010",
+      "name": "울 블렌드 오픈 가디건",
+      "brand": "MONO ATELIER",
+      "category": "top",
+      "price": 119000,
+      "original_price": null,
+      "badge": null,
+      "description": "울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.",
+      "image": "cardigan.webp",
+      "created_at": "2026-10-15T09:10:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_011",
+      "name": "와이드 데님 팬츠",
+      "brand": "MONO ATELIER",
+      "category": "bottom",
+      "price": 109000,
+      "original_price": 129000,
+      "badge": "NEW",
+      "description": "워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.",
+      "image": "denim.webp",
+      "created_at": "2026-11-23T14:00:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_012",
+      "name": "레더 페니 로퍼",
+      "brand": "MONO ATELIER",
+      "category": "acc",
+      "price": 219000,
+      "original_price": 249000,
+      "badge": null,
+      "description": "블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.",
+      "image": "loafers.webp",
+      "created_at": "2026-11-05T11:40:00+09:00",
+      "is_active": true
+    },
+    {
+      "id": "p_013",
+      "name": "실크 크레이프 미디 원피스",
+      "brand": "MONO ATELIER",
+      "category": "dress",
+      "price": 209000,
+      "original_price": null,
+      "badge": null,
+      "description": "실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)",
+      "image": "dress.webp",
+      "created_at": "2026-11-25T17:30:00+09:00",
+      "is_active": false
+    }
+  ],
+  "product_variants": [
+    {
+      "id": "v_001",
+      "product_id": "p_001",
+      "color": "차콜",
+      "color_hex": "#35353A",
+      "size": "S",
+      "stock": 5,
+      "sku": "MA-OUT-001-차콜-S"
+    },
+    {
+      "id": "v_002",
+      "product_id": "p_001",
+      "color": "차콜",
+      "color_hex": "#35353A",
+      "size": "M",
+      "stock": 3,
+      "sku": "MA-OUT-001-차콜-M"
+    },
+    {
+      "id": "v_003",
+      "product_id": "p_001",
+      "color": "차콜",
+      "color_hex": "#35353A",
+      "size": "L",
+      "stock": 2,
+      "sku": "MA-OUT-001-차콜-L"
+    },
+    {
+      "id": "v_004",
+      "product_id": "p_001",
+      "color": "차콜",
+      "color_hex": "#35353A",
+      "size": "XL",
+      "stock": 1,
+      "sku": "MA-OUT-001-차콜-XL"
+    },
+    {
+      "id": "v_005",
+      "product_id": "p_001",
+      "color": "카멜",
+      "color_hex": "#B08A5E",
+      "size": "S",
+      "stock": 4,
+      "sku": "MA-OUT-001-카멜-S"
+    },
+    {
+      "id": "v_006",
+      "product_id": "p_001",
+      "color": "카멜",
+      "color_hex": "#B08A5E",
+      "size": "M",
+      "stock": 6,
+      "sku": "MA-OUT-001-카멜-M"
+    },
+    {
+      "id": "v_007",
+      "product_id": "p_001",
+      "color": "카멜",
+      "color_hex": "#B08A5E",
+      "size": "L",
+      "stock": 3,
+      "sku": "MA-OUT-001-카멜-L"
+    },
+    {
+      "id": "v_008",
+      "product_id": "p_001",
+      "color": "카멜",
+      "color_hex": "#B08A5E",
+      "size": "XL",
+      "stock": 0,
+      "sku": "MA-OUT-001-카멜-XL"
+    },
+    {
+      "id": "v_009",
+      "product_id": "p_001",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "S",
+      "stock": 2,
+      "sku": "MA-OUT-001-블랙-S"
+    },
+    {
+      "id": "v_010",
+      "product_id": "p_001",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "M",
+      "stock": 0,
+      "sku": "MA-OUT-001-블랙-M"
+    },
+    {
+      "id": "v_011",
+      "product_id": "p_001",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "L",
+      "stock": 4,
+      "sku": "MA-OUT-001-블랙-L"
+    },
+    {
+      "id": "v_012",
+      "product_id": "p_001",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "XL",
+      "stock": 2,
+      "sku": "MA-OUT-001-블랙-XL"
+    },
+    {
+      "id": "v_013",
+      "product_id": "p_002",
+      "color": "크림",
+      "color_hex": "#EFE7D9",
+      "size": "S",
+      "stock": 8,
+      "sku": "MA-TOP-002-크림-S"
+    },
+    {
+      "id": "v_014",
+      "product_id": "p_002",
+      "color": "크림",
+      "color_hex": "#EFE7D9",
+      "size": "M",
+      "stock": 12,
+      "sku": "MA-TOP-002-크림-M"
+    },
+    {
+      "id": "v_015",
+      "product_id": "p_002",
+      "color": "크림",
+      "color_hex": "#EFE7D9",
+      "size": "L",
+      "stock": 5,
+      "sku": "MA-TOP-002-크림-L"
+    },
+    {
+      "id": "v_016",
+      "product_id": "p_002",
+      "color": "오트밀",
+      "color_hex": "#D9CBB5",
+      "size": "S",
+      "stock": 3,
+      "sku": "MA-TOP-002-오트-S"
+    },
+    {
+      "id": "v_017",
+      "product_id": "p_002",
+      "color": "오트밀",
+      "color_hex": "#D9CBB5",
+      "size": "M",
+      "stock": 2,
+      "sku": "MA-TOP-002-오트-M"
+    },
+    {
+      "id": "v_018",
+      "product_id": "p_002",
+      "color": "오트밀",
+      "color_hex": "#D9CBB5",
+      "size": "L",
+      "stock": 6,
+      "sku": "MA-TOP-002-오트-L"
+    },
+    {
+      "id": "v_019",
+      "product_id": "p_002",
+      "color": "블랙",
+      "color_hex": "#262626",
+      "size": "S",
+      "stock": 4,
+      "sku": "MA-TOP-002-블랙-S"
+    },
+    {
+      "id": "v_020",
+      "product_id": "p_002",
+      "color": "블랙",
+      "color_hex": "#262626",
+      "size": "M",
+      "stock": 1,
+      "sku": "MA-TOP-002-블랙-M"
+    },
+    {
+      "id": "v_021",
+      "product_id": "p_002",
+      "color": "블랙",
+      "color_hex": "#262626",
+      "size": "L",
+      "stock": 0,
+      "sku": "MA-TOP-002-블랙-L"
+    },
+    {
+      "id": "v_022",
+      "product_id": "p_003",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "S",
+      "stock": 6,
+      "sku": "MA-BTM-003-블랙-S"
+    },
+    {
+      "id": "v_023",
+      "product_id": "p_003",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "M",
+      "stock": 9,
+      "sku": "MA-BTM-003-블랙-M"
+    },
+    {
+      "id": "v_024",
+      "product_id": "p_003",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "L",
+      "stock": 4,
+      "sku": "MA-BTM-003-블랙-L"
+    },
+    {
+      "id": "v_025",
+      "product_id": "p_003",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "XL",
+      "stock": 2,
+      "sku": "MA-BTM-003-블랙-XL"
+    },
+    {
+      "id": "v_026",
+      "product_id": "p_003",
+      "color": "차콜",
+      "color_hex": "#3B3B3F",
+      "size": "S",
+      "stock": 2,
+      "sku": "MA-BTM-003-차콜-S"
+    },
+    {
+      "id": "v_027",
+      "product_id": "p_003",
+      "color": "차콜",
+      "color_hex": "#3B3B3F",
+      "size": "M",
+      "stock": 5,
+      "sku": "MA-BTM-003-차콜-M"
+    },
+    {
+      "id": "v_028",
+      "product_id": "p_003",
+      "color": "차콜",
+      "color_hex": "#3B3B3F",
+      "size": "L",
+      "stock": 7,
+      "sku": "MA-BTM-003-차콜-L"
+    },
+    {
+      "id": "v_029",
+      "product_id": "p_003",
+      "color": "차콜",
+      "color_hex": "#3B3B3F",
+      "size": "XL",
+      "stock": 1,
+      "sku": "MA-BTM-003-차콜-XL"
+    },
+    {
+      "id": "v_030",
+      "product_id": "p_004",
+      "color": "샴페인",
+      "color_hex": "#D9C3A8",
+      "size": "S",
+      "stock": 3,
+      "sku": "MA-DRS-004-샴페-S"
+    },
+    {
+      "id": "v_031",
+      "product_id": "p_004",
+      "color": "샴페인",
+      "color_hex": "#D9C3A8",
+      "size": "M",
+      "stock": 0,
+      "sku": "MA-DRS-004-샴페-M"
+    },
+    {
+      "id": "v_032",
+      "product_id": "p_004",
+      "color": "샴페인",
+      "color_hex": "#D9C3A8",
+      "size": "L",
+      "stock": 2,
+      "sku": "MA-DRS-004-샴페-L"
+    },
+    {
+      "id": "v_033",
+      "product_id": "p_004",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "S",
+      "stock": 4,
+      "sku": "MA-DRS-004-블랙-S"
+    },
+    {
+      "id": "v_034",
+      "product_id": "p_004",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "M",
+      "stock": 5,
+      "sku": "MA-DRS-004-블랙-M"
+    },
+    {
+      "id": "v_035",
+      "product_id": "p_004",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "L",
+      "stock": 3,
+      "sku": "MA-DRS-004-블랙-L"
+    },
+    {
+      "id": "v_036",
+      "product_id": "p_005",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "FREE",
+      "stock": 6,
+      "sku": "MA-ACC-005-블랙-FREE"
+    },
+    {
+      "id": "v_037",
+      "product_id": "p_005",
+      "color": "다크브라운",
+      "color_hex": "#4A3628",
+      "size": "FREE",
+      "stock": 2,
+      "sku": "MA-ACC-005-다크-FREE"
+    },
+    {
+      "id": "v_038",
+      "product_id": "p_006",
+      "color": "올리브",
+      "color_hex": "#5A6247",
+      "size": "M",
+      "stock": 5,
+      "sku": "MA-OUT-006-올리-M"
+    },
+    {
+      "id": "v_039",
+      "product_id": "p_006",
+      "color": "올리브",
+      "color_hex": "#5A6247",
+      "size": "L",
+      "stock": 4,
+      "sku": "MA-OUT-006-올리-L"
+    },
+    {
+      "id": "v_040",
+      "product_id": "p_006",
+      "color": "올리브",
+      "color_hex": "#5A6247",
+      "size": "XL",
+      "stock": 2,
+      "sku": "MA-OUT-006-올리-XL"
+    },
+    {
+      "id": "v_041",
+      "product_id": "p_006",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "M",
+      "stock": 3,
+      "sku": "MA-OUT-006-블랙-M"
+    },
+    {
+      "id": "v_042",
+      "product_id": "p_006",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "L",
+      "stock": 0,
+      "sku": "MA-OUT-006-블랙-L"
+    },
+    {
+      "id": "v_043",
+      "product_id": "p_006",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "XL",
+      "stock": 5,
+      "sku": "MA-OUT-006-블랙-XL"
+    },
+    {
+      "id": "v_044",
+      "product_id": "p_006",
+      "color": "샌드",
+      "color_hex": "#C9B79C",
+      "size": "M",
+      "stock": 2,
+      "sku": "MA-OUT-006-샌드-M"
+    },
+    {
+      "id": "v_045",
+      "product_id": "p_006",
+      "color": "샌드",
+      "color_hex": "#C9B79C",
+      "size": "L",
+      "stock": 3,
+      "sku": "MA-OUT-006-샌드-L"
+    },
+    {
+      "id": "v_046",
+      "product_id": "p_006",
+      "color": "샌드",
+      "color_hex": "#C9B79C",
+      "size": "XL",
+      "stock": 1,
+      "sku": "MA-OUT-006-샌드-XL"
+    },
+    {
+      "id": "v_047",
+      "product_id": "p_007",
+      "color": "화이트",
+      "color_hex": "#F7F5F0",
+      "size": "S",
+      "stock": 10,
+      "sku": "MA-TOP-007-화이-S"
+    },
+    {
+      "id": "v_048",
+      "product_id": "p_007",
+      "color": "화이트",
+      "color_hex": "#F7F5F0",
+      "size": "M",
+      "stock": 14,
+      "sku": "MA-TOP-007-화이-M"
+    },
+    {
+      "id": "v_049",
+      "product_id": "p_007",
+      "color": "화이트",
+      "color_hex": "#F7F5F0",
+      "size": "L",
+      "stock": 6,
+      "sku": "MA-TOP-007-화이-L"
+    },
+    {
+      "id": "v_050",
+      "product_id": "p_007",
+      "color": "스카이",
+      "color_hex": "#C9D8E4",
+      "size": "S",
+      "stock": 4,
+      "sku": "MA-TOP-007-스카-S"
+    },
+    {
+      "id": "v_051",
+      "product_id": "p_007",
+      "color": "스카이",
+      "color_hex": "#C9D8E4",
+      "size": "M",
+      "stock": 3,
+      "sku": "MA-TOP-007-스카-M"
+    },
+    {
+      "id": "v_052",
+      "product_id": "p_007",
+      "color": "스카이",
+      "color_hex": "#C9D8E4",
+      "size": "L",
+      "stock": 2,
+      "sku": "MA-TOP-007-스카-L"
+    },
+    {
+      "id": "v_053",
+      "product_id": "p_008",
+      "color": "차콜",
+      "color_hex": "#3B3B3F",
+      "size": "S",
+      "stock": 5,
+      "sku": "MA-BTM-008-차콜-S"
+    },
+    {
+      "id": "v_054",
+      "product_id": "p_008",
+      "color": "차콜",
+      "color_hex": "#3B3B3F",
+      "size": "M",
+      "stock": 3,
+      "sku": "MA-BTM-008-차콜-M"
+    },
+    {
+      "id": "v_055",
+      "product_id": "p_008",
+      "color": "차콜",
+      "color_hex": "#3B3B3F",
+      "size": "L",
+      "stock": 2,
+      "sku": "MA-BTM-008-차콜-L"
+    },
+    {
+      "id": "v_056",
+      "product_id": "p_008",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "S",
+      "stock": 4,
+      "sku": "MA-BTM-008-블랙-S"
+    },
+    {
+      "id": "v_057",
+      "product_id": "p_008",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "M",
+      "stock": 6,
+      "sku": "MA-BTM-008-블랙-M"
+    },
+    {
+      "id": "v_058",
+      "product_id": "p_008",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "L",
+      "stock": 1,
+      "sku": "MA-BTM-008-블랙-L"
+    },
+    {
+      "id": "v_059",
+      "product_id": "p_009",
+      "color": "베이지",
+      "color_hex": "#C9B48F",
+      "size": "S",
+      "stock": 0,
+      "sku": "MA-OUT-009-베이-S"
+    },
+    {
+      "id": "v_060",
+      "product_id": "p_009",
+      "color": "베이지",
+      "color_hex": "#C9B48F",
+      "size": "M",
+      "stock": 3,
+      "sku": "MA-OUT-009-베이-M"
+    },
+    {
+      "id": "v_061",
+      "product_id": "p_009",
+      "color": "베이지",
+      "color_hex": "#C9B48F",
+      "size": "L",
+      "stock": 4,
+      "sku": "MA-OUT-009-베이-L"
+    },
+    {
+      "id": "v_062",
+      "product_id": "p_009",
+      "color": "베이지",
+      "color_hex": "#C9B48F",
+      "size": "XL",
+      "stock": 2,
+      "sku": "MA-OUT-009-베이-XL"
+    },
+    {
+      "id": "v_063",
+      "product_id": "p_009",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "S",
+      "stock": 2,
+      "sku": "MA-OUT-009-블랙-S"
+    },
+    {
+      "id": "v_064",
+      "product_id": "p_009",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "M",
+      "stock": 4,
+      "sku": "MA-OUT-009-블랙-M"
+    },
+    {
+      "id": "v_065",
+      "product_id": "p_009",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "L",
+      "stock": 3,
+      "sku": "MA-OUT-009-블랙-L"
+    },
+    {
+      "id": "v_066",
+      "product_id": "p_009",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "XL",
+      "stock": 1,
+      "sku": "MA-OUT-009-블랙-XL"
+    },
+    {
+      "id": "v_067",
+      "product_id": "p_010",
+      "color": "그레이",
+      "color_hex": "#B9B7B1",
+      "size": "S",
+      "stock": 4,
+      "sku": "MA-TOP-010-그레-S"
+    },
+    {
+      "id": "v_068",
+      "product_id": "p_010",
+      "color": "그레이",
+      "color_hex": "#B9B7B1",
+      "size": "M",
+      "stock": 5,
+      "sku": "MA-TOP-010-그레-M"
+    },
+    {
+      "id": "v_069",
+      "product_id": "p_010",
+      "color": "그레이",
+      "color_hex": "#B9B7B1",
+      "size": "L",
+      "stock": 3,
+      "sku": "MA-TOP-010-그레-L"
+    },
+    {
+      "id": "v_070",
+      "product_id": "p_010",
+      "color": "아이보리",
+      "color_hex": "#EEE8DA",
+      "size": "S",
+      "stock": 2,
+      "sku": "MA-TOP-010-아이-S"
+    },
+    {
+      "id": "v_071",
+      "product_id": "p_010",
+      "color": "아이보리",
+      "color_hex": "#EEE8DA",
+      "size": "M",
+      "stock": 2,
+      "sku": "MA-TOP-010-아이-M"
+    },
+    {
+      "id": "v_072",
+      "product_id": "p_010",
+      "color": "아이보리",
+      "color_hex": "#EEE8DA",
+      "size": "L",
+      "stock": 4,
+      "sku": "MA-TOP-010-아이-L"
+    },
+    {
+      "id": "v_073",
+      "product_id": "p_011",
+      "color": "미드블루",
+      "color_hex": "#5C7CA6",
+      "size": "S",
+      "stock": 6,
+      "sku": "MA-BTM-011-미드-S"
+    },
+    {
+      "id": "v_074",
+      "product_id": "p_011",
+      "color": "미드블루",
+      "color_hex": "#5C7CA6",
+      "size": "M",
+      "stock": 8,
+      "sku": "MA-BTM-011-미드-M"
+    },
+    {
+      "id": "v_075",
+      "product_id": "p_011",
+      "color": "미드블루",
+      "color_hex": "#5C7CA6",
+      "size": "L",
+      "stock": 5,
+      "sku": "MA-BTM-011-미드-L"
+    },
+    {
+      "id": "v_076",
+      "product_id": "p_011",
+      "color": "미드블루",
+      "color_hex": "#5C7CA6",
+      "size": "XL",
+      "stock": 3,
+      "sku": "MA-BTM-011-미드-XL"
+    },
+    {
+      "id": "v_077",
+      "product_id": "p_011",
+      "color": "워시드 블랙",
+      "color_hex": "#3A3A3E",
+      "size": "S",
+      "stock": 3,
+      "sku": "MA-BTM-011-워시-S"
+    },
+    {
+      "id": "v_078",
+      "product_id": "p_011",
+      "color": "워시드 블랙",
+      "color_hex": "#3A3A3E",
+      "size": "M",
+      "stock": 4,
+      "sku": "MA-BTM-011-워시-M"
+    },
+    {
+      "id": "v_079",
+      "product_id": "p_011",
+      "color": "워시드 블랙",
+      "color_hex": "#3A3A3E",
+      "size": "L",
+      "stock": 2,
+      "sku": "MA-BTM-011-워시-L"
+    },
+    {
+      "id": "v_080",
+      "product_id": "p_011",
+      "color": "워시드 블랙",
+      "color_hex": "#3A3A3E",
+      "size": "XL",
+      "stock": 0,
+      "sku": "MA-BTM-011-워시-XL"
+    },
+    {
+      "id": "v_081",
+      "product_id": "p_012",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "FREE",
+      "stock": 0,
+      "sku": "MA-ACC-012-블랙-FREE"
+    },
+    {
+      "id": "v_082",
+      "product_id": "p_012",
+      "color": "다크브라운",
+      "color_hex": "#4A3628",
+      "size": "FREE",
+      "stock": 0,
+      "sku": "MA-ACC-012-다크-FREE"
+    },
+    {
+      "id": "v_083",
+      "product_id": "p_013",
+      "color": "샴페인",
+      "color_hex": "#D9C3A8",
+      "size": "S",
+      "stock": 2,
+      "sku": "MA-DRS-013-샴페-S"
+    },
+    {
+      "id": "v_084",
+      "product_id": "p_013",
+      "color": "샴페인",
+      "color_hex": "#D9C3A8",
+      "size": "M",
+      "stock": 2,
+      "sku": "MA-DRS-013-샴페-M"
+    },
+    {
+      "id": "v_085",
+      "product_id": "p_013",
+      "color": "샴페인",
+      "color_hex": "#D9C3A8",
+      "size": "L",
+      "stock": 1,
+      "sku": "MA-DRS-013-샴페-L"
+    },
+    {
+      "id": "v_086",
+      "product_id": "p_013",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "S",
+      "stock": 3,
+      "sku": "MA-DRS-013-블랙-S"
+    },
+    {
+      "id": "v_087",
+      "product_id": "p_013",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "M",
+      "stock": 2,
+      "sku": "MA-DRS-013-블랙-M"
+    },
+    {
+      "id": "v_088",
+      "product_id": "p_013",
+      "color": "블랙",
+      "color_hex": "#1B1B1D",
+      "size": "L",
+      "stock": 2,
+      "sku": "MA-DRS-013-블랙-L"
+    }
+  ],
+  "cart_items": [],
+  "orders": [
+    {
+      "id": "o_001",
+      "order_no": "MA20261112-4821",
+      "user_id": "u_001",
+      "status": "delivered",
+      "total_amount": 278000,
+      "shipping_fee": 0,
+      "recipient_name": "홍길동",
+      "recipient_phone": "010-0000-0000",
+      "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1001호",
+      "payment_method": "card",
+      "created_at": "2026-11-12T10:24:00+09:00"
+    },
+    {
+      "id": "o_002",
+      "order_no": "MA20261124-3917",
+      "user_id": "u_001",
+      "status": "paid",
+      "total_amount": 178000,
+      "shipping_fee": 0,
+      "recipient_name": "홍길동",
+      "recipient_phone": "010-0000-0000",
+      "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1001호",
+      "payment_method": "easypay",
+      "created_at": "2026-11-24T15:40:00+09:00"
+    },
+    {
+      "id": "o_003",
+      "order_no": "MA20261125-6042",
+      "user_id": "u_001",
+      "status": "preparing",
+      "total_amount": 289000,
+      "shipping_fee": 0,
+      "recipient_name": "홍길동",
+      "recipient_phone": "010-0000-0000",
+      "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1001호",
+      "payment_method": "bank",
+      "created_at": "2026-11-25T09:12:00+09:00"
+    }
+  ],
+  "order_items": [
+    {
+      "id": "oi_001",
+      "order_id": "o_001",
+      "variant_id": "v_008",
+      "product_name": "캐시미어 리브 니트",
+      "color": "크림",
+      "size": "M",
+      "unit_price": 129000,
+      "quantity": 1
+    },
+    {
+      "id": "oi_002",
+      "order_id": "o_001",
+      "variant_id": "v_012",
+      "product_name": "와이드 테일러드 트라우저",
+      "color": "블랙",
+      "size": "M",
+      "unit_price": 149000,
+      "quantity": 1
+    },
+    {
+      "id": "oi_003",
+      "order_id": "o_002",
+      "variant_id": "v_020",
+      "product_name": "오버사이즈 코튼 셔츠",
+      "color": "화이트",
+      "size": "S",
+      "unit_price": 89000,
+      "quantity": 2
+    },
+    {
+      "id": "oi_004",
+      "order_id": "o_003",
+      "variant_id": "v_001",
+      "product_name": "울 더블 브레스티드 코트",
+      "color": "차콜",
+      "size": "S",
+      "unit_price": 289000,
+      "quantity": 1
+    }
+  ]
+}
