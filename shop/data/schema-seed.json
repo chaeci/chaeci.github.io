@@ -1,8 +1,8 @@
 {
   "meta": {
     "app": "MONO ATELIER",
-    "schema_version": 6,
-    "generated_at": "2026-11-26T23:10:00+09:00",
+    "schema_version": 7,
+    "generated_at": "2026-11-27T08:20:00+09:00",
     "grades": [
       "NORMAL",
       "SILVER",
@@ -80,6 +80,7 @@
   "products": [
     {
       "id": "p_001",
+      "product_code": "MA-0001",
       "name": "울 더블 브레스티드 코트",
       "brand": "MONO ATELIER",
       "category": "outer",
@@ -100,6 +101,7 @@
     },
     {
       "id": "p_002",
+      "product_code": "MA-0002",
       "name": "캐시미어 리브 니트",
       "brand": "MONO ATELIER",
       "category": "top",
@@ -120,6 +122,7 @@
     },
     {
       "id": "p_003",
+      "product_code": "MA-0003",
       "name": "와이드 테일러드 트라우저",
       "brand": "MONO ATELIER",
       "category": "bottom",
@@ -140,6 +143,7 @@
     },
     {
       "id": "p_004",
+      "product_code": "MA-0004",
       "name": "사틴 슬립 미디 드레스",
       "brand": "MONO ATELIER",
       "category": "dress",
@@ -160,6 +164,7 @@
     },
     {
       "id": "p_005",
+      "product_code": "MA-0005",
       "name": "스무스 레더 숄더백",
       "brand": "MONO ATELIER",
       "category": "acc",
@@ -180,6 +185,7 @@
     },
     {
       "id": "p_006",
+      "product_code": "MA-0006",
       "name": "나일론 봄버 재킷",
       "brand": "MONO ATELIER",
       "category": "outer",
@@ -200,6 +206,7 @@
     },
     {
       "id": "p_007",
+      "product_code": "MA-0007",
       "name": "오버사이즈 코튼 셔츠",
       "brand": "MONO ATELIER",
       "category": "top",
@@ -220,6 +227,7 @@
     },
     {
       "id": "p_008",
+      "product_code": "MA-0008",
       "name": "플리츠 미디 스커트",
       "brand": "MONO ATELIER",
       "category": "bottom",
@@ -240,6 +248,7 @@
     },
     {
       "id": "p_009",
+      "product_code": "MA-0009",
       "name": "개버딘 트렌치 코트",
       "brand": "MONO ATELIER",
       "category": "outer",
@@ -260,6 +269,7 @@
     },
     {
       "id": "p_010",
+      "product_code": "MA-0010",
       "name": "울 블렌드 오픈 가디건",
       "brand": "MONO ATELIER",
       "category": "top",
@@ -280,6 +290,7 @@
     },
     {
       "id": "p_011",
+      "product_code": "MA-0011",
       "name": "와이드 데님 팬츠",
       "brand": "MONO ATELIER",
       "category": "bottom",
@@ -300,6 +311,7 @@
     },
     {
       "id": "p_012",
+      "product_code": "MA-0012",
       "name": "레더 페니 로퍼",
       "brand": "MONO ATELIER",
       "category": "acc",
@@ -320,6 +332,7 @@
     },
     {
       "id": "p_013",
+      "product_code": "MA-0013",
       "name": "실크 크레이프 미디 원피스",
       "brand": "MONO ATELIER",
       "category": "dress",
@@ -1640,6 +1653,52 @@
       ],
       "target_grades": [],
       "created_at": "2026-11-20T10:00:00+09:00"
+    }
+  ],
+  "site_settings": {
+    "id": "default",
+    "hero_image": "hero.webp",
+    "hero_eyebrow": "FALL / WINTER 2026 — THE QUIET COLLECTION",
+    "hero_title": "Quiet luxury,\nfor every day.",
+    "hero_subtitle": "매일 손이 가는 단정한 실루엣.\n좋은 소재만 골라 만든 모노 아뜰리에의 가을·겨울.",
+    "hero_cta_label": "컬렉션 보기",
+    "hero_cta2_label": "브랜드 스토리",
+    "hero_effect": "zoom",
+    "hero_overlay": 42,
+    "brand_blurb": "단정한 실루엣, 좋은 소재. 서울에서 만드는 모던 컨템포러리 브랜드입니다.",
+    "company_name": "모노 아뜰리에",
+    "company_ceo": "홍길동",
+    "company_reg_no": "000-00-00000",
+    "company_mail_order_no": "제2026-서울송파-0000호",
+    "company_address": "서울특별시 송파구 올림픽로 300 101동 1203호",
+    "company_phone": "02-0000-0000",
+    "company_email": "help@mono.kr",
+    "updated_at": "2026-11-27T08:20:00+09:00"
+  },
+  "help_topics": [
+    {
+      "id": "help_delivery",
+      "title": "배송 안내",
+      "sort_order": 1,
+      "body": "평일 오후 2시 이전 결제 시 당일 출고됩니다.\n100,000원 이상 구매 시 무료배송이며, 미만은 배송비 3,000원입니다.\n제주·도서산간 지역은 추가 배송비가 발생할 수 있습니다."
+    },
+    {
+      "id": "help_exchange",
+      "title": "교환·반품 안내",
+      "sort_order": 2,
+      "body": "수령 후 7일 이내 교환·반품 신청이 가능합니다.\n제품 하자·오배송은 판매자 귀책으로 배송비가 무료이며, 단순 변심은 반품 3,000원 · 교환(왕복) 6,000원입니다.\n교환·반품은 마이페이지 → 주문 내역에서 신청할 수 있습니다."
+    },
+    {
+      "id": "help_size",
+      "title": "사이즈·세탁 가이드",
+      "sort_order": 3,
+      "body": "각 상품 상세의 실측 사이즈와 모델 착용 정보를 확인해 주세요.\n울·캐시미어는 드라이클리닝을 권장하며, 데님은 찬물 단독 세탁 후 그늘에서 건조해 주세요."
+    },
+    {
+      "id": "help_faq",
+      "title": "고객센터 · FAQ",
+      "sort_order": 4,
+      "body": "고객센터 운영 시간: 평일 10:00 – 17:00 (점심 12:30 – 13:30, 주말·공휴일 휴무)\n자주 묻는 질문: 쿠폰은 결제 화면에서 적용할 수 있고, 회원 등급별 전용 쿠폰이 발급됩니다."
     }
   ]
 }

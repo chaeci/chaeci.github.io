@@ -11,7 +11,7 @@ import sqlite3
 
 HERE = pathlib.Path(__file__).resolve().parent
 ORDER = ["users", "categories", "products", "product_images", "product_variants", "orders", "order_items",
-         "order_claims", "cart_items", "coupons"]
+         "order_claims", "cart_items", "coupons", "site_settings", "help_topics"]
 
 
 def main():
@@ -32,6 +32,8 @@ def main():
 
     for table in ORDER:
         rows = seed.get(table) or []
+        if isinstance(rows, dict):       # site_settings 처럼 단일 행 객체
+            rows = [rows]
         if not rows:
             continue
         cols = [r["name"] for r in con.execute(f"PRAGMA table_info({table})")]

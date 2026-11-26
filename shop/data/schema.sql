@@ -29,6 +29,7 @@ CREATE TABLE categories (
 
 CREATE TABLE products (
   id             TEXT PRIMARY KEY,
+  product_code   TEXT NOT NULL UNIQUE,          -- 제품고유키(제품번호) 예: MA-0001 · 대소문자 무시 중복 금지
   name           TEXT NOT NULL,
   brand          TEXT NOT NULL DEFAULT 'MONO ATELIER',
   category       TEXT NOT NULL REFERENCES categories(id),
@@ -159,6 +160,8 @@ CREATE TABLE coupon_targets (
 
 CREATE INDEX idx_variants_product ON product_variants(product_id);
 CREATE INDEX idx_products_category ON products(category, is_active);
+-- 제품번호는 대소문자 무시하고 유일하게 관리한다(관리자 저장 시에도 같은 규칙으로 검사)
+CREATE UNIQUE INDEX idx_products_code_nocase ON products(product_code COLLATE NOCASE);
 CREATE INDEX idx_product_images ON product_images(product_id, sort_order);
 CREATE INDEX idx_cart_user ON cart_items(user_id);
 CREATE INDEX idx_orders_user ON orders(user_id, created_at DESC);
@@ -173,7 +176,7 @@ CREATE INDEX idx_claims_status ON order_claims(status);
 
 -- 재고 확인용 뷰: 상품별 총 재고
 CREATE VIEW v_product_stock AS
-SELECT p.id AS product_id, p.name, p.category,
+SELECT p.id AS product_id, p.product_code, p.name, p.category,
        COALESCE(SUM(v.stock), 0) AS stock_total,
        COUNT(v.id) AS option_count
 FROM products p
@@ -206,3 +209,36 @@ SELECT c.code, c.name, t.user_id, u.name AS user_name, u.email
 FROM coupons c
 JOIN coupon_targets t ON t.coupon_id = c.id
 JOIN users u ON u.id = t.user_id;
+
+-- ===================================================== 사이트 설정 (v1.8)
+-- 관리자 「메인/사이트 관리」에서 편집 — 히어로 배너·푸터 브랜드 소개·사업자 정보
+CREATE TABLE site_settings (
+  id                   TEXT PRIMARY KEY,                        -- 'default' 단일 행
+  hero_image           TEXT NOT NULL,                           -- 대표 배너 이미지(asset 파일명 또는 업로드 Data URL)
+  hero_eyebrow         TEXT NOT NULL DEFAULT '',                -- 상단 뱃지 문구
+  hero_title           TEXT NOT NULL,                           -- 메인 타이틀
+  hero_subtitle        TEXT NOT NULL DEFAULT '',                -- 서브 문구
+  hero_cta_label       TEXT NOT NULL DEFAULT '컬렉션 보기',
+  hero_cta2_label      TEXT NOT NULL DEFAULT '브랜드 스토리',
+  hero_effect          TEXT NOT NULL DEFAULT 'none'
+                       CHECK (hero_effect IN ('none','zoom','fade','slide')),
+  hero_overlay         INTEGER NOT NULL DEFAULT 42 CHECK (hero_overlay BETWEEN 0 AND 90),
+  brand_blurb          TEXT NOT NULL DEFAULT '',                -- 푸터 브랜드 소개
+  company_name         TEXT NOT NULL DEFAULT '',                -- 상호
+  company_ceo          TEXT NOT NULL DEFAULT '',                -- 대표자
+  company_reg_no       TEXT NOT NULL DEFAULT '',                -- 사업자등록번호
+  company_mail_order_no TEXT NOT NULL DEFAULT '',               -- 통신판매업 신고번호
+  company_address      TEXT NOT NULL DEFAULT '',                -- 주소
+  company_phone        TEXT NOT NULL DEFAULT '',                -- 고객센터 전화
+  company_email        TEXT NOT NULL DEFAULT '',                -- 고객센터 이메일
+  updated_at           TEXT NOT NULL
+);
+
+-- 푸터 HELP 메뉴 — 클릭하면 안내 모달로 열리는 항목(관리자가 제목·본문 편집)
+CREATE TABLE help_topics (
+  id         TEXT PRIMARY KEY,
+  title      TEXT NOT NULL,
+  body       TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX idx_help_topics_sort ON help_topics(sort_order);

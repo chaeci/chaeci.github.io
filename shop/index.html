@@ -190,8 +190,26 @@ ul, ol { list-style: none; }
 .hero { position: relative; height: clamp(440px, 76vh, 700px); overflow: hidden; background: #cfc6b6; }
 .hero img { width: 100%; height: 100%; object-fit: cover; object-position: 62% center; transform: scale(1.02); }
 .hero::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(92deg, rgba(26, 22, 16, 0.66) 0%, rgba(26, 22, 16, 0.32) 38%, rgba(26, 22, 16, 0.02) 68%);
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  /* v1.8: 관리자에서 정한 오버레이 농도(--hero-overlay 0~0.9)가 그대로 반영된다 */
+  background: linear-gradient(92deg,
+    rgba(26, 22, 16, calc(var(--hero-overlay, 0.42) * 1.55)) 0%,
+    rgba(26, 22, 16, calc(var(--hero-overlay, 0.42) * 0.78)) 38%,
+    rgba(26, 22, 16, calc(var(--hero-overlay, 0.42) * 0.06)) 68%);
+}
+/* 히어로 효과(관리자 선택) — 없음 / 부드러운 줌인 / 페이드 / 슬라이드 */
+.hero.hero--zoom img { animation: heroZoom 18s ease-in-out infinite alternate; }
+.hero.hero--fade img { animation: heroFade 1.4s ease-out both; }
+.hero.hero--fade .hero-inner { animation: heroFadeUp 1.2s 0.15s var(--ease) both; }
+.hero.hero--slide img { animation: heroSlideImg 1.2s var(--ease) both; }
+.hero.hero--slide .hero-inner { animation: heroSlideText 1s 0.1s var(--ease) both; }
+@keyframes heroZoom { from { transform: scale(1.02); } to { transform: scale(1.12); } }
+@keyframes heroFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes heroFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes heroSlideImg { from { transform: scale(1.06) translateX(3%); opacity: 0.4; } to { transform: scale(1.02); opacity: 1; } }
+@keyframes heroSlideText { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .hero img, .hero .hero-inner { animation: none !important; }
 }
 .hero-inner {
   position: absolute; inset: 0; z-index: 2; max-width: 1440px; margin: 0 auto;
@@ -285,11 +303,15 @@ ul, ol { list-style: none; }
 .card-colors { display: flex; gap: 5px; margin-top: 10px; }
 .dot {
   display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); background-clip: padding-box;
+  box-sizing: border-box; border: 1px solid #d1d5db; background-clip: padding-box;
   vertical-align: middle;
 }
-/* 흰색·아이보리·크림처럼 밝은 색조도 배경에 묻히지 않도록 테두리를 준다 */
-.dot.light, .chip .sw.light, .claim-color-dot.light { box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.22); }
+.dot.opt-dot { width: 9px; height: 9px; margin-right: 5px; }
+/* 흰색·아이보리·크림 — 채움은 실제 색 그대로 두고 바깥 테두리만 살짝 진하게.
+   (inset 그림자를 쓰면 10px 점 안쪽이 회색으로 덮여 흰색이 회색처럼 보였다) */
+.dot.light, .chip .sw.light, .claim-color-dot.light, .preset-dot.light, .pal-dot.light {
+  border-color: #b9bdc4;
+}
 .empty-state { padding: 90px 0; text-align: center; border-top: 1px solid var(--line-soft); }
 .empty-state h3 { font-family: var(--serif); font-size: 22px; font-weight: 400; margin-bottom: 8px; }
 .empty-state p { font-size: 12px; color: var(--muted); }
@@ -313,7 +335,15 @@ ul, ol { list-style: none; }
 .service-item p { font-size: 11px; color: var(--muted); line-height: 1.65; }
 
 .site-footer { padding: 60px 0 46px; }
-.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap: 40px; }
+.footer-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 40px; }
+.footer-company { margin-top: 16px; }
+.footer-company li { font-size: 10.5px; color: var(--muted); line-height: 1.9; }
+.footer-note { white-space: pre-line; }
+.footer-col .btn.link {
+  font-size: 11px; color: var(--muted); text-align: left; padding: 0;
+  text-decoration: none; letter-spacing: 0.01em;
+}
+.footer-col .btn.link:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 .footer-brand { font-family: var(--serif); font-size: 19px; letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 14px; }
 .footer-note { font-size: 11px; color: var(--muted); line-height: 1.9; }
 .footer-col h5 { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 14px; color: var(--ink-soft); }
@@ -412,8 +442,15 @@ ul, ol { list-style: none; }
 .modal-head .eyebrow { margin-bottom: 6px; }
 .modal-head h2 { font-family: var(--serif); font-size: 24px; font-weight: 400; }
 
-/* product modal */
-.product-modal { display: grid; grid-template-columns: 1.02fr 1fr; }
+/* product modal — 미디어(좌) / 정보(우 위) / 구매 바(우 아래, 모바일에선 sticky 하단)
+   데스크톱은 높이를 고정해 이미지가 잘리지 않게 하고, 정보 열만 스크롤한다. */
+.product-modal {
+  display: grid; grid-template-columns: 1.02fr 1fr; grid-template-rows: minmax(0, 1fr) auto;
+  height: min(94vh, 940px); max-height: min(94vh, 940px);
+}
+.product-modal .pm-media { grid-column: 1; grid-row: 1 / span 2; min-height: 0; }
+.product-modal .pm-info { grid-column: 2; grid-row: 1; min-height: 0; overflow-y: auto; padding: 34px 38px 10px; }
+.product-modal .pm-buybar { grid-column: 2; grid-row: 2; padding: 0 38px 24px; }
 .pm-media { background: var(--bg-warm); position: relative; display: flex; flex-direction: column; min-height: 620px; }
 .pm-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; min-height: 0; }
 /* 대표 이미지는 절대 잘리지 않는다 — 비율을 유지한 채 배경 위에 전부 표시 */
@@ -426,10 +463,11 @@ ul, ol { list-style: none; }
 .pm-nav.prev { left: 12px; }
 .pm-nav.next { right: 12px; }
 .pm-nav:hover { background: #fff; }
-.pm-count {
-  position: absolute; top: 14px; left: 14px; font-size: 10px; letter-spacing: 0.08em;
-  background: rgba(23, 23, 15, 0.72); color: #f7f3e9; padding: 4px 8px;
+.pm-media-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 0 14px 12px; font-size: 10px; color: var(--muted);
 }
+.pm-media-foot .pm-hint { font-size: 10px; letter-spacing: 0.02em; }
 .pm-thumbs {
   display: flex; gap: 8px; padding: 0 14px 14px; flex: none; overflow-x: auto;
 }
@@ -464,8 +502,8 @@ ul, ol { list-style: none; }
 }
 .chip .sw {
   display: inline-block; flex: none; width: 15px; height: 15px; border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16); background-clip: padding-box;
-  transition: box-shadow 0.15s;
+  box-sizing: border-box; border: 1px solid #d1d5db; background-clip: padding-box;
+  transition: border-color 0.15s;
 }
 .chip:hover { border-color: #b8b0a0; }
 /* 선택된 컬러: 반전(강제 다크모드)에서도 구분되도록 굵은 테두리 + 채움 + ✓ 마크 */
@@ -475,7 +513,7 @@ ul, ol { list-style: none; }
   box-shadow: inset 0 0 0 1px #fbfaf7, 0 0 0 1px var(--ink);
 }
 .chip.active::before { content: "✓"; font-size: 11px; font-weight: 700; line-height: 1; }
-.chip.active .sw { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 0 1px #fbfaf7; }
+.chip.active .sw { border-color: rgba(251, 250, 247, 0.92); }
 .sizes { display: flex; gap: 8px; flex-wrap: wrap; }
 .size-btn {
   min-width: 62px; height: 42px; padding: 0 12px; border: 1px solid var(--line);
@@ -495,6 +533,7 @@ ul, ol { list-style: none; }
 .qty-total { font-size: 13px; color: var(--muted); }
 .qty-total b { font-size: 16px; color: var(--ink); margin-left: 8px; }
 .pm-buybar { margin-top: 14px; }
+.product-modal .pm-buybar { margin-top: 0; }
 /* 현재 선택 요약 — 장바구니/바로 구매 버튼 바로 위에서 스크롤과 무관하게 유지된다 */
 .pm-selected { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 11px; color: var(--ink-soft); min-height: 20px; }
 .pm-selected b {
@@ -525,6 +564,28 @@ ul, ol { list-style: none; }
 }
 .field textarea { height: auto; min-height: 88px; padding: 12px 13px; resize: vertical; line-height: 1.6; }
 .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--ink); }
+.field .field-hint { margin-top: 5px; font-size: 9.5px; letter-spacing: 0; color: var(--muted); text-transform: none; }
+.field .field-hint.bad { color: var(--danger); }
+.code-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: 9px; letter-spacing: 0.06em;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink-soft);
+  background: #f2ede1; border: 1px solid #e4ddcd; white-space: nowrap;
+}
+.pm-code {
+  display: inline-block; font-size: 9.5px; letter-spacing: 0.08em; color: var(--muted);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.pm-topline { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.pm-close {
+  flex: none; height: 32px; padding: 0 12px; border: 1px solid var(--line); background: #fff;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft);
+}
+.pm-close:hover { border-color: var(--ink); color: var(--ink); }
+.pm-photocount { font-size: 10px; letter-spacing: 0.06em; color: var(--muted); }
+.oi-code, .admin-item-code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 9.5px; letter-spacing: 0.04em;
+  color: var(--muted); margin-right: 6px;
+}
 .field input::placeholder, .field textarea::placeholder { color: #b6afa1; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .field .hint { font-size: 10px; color: var(--muted); margin-top: 5px; }
@@ -717,9 +778,9 @@ table.data tr:hover td { background: #fdfcf9; }
   appearance: none; -webkit-appearance: none; width: 100%; padding: 0; border: 1px solid var(--line);
   background: #fff; cursor: pointer;
 }
-.var-row input[type=color]::-webkit-color-swatch-wrapper { padding: 5px; }
-.var-row input[type=color]::-webkit-color-swatch { border: 0; border-radius: 1px; }
-.var-row input[type=color]::-moz-color-swatch { border: 0; }
+.var-row input[type=color]::-webkit-color-swatch-wrapper { padding: 2px; }
+.var-row input[type=color]::-webkit-color-swatch { border: 1px solid #d1d5db; border-radius: 1px; }
+.var-row input[type=color]::-moz-color-swatch { border: 1px solid #d1d5db; }
 .var-row-head { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; display: grid; grid-template-columns: minmax(0, 1.15fr) 46px 88px 74px 70px 30px; gap: 6px; }
 .icon-x { width: 30px; height: 30px; display: grid; place-items: center; color: var(--muted); border: 1px solid transparent; }
 .icon-x:hover { color: var(--danger); border-color: var(--line); }
@@ -847,7 +908,7 @@ table.data tr:hover td { background: #fdfcf9; }
   .service-grid { grid-template-columns: 1fr 1fr; }
   .service-item { padding: 20px 16px; border-bottom: 1px solid var(--line-soft); }
   .service-item:nth-child(2n) { border-right: 0; }
-  .footer-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+  .footer-grid { grid-template-columns: 1fr; gap: 26px; }
   .site-footer { padding: 40px 0 30px; }
   .page { padding: 26px 16px 80px; }
   .page-head { margin-bottom: 22px; }
@@ -871,36 +932,42 @@ table.data tr:hover td { background: #fdfcf9; }
     height: var(--app-height, 100dvh);
   }
   .modal-layer .modal { max-height: 100%; width: 100%; }
-  /* 모바일 상품 상세: 모달은 가시 영역을 꽉 채우고(top = 0 고정), 정보 영역만 스크롤.
-     이전에는 height:94vh + 하단 정렬이라 vh 가 실제 높이보다 큰 기기에서 상단이 잘렸다. */
+  /* 모바일 상품 상세 (v1.8): 이미지를 상단에 고정하지 않고 **모달 전체가 한 번에 스크롤**된다.
+     사진 + 정보·옵션·모델 정보가 자연스럽게 이어지고, 구매 바만 하단에 sticky 로 붙는다.
+     처음 열 때 모달 top = 0 정렬(--app-height 기준)은 그대로라 사진 윗부분이 잘리지 않는다. */
   .modal.product-modal {
-    display: flex; flex-direction: column; align-self: stretch;
-    height: 100%; max-height: 100%; overflow: hidden;
-  }
-  .product-modal .pm-media { flex: 0 0 auto; height: 46%; min-height: 0; }
-  .product-modal .pm-stage {
-    flex: 1 1 auto; height: auto; min-height: 0; max-height: none; padding: 8px;
-  }
-  .product-modal .pm-stage img { width: 100%; height: 100%; max-height: 100%; object-fit: contain; }
-  .product-modal .pm-info {
-    flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+    display: block; align-self: stretch;
+    height: 100%; max-height: 100%;
+    overflow-y: auto; overflow-x: hidden;
     -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+    padding: 0;
+  }
+  .product-modal .pm-media { display: block; height: auto; min-height: 0; }
+  .product-modal .pm-stage {
+    height: auto; min-height: 0; max-height: none; padding: 6px 8px 0;
+  }
+  .product-modal .pm-stage img { width: 100%; height: auto; max-height: 56vh; object-fit: contain; }
+  .product-modal .pm-info {
+    display: flex; flex-direction: column;
+    min-height: 0; overflow: visible;
   }
   .pm-thumbs { padding: 0 12px 12px; }
   .pm-thumb { width: 50px; }
   .pm-nav { width: 34px; height: 34px; font-size: 19px; }
   .pm-title { font-size: 18px; }
   /* 선택 요약 + 구매 버튼: 불투명 배경으로 아래 글자가 비치지 않게 하고 하단 안전영역 확보 */
-  .pm-buybar {
-    order: 9; position: sticky; bottom: 0; z-index: 4;
-    margin: 10px -26px 0; padding: 8px 26px calc(8px + env(safe-area-inset-bottom));
+  .product-modal .pm-buybar {
+    position: sticky; bottom: 0; z-index: 4;
+    margin: 0; padding: 8px 26px calc(8px + env(safe-area-inset-bottom));
     background: var(--surface); border-top: 1px solid var(--line);
     box-shadow: 0 -10px 18px rgba(23, 23, 15, 0.08);
   }
   .pm-actions { grid-template-columns: 1fr 1.15fr; position: static; margin-top: 6px; }
   .pm-actions .btn { height: 46px; padding: 0 10px; font-size: 10.5px; letter-spacing: 0.08em; }
   .pm-selected { font-size: 11px; }
-  .pm-info { padding-bottom: 0; }
+  .pm-info { padding: 22px 26px calc(16px + env(safe-area-inset-bottom)); }
+  .pm-topline { margin-bottom: 8px; }
+  .pm-media-foot { padding: 0 12px 10px; }
   .toast-host { bottom: auto; top: 74px; }
   .auth-modal, .receipt-modal, .confirm-modal { align-self: center; margin: 16px; width: calc(100% - 32px); }
   .modal-layer .auth-modal { max-height: calc(var(--app-height, 100dvh) - 32px); }
@@ -913,8 +980,8 @@ table.data tr:hover td { background: #fdfcf9; }
   .admin-head { flex-direction: column; align-items: flex-start; gap: 14px; }
   .admin-head-actions { width: 100%; display: flex; gap: 8px; }
   .admin-head-actions .btn { flex: 1; height: 44px; padding: 0 10px; font-size: 10px; white-space: nowrap; }
-  .admin-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; overflow: visible; }
-  .admin-tabs button { padding: 11px 2px; font-size: 10.5px; letter-spacing: 0; white-space: nowrap; text-align: center; }
+  .admin-tabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; overflow: visible; }
+  .admin-tabs button { padding: 11px 0; font-size: 9.5px; letter-spacing: 0; white-space: nowrap; text-align: center; }
   .stat-row { grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat { padding: 14px; }
   .stat .v { font-size: 22px; }
@@ -1288,21 +1355,15 @@ table.data.claims { min-width: 780px; }
 }
 
 /* ---------- 2026-11 v1.6: 상품 이미지 전체 화면 확대(라이트박스) + 모델 정보 ---------- */
-/* 상세 이미지 우측 상단 「확대」 버튼 (닫기 ✕ 왼쪽) */
-.pm-zoom {
-  position: absolute; top: 14px; right: 62px; z-index: 4;
-  display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px;
-  background: rgba(23, 23, 15, 0.72); color: #f7f3e9;
-  border: 1px solid rgba(251, 250, 247, 0.4); font-size: 9.5px; letter-spacing: 0.08em;
-}
-.pm-zoom svg { width: 13px; height: 13px; stroke: #f7f3e9; fill: none; stroke-width: 1.6; }
-.pm-zoom:hover { background: rgba(23, 23, 15, 0.9); }
+/* v1.8: 상세 이미지 위의 「확대」·「1/3」·「✕」 오버레이를 모두 없앴다(사진을 가리지 않게).
+   이미지 탭 = 확대 뷰어, 좌우 스와이프·더블탭은 그대로 동작한다. */
 .pm-stage img { cursor: zoom-in; }
 /* 모델 정보 행 — 다른 메타 항목과 같은 표 형태 */
 .pm-meta div[data-model-info] dd { font-weight: 500; }
 
 .lightbox {
-  position: fixed; inset: 0; z-index: 300; background: rgba(12, 11, 8, 0.96);
+  /* v1.8: 불투명 배경 — 뒤의 상세 모달 글자·버튼이 비쳐 보이지 않게 한다 */
+  position: fixed; inset: 0; z-index: 300; background: #0c0b08;
   display: flex; flex-direction: column; animation: fade 0.2s;
 }
 .lightbox[hidden] { display: none; }
@@ -1351,7 +1412,6 @@ table.data.claims { min-width: 780px; }
   pointer-events: none; white-space: nowrap;
 }
 @media (max-width: 720px) {
-  .pm-zoom { right: 56px; top: 12px; height: 28px; font-size: 9px; }
   .lb-bar { padding: 8px 14px calc(10px + env(safe-area-inset-bottom)); }
   .lb-tools button { width: 32px; height: 30px; }
   .lb-hint { bottom: 58px; font-size: 9px; padding: 4px 9px; }
@@ -1371,13 +1431,9 @@ table.data.claims { min-width: 780px; }
 }
 .pm-stage.zoomed img { cursor: grab; }
 .pm-stage.zoomed img:active { cursor: grabbing; }
-.pm-stage-hint {
-  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
-  font-size: 9.5px; letter-spacing: 0.04em; color: #f7f3e9; background: rgba(23, 23, 15, 0.52);
-  padding: 4px 9px; border-radius: 999px; pointer-events: none; white-space: nowrap; max-width: 92%;
-  overflow: hidden; text-overflow: ellipsis;
-}
-@media (max-width: 720px) { .pm-stage-hint { bottom: 6px; font-size: 9px; } }
+/* 안내 문구는 사진 위가 아니라 사진 아래 캡션 줄에 둔다 */
+.pm-stage-hint { font-size: 9.5px; letter-spacing: 0.04em; color: var(--muted); }
+@media (max-width: 720px) { .pm-stage-hint { font-size: 9px; } }
 
 /* ---------- 관리자 상품 편집기: 선택 이미지 + 썸네일 그리드 ---------- */
 .image-field .selected-images { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 14px; }
@@ -1420,6 +1476,12 @@ table.data.claims { min-width: 780px; }
   letter-spacing: 0.1em; padding: 1px 5px; text-transform: uppercase;
 }
 .base-color { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; background: #fbfaf6; border: 1px solid var(--line-soft); margin-bottom: 12px; }
+.base-color .bc-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; justify-content: space-between; width: 100%; }
+.base-color .bc-inputs { display: flex; align-items: center; gap: 8px; flex: none; }
+.base-color .bc-target {
+  font-size: 10px; letter-spacing: 0.02em; color: var(--ink-soft);
+  background: #f2ede1; border: 1px solid #e4ddcd; padding: 3px 7px;
+}
 .base-color .bc-label { font-size: 11px; color: var(--ink-soft); }
 .base-color .bc-label small { display: block; font-size: 9px; color: var(--muted); margin-top: 2px; }
 .base-color .hex-text { width: 112px; flex: none; }
@@ -1427,8 +1489,46 @@ table.data.claims { min-width: 780px; }
   appearance: none; -webkit-appearance: none; width: 46px; height: 34px; padding: 0;
   border: 1px solid var(--line); background: #fff; cursor: pointer;
 }
-.base-color input[type=color]::-webkit-color-swatch-wrapper { padding: 4px; }
-.base-color input[type=color]::-webkit-color-swatch { border: 0; }
+.base-color input[type=color]::-webkit-color-swatch-wrapper { padding: 3px; }
+.base-color input[type=color]::-webkit-color-swatch { border: 1px solid #d1d5db; }
+/* 색상 프리셋 */
+.color-presets { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
+.preset {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px 4px 5px;
+  border: 1px solid var(--line-soft); background: #fff; font-size: 9.5px; color: var(--ink-soft);
+}
+.preset:hover { border-color: #b8b0a0; }
+.preset-dot {
+  width: 14px; height: 14px; border-radius: 50%; flex: none; box-sizing: border-box;
+  background: var(--c, #fff); border: 1px solid #d1d5db;
+}
+/* 이미지 색 추출 */
+.color-extract { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--line-soft); background: #fbfaf6; }
+.color-extract .ce-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.color-extract .ce-title { flex: 1 1 100%; font-size: 11px; color: var(--ink-soft); }
+.color-extract .ce-title small { display: block; font-size: 9px; color: var(--muted); margin-top: 2px; }
+.color-extract .ce-src {
+  flex: 1 1 150px; min-width: 0; height: 34px; font-size: 11px; color: var(--ink);
+  border: 1px solid var(--line); background: #fff; padding: 0 6px;
+}
+.color-extract .ce-body { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.color-extract .ce-empty { font-size: 10px; color: var(--muted); line-height: 1.6; }
+.pal {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px 4px 6px;
+  border: 1px solid var(--line-soft); background: #fff;
+}
+.pal:hover { border-color: #b8b0a0; }
+.pal-dot {
+  width: 16px; height: 16px; border-radius: 50%; flex: none; box-sizing: border-box;
+  background: var(--c, #fff); border: 1px solid #d1d5db;
+}
+.pal b { font-size: 10px; font-weight: 600; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.pal span { font-size: 9.5px; color: var(--muted); }
+.pal-share { font-size: 9px; color: var(--muted); font-style: normal; }
+/* 지금 색을 적용할 옵션 행 */
+.var-row.active { background: #f8f5ee; box-shadow: inset 0 0 0 1px #e2dac9; }
+/* 주문 옵션(참고) — 교환 모달에서 주문한 색·색상 스와치를 함께 본다 */
+.claim-ordered-row .claim-ordered-txt { font-size: 11px; color: var(--ink-soft); }
 .hex-text {
   height: 40px; border: 1px solid var(--line); background: #fff; padding: 0 8px; font-size: 11px;
   font-family: ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.02em; min-width: 0; width: 100%;
@@ -1521,13 +1621,13 @@ table.data.claims { min-width: 780px; }
 .claim-select {
   flex: 1; min-width: 0; height: 42px; border: 1px solid var(--line); background: #fff; padding: 0 9px; font-size: 12px;
 }
-.claim-color-dot { display: inline-block; width: 16px; height: 16px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18); }
+.claim-color-dot { display: inline-block; width: 16px; height: 16px; border-radius: 50%; flex: none; box-sizing: border-box; border: 1px solid #d1d5db; background-clip: padding-box; }
 .claim-hint.warn { color: var(--danger); }
 
 /* ---------- 관리자 표: 모바일 카드형 (412px 찌그러짐/가로 잘림 방지) ---------- */
 @media (max-width: 720px) {
-  .admin-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  .admin-tabs button { font-size: 9.5px; padding: 11px 0; letter-spacing: 0; }
+  .admin-tabs { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .admin-tabs button { font-size: 8.5px; padding: 10px 0; letter-spacing: 0; }
   .table-wrap { border: 0; background: transparent; overflow: visible; }
   table.data, table.data.coupons, table.data.claims { min-width: 0; width: 100%; display: block; }
   table.data thead { display: none; }
@@ -1579,6 +1679,46 @@ table.data.claims { min-width: 780px; }
   .payment-settings .form-grid .span2 { grid-column: span 1; }
   .coupon-edit-modal .edit-body { padding: 20px 16px 24px; }
 }
+
+
+/* ============================================================ v1.8 (2026-11-27)
+   메인/사이트 관리 · 푸터 브랜드/사업자 정보 · HELP 안내 모달 */
+.site-hero-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 20px; align-items: start; }
+.site-hero-preview { position: relative; border: 1px solid var(--line-soft); background: var(--bg-warm); overflow: hidden; }
+.site-hero-preview img { width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; }
+.site-hero-preview .shp-badge {
+  position: absolute; left: 8px; bottom: 8px; padding: 3px 7px; font-size: 9px; letter-spacing: 0.04em;
+  background: rgba(23, 23, 15, 0.78); color: #f7f3e9;
+}
+.site-hero-form .field { margin-bottom: 12px; }
+.site-hero-form .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.site-upload { margin-top: 8px; }
+.site-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.site-hint { font-size: 9.5px; color: var(--muted); }
+.admin-site .panel + .panel { margin-top: 18px; }
+.field input[type=range] { width: 100%; height: 32px; padding: 0; border: 0; background: transparent; accent-color: var(--ink); }
+.field .range-val { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.help-rows { display: flex; flex-direction: column; gap: 12px; }
+.help-row { border: 1px solid var(--line-soft); background: #fbfaf6; padding: 10px 12px; }
+.help-row-head { display: flex; align-items: center; gap: 8px; }
+.help-row .help-no {
+  flex: none; width: 22px; height: 22px; display: grid; place-items: center; font-size: 10px;
+  background: var(--ink); color: #fbfaf7;
+}
+.help-row .help-title { flex: 1 1 auto; min-width: 0; height: 36px; border: 1px solid var(--line); background: #fff; padding: 0 10px; font-size: 12px; }
+.help-row .help-body-input {
+  width: 100%; margin-top: 8px; min-height: 64px; border: 1px solid var(--line); background: #fff;
+  padding: 9px 10px; font-size: 11.5px; line-height: 1.7; resize: vertical;
+}
+.help-modal { width: min(560px, 100%); }
+.help-modal .help-body { padding: 22px 26px 8px; font-size: 12.5px; line-height: 1.95; color: var(--ink-soft); white-space: pre-line; }
+.help-modal .help-foot { padding: 12px 26px 24px; display: flex; justify-content: flex-end; }
+@media (max-width: 720px) {
+  .site-hero-grid { grid-template-columns: 1fr; }
+  .site-hero-preview img { aspect-ratio: 16/10; }
+  .site-hero-form .field-row { grid-template-columns: 1fr; }
+  .help-modal .help-body { padding: 18px 18px 6px; font-size: 12px; }
+}
 </style>
 </head>
 <body>
@@ -1600,9 +1740,9 @@ table.data.claims { min-width: 780px; }
 (function () {
   'use strict';
 
-  var SEED = {"meta":{"app":"MONO ATELIER","schema_version":6,"generated_at":"2026-11-26T23:10:00+09:00","grades":["NORMAL","SILVER","GOLD","VIP"],"currency":"KRW","free_shipping_threshold":100000,"shipping_fee":3000,"claim_return_fee":3000,"claim_exchange_fee":6000,"password_hashing":"sha256('mono-atelier$' + password) — demo only"},"users":[{"id":"u_001","email":"demo@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길동","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","grade":"GOLD","created_at":"2026-11-09T10:42:00+09:00"},{"id":"u_002","email":"admin@mono.kr","password_hash":"b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1","name":"관리자","phone":"02-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호 3층","role":"admin","grade":"NORMAL","created_at":"2026-10-01T09:00:00+09:00"}],"categories":[{"id":"outer","label":"아우터","en":"OUTER","sort_order":1,"created_at":"2026-10-01T09:00:00+09:00"},{"id":"top","label":"상의","en":"TOP","sort_order":2,"created_at":"2026-10-01T09:00:00+09:00"},{"id":"bottom","label":"하의","en":"BOTTOM","sort_order":3,"created_at":"2026-10-01T09:00:00+09:00"},{"id":"dress","label":"원피스","en":"DRESS","sort_order":4,"created_at":"2026-10-01T09:00:00+09:00"},{"id":"acc","label":"잡화","en":"ACC","sort_order":5,"created_at":"2026-10-01T09:00:00+09:00"}],"products":[{"id":"p_001","name":"울 더블 브레스티드 코트","brand":"MONO ATELIER","category":"outer","price":289000,"original_price":349000,"badge":"BEST","description":"두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.","image":"coat.webp","images":["coat.webp","coat-detail.webp","coat-fabric.webp"],"model_info":"모델 174cm · 54kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-10T09:20:00+09:00","is_active":true},{"id":"p_002","name":"캐시미어 리브 니트","brand":"MONO ATELIER","category":"top","price":129000,"original_price":159000,"badge":"NEW","description":"캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.","image":"knit.webp","images":["knit.webp","knit-detail.webp","knit-fabric.webp"],"model_info":"모델 171cm · 52kg · M 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-11-18T11:05:00+09:00","is_active":true},{"id":"p_003","name":"와이드 테일러드 트라우저","brand":"MONO ATELIER","category":"bottom","price":149000,"original_price":null,"badge":null,"description":"허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.","image":"pants.webp","images":["pants.webp","pants-detail.webp","pants-fabric.webp"],"model_info":"모델 176cm · 60kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-25T16:30:00+09:00","is_active":true},{"id":"p_004","name":"사틴 슬립 미디 드레스","brand":"MONO ATELIER","category":"dress","price":189000,"original_price":220000,"badge":"SALE","description":"빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"model_info":"모델 173cm · 53kg · S 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-02T13:10:00+09:00","is_active":true},{"id":"p_005","name":"스무스 레더 숄더백","brand":"MONO ATELIER","category":"acc","price":259000,"original_price":null,"badge":"BEST","description":"이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.","image":"bag.webp","images":["bag.webp","bag-detail.webp","bag-fabric.webp"],"model_info":"모델 172cm 착용 컷","free_shipping_threshold":0,"created_at":"2026-11-08T10:00:00+09:00","is_active":true},{"id":"p_006","name":"나일론 봄버 재킷","brand":"MONO ATELIER","category":"outer","price":179000,"original_price":210000,"badge":"NEW","description":"가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.","image":"jacket.webp","images":["jacket.webp","jacket-detail.webp","jacket-fabric.webp"],"model_info":"모델 178cm · 62kg · L 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-20T09:45:00+09:00","is_active":true},{"id":"p_007","name":"오버사이즈 코튼 셔츠","brand":"MONO ATELIER","category":"top","price":89000,"original_price":null,"badge":null,"description":"두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.","image":"shirt.webp","images":["shirt.webp","shirt-detail.webp","shirt-fabric.webp"],"model_info":"모델 174cm · 56kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-28T15:20:00+09:00","is_active":true},{"id":"p_008","name":"플리츠 미디 스커트","brand":"MONO ATELIER","category":"bottom","price":139000,"original_price":168000,"badge":"SALE","description":"곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.","image":"skirt.webp","images":["skirt.webp","skirt-detail.webp","skirt-fabric.webp"],"model_info":"모델 170cm · 51kg · S 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-20T12:00:00+09:00","is_active":true},{"id":"p_009","name":"개버딘 트렌치 코트","brand":"MONO ATELIER","category":"outer","price":319000,"original_price":369000,"badge":"LIMITED","description":"묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.","image":"trench.webp","images":["trench.webp","trench-detail.webp","trench-fabric.webp"],"model_info":"모델 176cm · 58kg · M 사이즈 착용","free_shipping_threshold":0,"created_at":"2026-11-15T10:30:00+09:00","is_active":true},{"id":"p_010","name":"울 블렌드 오픈 가디건","brand":"MONO ATELIER","category":"top","price":119000,"original_price":null,"badge":null,"description":"울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.","image":"cardigan.webp","images":["cardigan.webp","cardigan-detail.webp","cardigan-fabric.webp"],"model_info":"모델 169cm · 50kg · S 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-10-15T09:10:00+09:00","is_active":true},{"id":"p_011","name":"와이드 데님 팬츠","brand":"MONO ATELIER","category":"bottom","price":109000,"original_price":129000,"badge":"NEW","description":"워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.","image":"denim.webp","images":["denim.webp","denim-detail.webp","denim-fabric.webp"],"model_info":"모델 175cm · 59kg · M 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-11-23T14:00:00+09:00","is_active":true},{"id":"p_012","name":"레더 페니 로퍼","brand":"MONO ATELIER","category":"acc","price":219000,"original_price":249000,"badge":null,"description":"블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.","image":"loafers.webp","images":["loafers.webp","loafers-detail.webp","loafers-fabric.webp"],"model_info":"모델 172cm 착용 컷","free_shipping_threshold":0,"created_at":"2026-11-05T11:40:00+09:00","is_active":true},{"id":"p_013","name":"실크 크레이프 미디 원피스","brand":"MONO ATELIER","category":"dress","price":209000,"original_price":null,"badge":null,"description":"실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"model_info":"모델 173cm · 53kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-25T17:30:00+09:00","is_active":false}],"product_images":[{"id":"pi_001","product_id":"p_001","image":"coat.webp","alt":"울 더블 브레스티드 코트","sort_order":0},{"id":"pi_002","product_id":"p_001","image":"coat-detail.webp","alt":"울 더블 브레스티드 코트 디테일","sort_order":1},{"id":"pi_003","product_id":"p_001","image":"coat-fabric.webp","alt":"울 더블 브레스티드 코트 소재 클로즈업","sort_order":2},{"id":"pi_004","product_id":"p_002","image":"knit.webp","alt":"캐시미어 리브 니트","sort_order":0},{"id":"pi_005","product_id":"p_002","image":"knit-detail.webp","alt":"캐시미어 리브 니트 디테일","sort_order":1},{"id":"pi_006","product_id":"p_002","image":"knit-fabric.webp","alt":"캐시미어 리브 니트 소재 클로즈업","sort_order":2},{"id":"pi_007","product_id":"p_003","image":"pants.webp","alt":"와이드 테일러드 트라우저","sort_order":0},{"id":"pi_008","product_id":"p_003","image":"pants-detail.webp","alt":"와이드 테일러드 트라우저 디테일","sort_order":1},{"id":"pi_009","product_id":"p_003","image":"pants-fabric.webp","alt":"와이드 테일러드 트라우저 소재 클로즈업","sort_order":2},{"id":"pi_010","product_id":"p_004","image":"dress.webp","alt":"사틴 슬립 미디 드레스","sort_order":0},{"id":"pi_011","product_id":"p_004","image":"dress-detail.webp","alt":"사틴 슬립 미디 드레스 디테일","sort_order":1},{"id":"pi_012","product_id":"p_004","image":"dress-fabric.webp","alt":"사틴 슬립 미디 드레스 소재 클로즈업","sort_order":2},{"id":"pi_013","product_id":"p_005","image":"bag.webp","alt":"스무스 레더 숄더백","sort_order":0},{"id":"pi_014","product_id":"p_005","image":"bag-detail.webp","alt":"스무스 레더 숄더백 디테일","sort_order":1},{"id":"pi_015","product_id":"p_005","image":"bag-fabric.webp","alt":"스무스 레더 숄더백 소재 클로즈업","sort_order":2},{"id":"pi_016","product_id":"p_006","image":"jacket.webp","alt":"나일론 봄버 재킷","sort_order":0},{"id":"pi_017","product_id":"p_006","image":"jacket-detail.webp","alt":"나일론 봄버 재킷 디테일","sort_order":1},{"id":"pi_018","product_id":"p_006","image":"jacket-fabric.webp","alt":"나일론 봄버 재킷 소재 클로즈업","sort_order":2},{"id":"pi_019","product_id":"p_007","image":"shirt.webp","alt":"오버사이즈 코튼 셔츠","sort_order":0},{"id":"pi_020","product_id":"p_007","image":"shirt-detail.webp","alt":"오버사이즈 코튼 셔츠 디테일","sort_order":1},{"id":"pi_021","product_id":"p_007","image":"shirt-fabric.webp","alt":"오버사이즈 코튼 셔츠 소재 클로즈업","sort_order":2},{"id":"pi_022","product_id":"p_008","image":"skirt.webp","alt":"플리츠 미디 스커트","sort_order":0},{"id":"pi_023","product_id":"p_008","image":"skirt-detail.webp","alt":"플리츠 미디 스커트 디테일","sort_order":1},{"id":"pi_024","product_id":"p_008","image":"skirt-fabric.webp","alt":"플리츠 미디 스커트 소재 클로즈업","sort_order":2},{"id":"pi_025","product_id":"p_009","image":"trench.webp","alt":"개버딘 트렌치 코트","sort_order":0},{"id":"pi_026","product_id":"p_009","image":"trench-detail.webp","alt":"개버딘 트렌치 코트 디테일","sort_order":1},{"id":"pi_027","product_id":"p_009","image":"trench-fabric.webp","alt":"개버딘 트렌치 코트 소재 클로즈업","sort_order":2},{"id":"pi_028","product_id":"p_010","image":"cardigan.webp","alt":"울 블렌드 오픈 가디건","sort_order":0},{"id":"pi_029","product_id":"p_010","image":"cardigan-detail.webp","alt":"울 블렌드 오픈 가디건 디테일","sort_order":1},{"id":"pi_030","product_id":"p_010","image":"cardigan-fabric.webp","alt":"울 블렌드 오픈 가디건 소재 클로즈업","sort_order":2},{"id":"pi_031","product_id":"p_011","image":"denim.webp","alt":"와이드 데님 팬츠","sort_order":0},{"id":"pi_032","product_id":"p_011","image":"denim-detail.webp","alt":"와이드 데님 팬츠 디테일","sort_order":1},{"id":"pi_033","product_id":"p_011","image":"denim-fabric.webp","alt":"와이드 데님 팬츠 소재 클로즈업","sort_order":2},{"id":"pi_034","product_id":"p_012","image":"loafers.webp","alt":"레더 페니 로퍼","sort_order":0},{"id":"pi_035","product_id":"p_012","image":"loafers-detail.webp","alt":"레더 페니 로퍼 디테일","sort_order":1},{"id":"pi_036","product_id":"p_012","image":"loafers-fabric.webp","alt":"레더 페니 로퍼 소재 클로즈업","sort_order":2},{"id":"pi_037","product_id":"p_013","image":"dress.webp","alt":"실크 크레이프 미디 원피스","sort_order":0},{"id":"pi_038","product_id":"p_013","image":"dress-detail.webp","alt":"실크 크레이프 미디 원피스 디테일","sort_order":1},{"id":"pi_039","product_id":"p_013","image":"dress-fabric.webp","alt":"실크 크레이프 미디 원피스 소재 클로즈업","sort_order":2}],"product_variants":[{"id":"v_001","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"S","stock":5,"sku":"MA-OUT-001-차콜-S"},{"id":"v_002","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"M","stock":3,"sku":"MA-OUT-001-차콜-M"},{"id":"v_003","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"L","stock":2,"sku":"MA-OUT-001-차콜-L"},{"id":"v_004","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"XL","stock":1,"sku":"MA-OUT-001-차콜-XL"},{"id":"v_005","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"S","stock":4,"sku":"MA-OUT-001-카멜-S"},{"id":"v_006","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"M","stock":6,"sku":"MA-OUT-001-카멜-M"},{"id":"v_007","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"L","stock":3,"sku":"MA-OUT-001-카멜-L"},{"id":"v_008","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"XL","stock":0,"sku":"MA-OUT-001-카멜-XL"},{"id":"v_009","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-001-블랙-S"},{"id":"v_010","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":0,"sku":"MA-OUT-001-블랙-M"},{"id":"v_011","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-OUT-001-블랙-L"},{"id":"v_012","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-OUT-001-블랙-XL"},{"id":"v_013","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"S","stock":8,"sku":"MA-TOP-002-크림-S"},{"id":"v_014","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"M","stock":12,"sku":"MA-TOP-002-크림-M"},{"id":"v_015","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"L","stock":5,"sku":"MA-TOP-002-크림-L"},{"id":"v_016","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"S","stock":3,"sku":"MA-TOP-002-오트-S"},{"id":"v_017","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"M","stock":2,"sku":"MA-TOP-002-오트-M"},{"id":"v_018","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"L","stock":6,"sku":"MA-TOP-002-오트-L"},{"id":"v_019","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"S","stock":4,"sku":"MA-TOP-002-블랙-S"},{"id":"v_020","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"M","stock":1,"sku":"MA-TOP-002-블랙-M"},{"id":"v_021","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"L","stock":0,"sku":"MA-TOP-002-블랙-L"},{"id":"v_022","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":6,"sku":"MA-BTM-003-블랙-S"},{"id":"v_023","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":9,"sku":"MA-BTM-003-블랙-M"},{"id":"v_024","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-BTM-003-블랙-L"},{"id":"v_025","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-BTM-003-블랙-XL"},{"id":"v_026","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":2,"sku":"MA-BTM-003-차콜-S"},{"id":"v_027","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":5,"sku":"MA-BTM-003-차콜-M"},{"id":"v_028","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":7,"sku":"MA-BTM-003-차콜-L"},{"id":"v_029","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"XL","stock":1,"sku":"MA-BTM-003-차콜-XL"},{"id":"v_030","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":3,"sku":"MA-DRS-004-샴페-S"},{"id":"v_031","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":0,"sku":"MA-DRS-004-샴페-M"},{"id":"v_032","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":2,"sku":"MA-DRS-004-샴페-L"},{"id":"v_033","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-DRS-004-블랙-S"},{"id":"v_034","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":5,"sku":"MA-DRS-004-블랙-M"},{"id":"v_035","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-DRS-004-블랙-L"},{"id":"v_036","product_id":"p_005","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":6,"sku":"MA-ACC-005-블랙-FREE"},{"id":"v_037","product_id":"p_005","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":2,"sku":"MA-ACC-005-다크-FREE"},{"id":"v_038","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"M","stock":5,"sku":"MA-OUT-006-올리-M"},{"id":"v_039","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"L","stock":4,"sku":"MA-OUT-006-올리-L"},{"id":"v_040","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"XL","stock":2,"sku":"MA-OUT-006-올리-XL"},{"id":"v_041","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":3,"sku":"MA-OUT-006-블랙-M"},{"id":"v_042","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":0,"sku":"MA-OUT-006-블랙-L"},{"id":"v_043","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":5,"sku":"MA-OUT-006-블랙-XL"},{"id":"v_044","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"M","stock":2,"sku":"MA-OUT-006-샌드-M"},{"id":"v_045","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"L","stock":3,"sku":"MA-OUT-006-샌드-L"},{"id":"v_046","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"XL","stock":1,"sku":"MA-OUT-006-샌드-XL"},{"id":"v_047","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"S","stock":10,"sku":"MA-TOP-007-화이-S"},{"id":"v_048","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"M","stock":14,"sku":"MA-TOP-007-화이-M"},{"id":"v_049","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"L","stock":6,"sku":"MA-TOP-007-화이-L"},{"id":"v_050","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"S","stock":4,"sku":"MA-TOP-007-스카-S"},{"id":"v_051","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"M","stock":3,"sku":"MA-TOP-007-스카-M"},{"id":"v_052","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"L","stock":2,"sku":"MA-TOP-007-스카-L"},{"id":"v_053","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":5,"sku":"MA-BTM-008-차콜-S"},{"id":"v_054","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":3,"sku":"MA-BTM-008-차콜-M"},{"id":"v_055","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":2,"sku":"MA-BTM-008-차콜-L"},{"id":"v_056","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-BTM-008-블랙-S"},{"id":"v_057","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":6,"sku":"MA-BTM-008-블랙-M"},{"id":"v_058","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":1,"sku":"MA-BTM-008-블랙-L"},{"id":"v_059","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"S","stock":0,"sku":"MA-OUT-009-베이-S"},{"id":"v_060","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"M","stock":3,"sku":"MA-OUT-009-베이-M"},{"id":"v_061","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"L","stock":4,"sku":"MA-OUT-009-베이-L"},{"id":"v_062","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"XL","stock":2,"sku":"MA-OUT-009-베이-XL"},{"id":"v_063","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-009-블랙-S"},{"id":"v_064","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":4,"sku":"MA-OUT-009-블랙-M"},{"id":"v_065","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-OUT-009-블랙-L"},{"id":"v_066","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":1,"sku":"MA-OUT-009-블랙-XL"},{"id":"v_067","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"S","stock":4,"sku":"MA-TOP-010-그레-S"},{"id":"v_068","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"M","stock":5,"sku":"MA-TOP-010-그레-M"},{"id":"v_069","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"L","stock":3,"sku":"MA-TOP-010-그레-L"},{"id":"v_070","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"S","stock":2,"sku":"MA-TOP-010-아이-S"},{"id":"v_071","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"M","stock":2,"sku":"MA-TOP-010-아이-M"},{"id":"v_072","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"L","stock":4,"sku":"MA-TOP-010-아이-L"},{"id":"v_073","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"S","stock":6,"sku":"MA-BTM-011-미드-S"},{"id":"v_074","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"M","stock":8,"sku":"MA-BTM-011-미드-M"},{"id":"v_075","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"L","stock":5,"sku":"MA-BTM-011-미드-L"},{"id":"v_076","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"XL","stock":3,"sku":"MA-BTM-011-미드-XL"},{"id":"v_077","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"S","stock":3,"sku":"MA-BTM-011-워시-S"},{"id":"v_078","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"M","stock":4,"sku":"MA-BTM-011-워시-M"},{"id":"v_079","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"L","stock":2,"sku":"MA-BTM-011-워시-L"},{"id":"v_080","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"XL","stock":0,"sku":"MA-BTM-011-워시-XL"},{"id":"v_081","product_id":"p_012","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":0,"sku":"MA-ACC-012-블랙-FREE"},{"id":"v_082","product_id":"p_012","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":0,"sku":"MA-ACC-012-다크-FREE"},{"id":"v_083","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":2,"sku":"MA-DRS-013-샴페-S"},{"id":"v_084","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":2,"sku":"MA-DRS-013-샴페-M"},{"id":"v_085","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":1,"sku":"MA-DRS-013-샴페-L"},{"id":"v_086","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":3,"sku":"MA-DRS-013-블랙-S"},{"id":"v_087","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":2,"sku":"MA-DRS-013-블랙-M"},{"id":"v_088","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":2,"sku":"MA-DRS-013-블랙-L"}],"cart_items":[],"orders":[{"id":"o_001","order_no":"MA20261112-4821","user_id":"u_001","status":"delivered","total_amount":278000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-12T10:24:00+09:00"},{"id":"o_002","order_no":"MA20261124-3917","user_id":"u_001","status":"paid","total_amount":173000,"shipping_fee":0,"coupon_code":"MONO5000","discount_amount":5000,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-24T15:40:00+09:00"},{"id":"o_003","order_no":"MA20261125-6042","user_id":"u_001","status":"preparing","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"bank","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-25T09:12:00+09:00"},{"id":"o_004","order_no":"MA20261114-2288","user_id":"u_001","status":"delivered","total_amount":109000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-14T11:05:00+09:00"},{"id":"o_005","order_no":"MA20261116-7735","user_id":"u_001","status":"delivered","total_amount":139000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-16T14:30:00+09:00"}],"order_items":[{"id":"oi_001","order_id":"o_001","variant_id":"v_014","product_name":"캐시미어 리브 니트","color":"크림","size":"M","unit_price":129000,"quantity":1},{"id":"oi_002","order_id":"o_001","variant_id":"v_023","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1},{"id":"oi_003","order_id":"o_002","variant_id":"v_047","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":2},{"id":"oi_004","order_id":"o_003","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1},{"id":"oi_005","order_id":"o_004","variant_id":"v_074","product_name":"와이드 데님 팬츠","color":"미드블루","size":"M","unit_price":109000,"quantity":1},{"id":"oi_006","order_id":"o_005","variant_id":"v_054","product_name":"플리츠 미디 스커트","color":"차콜","size":"M","unit_price":139000,"quantity":1}],"order_claims":[{"id":"oc_20261119_1001","order_id":"o_004","user_id":"u_001","claim_type":"return","reason_category":"defect","reason_detail":"밑단 박음질이 풀려 있고 오른쪽 무릎 부분에 5cm 정도 올이 나 있습니다.","shipping_fee":0,"payment_status":"free","payment_key":null,"payment_mode":"free","exchange_option":null,"status":"requested","stock_restored":0,"created_at":"2026-11-19T09:20:00+09:00","updated_at":"2026-11-19T09:20:00+09:00"},{"id":"oc_20261121_1002","order_id":"o_005","user_id":"u_001","claim_type":"exchange","reason_category":"size_color","reason_detail":"허리가 조금 커서 S 사이즈로 교환하고 싶습니다.","shipping_fee":6000,"payment_status":"paid","payment_key":"test_claim_seed_6f1c","payment_mode":"test-client","exchange_option":"차콜 / S","status":"approved","stock_restored":0,"created_at":"2026-11-21T10:12:00+09:00","updated_at":"2026-11-22T09:00:00+09:00"}],"coupons":[{"id":"c_001","code":"WELCOME10","name":"신규 회원 10% 할인","discount_type":"percent","discount_value":10,"min_order_amount":30000,"expires_at":"2027-12-31T23:59:59+09:00","is_active":true,"target_user_ids":[],"target_grades":[],"created_at":"2026-11-01T10:00:00+09:00"},{"id":"c_002","code":"MONO5000","name":"5,000원 할인 쿠폰","discount_type":"fixed","discount_value":5000,"min_order_amount":50000,"expires_at":"2027-06-30T23:59:59+09:00","is_active":true,"target_user_ids":[],"target_grades":[],"created_at":"2026-11-05T10:00:00+09:00"},{"id":"c_003","code":"VIP15","name":"VIP 회원 전용 15% 할인","discount_type":"percent","discount_value":15,"min_order_amount":50000,"expires_at":"2027-03-31T23:59:59+09:00","is_active":true,"target_user_ids":["u_001"],"target_grades":[],"created_at":"2026-11-20T10:00:00+09:00"}]};
+  var SEED = {"meta":{"app":"MONO ATELIER","schema_version":7,"generated_at":"2026-11-27T08:20:00+09:00","grades":["NORMAL","SILVER","GOLD","VIP"],"currency":"KRW","free_shipping_threshold":100000,"shipping_fee":3000,"claim_return_fee":3000,"claim_exchange_fee":6000,"password_hashing":"sha256('mono-atelier$' + password) — demo only"},"users":[{"id":"u_001","email":"demo@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길동","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","grade":"GOLD","created_at":"2026-11-09T10:42:00+09:00"},{"id":"u_002","email":"admin@mono.kr","password_hash":"b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1","name":"관리자","phone":"02-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호 3층","role":"admin","grade":"NORMAL","created_at":"2026-10-01T09:00:00+09:00"}],"categories":[{"id":"outer","label":"아우터","en":"OUTER","sort_order":1,"created_at":"2026-10-01T09:00:00+09:00"},{"id":"top","label":"상의","en":"TOP","sort_order":2,"created_at":"2026-10-01T09:00:00+09:00"},{"id":"bottom","label":"하의","en":"BOTTOM","sort_order":3,"created_at":"2026-10-01T09:00:00+09:00"},{"id":"dress","label":"원피스","en":"DRESS","sort_order":4,"created_at":"2026-10-01T09:00:00+09:00"},{"id":"acc","label":"잡화","en":"ACC","sort_order":5,"created_at":"2026-10-01T09:00:00+09:00"}],"products":[{"id":"p_001","product_code":"MA-0001","name":"울 더블 브레스티드 코트","brand":"MONO ATELIER","category":"outer","price":289000,"original_price":349000,"badge":"BEST","description":"두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.","image":"coat.webp","images":["coat.webp","coat-detail.webp","coat-fabric.webp"],"model_info":"모델 174cm · 54kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-10T09:20:00+09:00","is_active":true},{"id":"p_002","product_code":"MA-0002","name":"캐시미어 리브 니트","brand":"MONO ATELIER","category":"top","price":129000,"original_price":159000,"badge":"NEW","description":"캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.","image":"knit.webp","images":["knit.webp","knit-detail.webp","knit-fabric.webp"],"model_info":"모델 171cm · 52kg · M 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-11-18T11:05:00+09:00","is_active":true},{"id":"p_003","product_code":"MA-0003","name":"와이드 테일러드 트라우저","brand":"MONO ATELIER","category":"bottom","price":149000,"original_price":null,"badge":null,"description":"허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.","image":"pants.webp","images":["pants.webp","pants-detail.webp","pants-fabric.webp"],"model_info":"모델 176cm · 60kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-25T16:30:00+09:00","is_active":true},{"id":"p_004","product_code":"MA-0004","name":"사틴 슬립 미디 드레스","brand":"MONO ATELIER","category":"dress","price":189000,"original_price":220000,"badge":"SALE","description":"빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"model_info":"모델 173cm · 53kg · S 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-02T13:10:00+09:00","is_active":true},{"id":"p_005","product_code":"MA-0005","name":"스무스 레더 숄더백","brand":"MONO ATELIER","category":"acc","price":259000,"original_price":null,"badge":"BEST","description":"이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.","image":"bag.webp","images":["bag.webp","bag-detail.webp","bag-fabric.webp"],"model_info":"모델 172cm 착용 컷","free_shipping_threshold":0,"created_at":"2026-11-08T10:00:00+09:00","is_active":true},{"id":"p_006","product_code":"MA-0006","name":"나일론 봄버 재킷","brand":"MONO ATELIER","category":"outer","price":179000,"original_price":210000,"badge":"NEW","description":"가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.","image":"jacket.webp","images":["jacket.webp","jacket-detail.webp","jacket-fabric.webp"],"model_info":"모델 178cm · 62kg · L 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-20T09:45:00+09:00","is_active":true},{"id":"p_007","product_code":"MA-0007","name":"오버사이즈 코튼 셔츠","brand":"MONO ATELIER","category":"top","price":89000,"original_price":null,"badge":null,"description":"두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.","image":"shirt.webp","images":["shirt.webp","shirt-detail.webp","shirt-fabric.webp"],"model_info":"모델 174cm · 56kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-28T15:20:00+09:00","is_active":true},{"id":"p_008","product_code":"MA-0008","name":"플리츠 미디 스커트","brand":"MONO ATELIER","category":"bottom","price":139000,"original_price":168000,"badge":"SALE","description":"곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.","image":"skirt.webp","images":["skirt.webp","skirt-detail.webp","skirt-fabric.webp"],"model_info":"모델 170cm · 51kg · S 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-20T12:00:00+09:00","is_active":true},{"id":"p_009","product_code":"MA-0009","name":"개버딘 트렌치 코트","brand":"MONO ATELIER","category":"outer","price":319000,"original_price":369000,"badge":"LIMITED","description":"묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.","image":"trench.webp","images":["trench.webp","trench-detail.webp","trench-fabric.webp"],"model_info":"모델 176cm · 58kg · M 사이즈 착용","free_shipping_threshold":0,"created_at":"2026-11-15T10:30:00+09:00","is_active":true},{"id":"p_010","product_code":"MA-0010","name":"울 블렌드 오픈 가디건","brand":"MONO ATELIER","category":"top","price":119000,"original_price":null,"badge":null,"description":"울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.","image":"cardigan.webp","images":["cardigan.webp","cardigan-detail.webp","cardigan-fabric.webp"],"model_info":"모델 169cm · 50kg · S 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-10-15T09:10:00+09:00","is_active":true},{"id":"p_011","product_code":"MA-0011","name":"와이드 데님 팬츠","brand":"MONO ATELIER","category":"bottom","price":109000,"original_price":129000,"badge":"NEW","description":"워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.","image":"denim.webp","images":["denim.webp","denim-detail.webp","denim-fabric.webp"],"model_info":"모델 175cm · 59kg · M 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-11-23T14:00:00+09:00","is_active":true},{"id":"p_012","product_code":"MA-0012","name":"레더 페니 로퍼","brand":"MONO ATELIER","category":"acc","price":219000,"original_price":249000,"badge":null,"description":"블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.","image":"loafers.webp","images":["loafers.webp","loafers-detail.webp","loafers-fabric.webp"],"model_info":"모델 172cm 착용 컷","free_shipping_threshold":0,"created_at":"2026-11-05T11:40:00+09:00","is_active":true},{"id":"p_013","product_code":"MA-0013","name":"실크 크레이프 미디 원피스","brand":"MONO ATELIER","category":"dress","price":209000,"original_price":null,"badge":null,"description":"실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"model_info":"모델 173cm · 53kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-25T17:30:00+09:00","is_active":false}],"product_images":[{"id":"pi_001","product_id":"p_001","image":"coat.webp","alt":"울 더블 브레스티드 코트","sort_order":0},{"id":"pi_002","product_id":"p_001","image":"coat-detail.webp","alt":"울 더블 브레스티드 코트 디테일","sort_order":1},{"id":"pi_003","product_id":"p_001","image":"coat-fabric.webp","alt":"울 더블 브레스티드 코트 소재 클로즈업","sort_order":2},{"id":"pi_004","product_id":"p_002","image":"knit.webp","alt":"캐시미어 리브 니트","sort_order":0},{"id":"pi_005","product_id":"p_002","image":"knit-detail.webp","alt":"캐시미어 리브 니트 디테일","sort_order":1},{"id":"pi_006","product_id":"p_002","image":"knit-fabric.webp","alt":"캐시미어 리브 니트 소재 클로즈업","sort_order":2},{"id":"pi_007","product_id":"p_003","image":"pants.webp","alt":"와이드 테일러드 트라우저","sort_order":0},{"id":"pi_008","product_id":"p_003","image":"pants-detail.webp","alt":"와이드 테일러드 트라우저 디테일","sort_order":1},{"id":"pi_009","product_id":"p_003","image":"pants-fabric.webp","alt":"와이드 테일러드 트라우저 소재 클로즈업","sort_order":2},{"id":"pi_010","product_id":"p_004","image":"dress.webp","alt":"사틴 슬립 미디 드레스","sort_order":0},{"id":"pi_011","product_id":"p_004","image":"dress-detail.webp","alt":"사틴 슬립 미디 드레스 디테일","sort_order":1},{"id":"pi_012","product_id":"p_004","image":"dress-fabric.webp","alt":"사틴 슬립 미디 드레스 소재 클로즈업","sort_order":2},{"id":"pi_013","product_id":"p_005","image":"bag.webp","alt":"스무스 레더 숄더백","sort_order":0},{"id":"pi_014","product_id":"p_005","image":"bag-detail.webp","alt":"스무스 레더 숄더백 디테일","sort_order":1},{"id":"pi_015","product_id":"p_005","image":"bag-fabric.webp","alt":"스무스 레더 숄더백 소재 클로즈업","sort_order":2},{"id":"pi_016","product_id":"p_006","image":"jacket.webp","alt":"나일론 봄버 재킷","sort_order":0},{"id":"pi_017","product_id":"p_006","image":"jacket-detail.webp","alt":"나일론 봄버 재킷 디테일","sort_order":1},{"id":"pi_018","product_id":"p_006","image":"jacket-fabric.webp","alt":"나일론 봄버 재킷 소재 클로즈업","sort_order":2},{"id":"pi_019","product_id":"p_007","image":"shirt.webp","alt":"오버사이즈 코튼 셔츠","sort_order":0},{"id":"pi_020","product_id":"p_007","image":"shirt-detail.webp","alt":"오버사이즈 코튼 셔츠 디테일","sort_order":1},{"id":"pi_021","product_id":"p_007","image":"shirt-fabric.webp","alt":"오버사이즈 코튼 셔츠 소재 클로즈업","sort_order":2},{"id":"pi_022","product_id":"p_008","image":"skirt.webp","alt":"플리츠 미디 스커트","sort_order":0},{"id":"pi_023","product_id":"p_008","image":"skirt-detail.webp","alt":"플리츠 미디 스커트 디테일","sort_order":1},{"id":"pi_024","product_id":"p_008","image":"skirt-fabric.webp","alt":"플리츠 미디 스커트 소재 클로즈업","sort_order":2},{"id":"pi_025","product_id":"p_009","image":"trench.webp","alt":"개버딘 트렌치 코트","sort_order":0},{"id":"pi_026","product_id":"p_009","image":"trench-detail.webp","alt":"개버딘 트렌치 코트 디테일","sort_order":1},{"id":"pi_027","product_id":"p_009","image":"trench-fabric.webp","alt":"개버딘 트렌치 코트 소재 클로즈업","sort_order":2},{"id":"pi_028","product_id":"p_010","image":"cardigan.webp","alt":"울 블렌드 오픈 가디건","sort_order":0},{"id":"pi_029","product_id":"p_010","image":"cardigan-detail.webp","alt":"울 블렌드 오픈 가디건 디테일","sort_order":1},{"id":"pi_030","product_id":"p_010","image":"cardigan-fabric.webp","alt":"울 블렌드 오픈 가디건 소재 클로즈업","sort_order":2},{"id":"pi_031","product_id":"p_011","image":"denim.webp","alt":"와이드 데님 팬츠","sort_order":0},{"id":"pi_032","product_id":"p_011","image":"denim-detail.webp","alt":"와이드 데님 팬츠 디테일","sort_order":1},{"id":"pi_033","product_id":"p_011","image":"denim-fabric.webp","alt":"와이드 데님 팬츠 소재 클로즈업","sort_order":2},{"id":"pi_034","product_id":"p_012","image":"loafers.webp","alt":"레더 페니 로퍼","sort_order":0},{"id":"pi_035","product_id":"p_012","image":"loafers-detail.webp","alt":"레더 페니 로퍼 디테일","sort_order":1},{"id":"pi_036","product_id":"p_012","image":"loafers-fabric.webp","alt":"레더 페니 로퍼 소재 클로즈업","sort_order":2},{"id":"pi_037","product_id":"p_013","image":"dress.webp","alt":"실크 크레이프 미디 원피스","sort_order":0},{"id":"pi_038","product_id":"p_013","image":"dress-detail.webp","alt":"실크 크레이프 미디 원피스 디테일","sort_order":1},{"id":"pi_039","product_id":"p_013","image":"dress-fabric.webp","alt":"실크 크레이프 미디 원피스 소재 클로즈업","sort_order":2}],"product_variants":[{"id":"v_001","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"S","stock":5,"sku":"MA-OUT-001-차콜-S"},{"id":"v_002","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"M","stock":3,"sku":"MA-OUT-001-차콜-M"},{"id":"v_003","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"L","stock":2,"sku":"MA-OUT-001-차콜-L"},{"id":"v_004","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"XL","stock":1,"sku":"MA-OUT-001-차콜-XL"},{"id":"v_005","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"S","stock":4,"sku":"MA-OUT-001-카멜-S"},{"id":"v_006","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"M","stock":6,"sku":"MA-OUT-001-카멜-M"},{"id":"v_007","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"L","stock":3,"sku":"MA-OUT-001-카멜-L"},{"id":"v_008","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"XL","stock":0,"sku":"MA-OUT-001-카멜-XL"},{"id":"v_009","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-001-블랙-S"},{"id":"v_010","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":0,"sku":"MA-OUT-001-블랙-M"},{"id":"v_011","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-OUT-001-블랙-L"},{"id":"v_012","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-OUT-001-블랙-XL"},{"id":"v_013","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"S","stock":8,"sku":"MA-TOP-002-크림-S"},{"id":"v_014","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"M","stock":12,"sku":"MA-TOP-002-크림-M"},{"id":"v_015","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"L","stock":5,"sku":"MA-TOP-002-크림-L"},{"id":"v_016","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"S","stock":3,"sku":"MA-TOP-002-오트-S"},{"id":"v_017","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"M","stock":2,"sku":"MA-TOP-002-오트-M"},{"id":"v_018","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"L","stock":6,"sku":"MA-TOP-002-오트-L"},{"id":"v_019","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"S","stock":4,"sku":"MA-TOP-002-블랙-S"},{"id":"v_020","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"M","stock":1,"sku":"MA-TOP-002-블랙-M"},{"id":"v_021","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"L","stock":0,"sku":"MA-TOP-002-블랙-L"},{"id":"v_022","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":6,"sku":"MA-BTM-003-블랙-S"},{"id":"v_023","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":9,"sku":"MA-BTM-003-블랙-M"},{"id":"v_024","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-BTM-003-블랙-L"},{"id":"v_025","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-BTM-003-블랙-XL"},{"id":"v_026","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":2,"sku":"MA-BTM-003-차콜-S"},{"id":"v_027","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":5,"sku":"MA-BTM-003-차콜-M"},{"id":"v_028","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":7,"sku":"MA-BTM-003-차콜-L"},{"id":"v_029","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"XL","stock":1,"sku":"MA-BTM-003-차콜-XL"},{"id":"v_030","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":3,"sku":"MA-DRS-004-샴페-S"},{"id":"v_031","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":0,"sku":"MA-DRS-004-샴페-M"},{"id":"v_032","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":2,"sku":"MA-DRS-004-샴페-L"},{"id":"v_033","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-DRS-004-블랙-S"},{"id":"v_034","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":5,"sku":"MA-DRS-004-블랙-M"},{"id":"v_035","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-DRS-004-블랙-L"},{"id":"v_036","product_id":"p_005","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":6,"sku":"MA-ACC-005-블랙-FREE"},{"id":"v_037","product_id":"p_005","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":2,"sku":"MA-ACC-005-다크-FREE"},{"id":"v_038","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"M","stock":5,"sku":"MA-OUT-006-올리-M"},{"id":"v_039","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"L","stock":4,"sku":"MA-OUT-006-올리-L"},{"id":"v_040","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"XL","stock":2,"sku":"MA-OUT-006-올리-XL"},{"id":"v_041","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":3,"sku":"MA-OUT-006-블랙-M"},{"id":"v_042","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":0,"sku":"MA-OUT-006-블랙-L"},{"id":"v_043","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":5,"sku":"MA-OUT-006-블랙-XL"},{"id":"v_044","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"M","stock":2,"sku":"MA-OUT-006-샌드-M"},{"id":"v_045","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"L","stock":3,"sku":"MA-OUT-006-샌드-L"},{"id":"v_046","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"XL","stock":1,"sku":"MA-OUT-006-샌드-XL"},{"id":"v_047","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"S","stock":10,"sku":"MA-TOP-007-화이-S"},{"id":"v_048","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"M","stock":14,"sku":"MA-TOP-007-화이-M"},{"id":"v_049","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"L","stock":6,"sku":"MA-TOP-007-화이-L"},{"id":"v_050","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"S","stock":4,"sku":"MA-TOP-007-스카-S"},{"id":"v_051","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"M","stock":3,"sku":"MA-TOP-007-스카-M"},{"id":"v_052","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"L","stock":2,"sku":"MA-TOP-007-스카-L"},{"id":"v_053","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":5,"sku":"MA-BTM-008-차콜-S"},{"id":"v_054","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":3,"sku":"MA-BTM-008-차콜-M"},{"id":"v_055","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":2,"sku":"MA-BTM-008-차콜-L"},{"id":"v_056","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-BTM-008-블랙-S"},{"id":"v_057","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":6,"sku":"MA-BTM-008-블랙-M"},{"id":"v_058","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":1,"sku":"MA-BTM-008-블랙-L"},{"id":"v_059","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"S","stock":0,"sku":"MA-OUT-009-베이-S"},{"id":"v_060","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"M","stock":3,"sku":"MA-OUT-009-베이-M"},{"id":"v_061","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"L","stock":4,"sku":"MA-OUT-009-베이-L"},{"id":"v_062","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"XL","stock":2,"sku":"MA-OUT-009-베이-XL"},{"id":"v_063","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-009-블랙-S"},{"id":"v_064","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":4,"sku":"MA-OUT-009-블랙-M"},{"id":"v_065","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-OUT-009-블랙-L"},{"id":"v_066","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":1,"sku":"MA-OUT-009-블랙-XL"},{"id":"v_067","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"S","stock":4,"sku":"MA-TOP-010-그레-S"},{"id":"v_068","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"M","stock":5,"sku":"MA-TOP-010-그레-M"},{"id":"v_069","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"L","stock":3,"sku":"MA-TOP-010-그레-L"},{"id":"v_070","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"S","stock":2,"sku":"MA-TOP-010-아이-S"},{"id":"v_071","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"M","stock":2,"sku":"MA-TOP-010-아이-M"},{"id":"v_072","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"L","stock":4,"sku":"MA-TOP-010-아이-L"},{"id":"v_073","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"S","stock":6,"sku":"MA-BTM-011-미드-S"},{"id":"v_074","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"M","stock":8,"sku":"MA-BTM-011-미드-M"},{"id":"v_075","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"L","stock":5,"sku":"MA-BTM-011-미드-L"},{"id":"v_076","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"XL","stock":3,"sku":"MA-BTM-011-미드-XL"},{"id":"v_077","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"S","stock":3,"sku":"MA-BTM-011-워시-S"},{"id":"v_078","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"M","stock":4,"sku":"MA-BTM-011-워시-M"},{"id":"v_079","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"L","stock":2,"sku":"MA-BTM-011-워시-L"},{"id":"v_080","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"XL","stock":0,"sku":"MA-BTM-011-워시-XL"},{"id":"v_081","product_id":"p_012","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":0,"sku":"MA-ACC-012-블랙-FREE"},{"id":"v_082","product_id":"p_012","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":0,"sku":"MA-ACC-012-다크-FREE"},{"id":"v_083","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":2,"sku":"MA-DRS-013-샴페-S"},{"id":"v_084","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":2,"sku":"MA-DRS-013-샴페-M"},{"id":"v_085","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":1,"sku":"MA-DRS-013-샴페-L"},{"id":"v_086","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":3,"sku":"MA-DRS-013-블랙-S"},{"id":"v_087","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":2,"sku":"MA-DRS-013-블랙-M"},{"id":"v_088","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":2,"sku":"MA-DRS-013-블랙-L"}],"cart_items":[],"orders":[{"id":"o_001","order_no":"MA20261112-4821","user_id":"u_001","status":"delivered","total_amount":278000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-12T10:24:00+09:00"},{"id":"o_002","order_no":"MA20261124-3917","user_id":"u_001","status":"paid","total_amount":173000,"shipping_fee":0,"coupon_code":"MONO5000","discount_amount":5000,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-24T15:40:00+09:00"},{"id":"o_003","order_no":"MA20261125-6042","user_id":"u_001","status":"preparing","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"bank","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-25T09:12:00+09:00"},{"id":"o_004","order_no":"MA20261114-2288","user_id":"u_001","status":"delivered","total_amount":109000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-14T11:05:00+09:00"},{"id":"o_005","order_no":"MA20261116-7735","user_id":"u_001","status":"delivered","total_amount":139000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-16T14:30:00+09:00"}],"order_items":[{"id":"oi_001","order_id":"o_001","variant_id":"v_014","product_name":"캐시미어 리브 니트","color":"크림","size":"M","unit_price":129000,"quantity":1},{"id":"oi_002","order_id":"o_001","variant_id":"v_023","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1},{"id":"oi_003","order_id":"o_002","variant_id":"v_047","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":2},{"id":"oi_004","order_id":"o_003","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1},{"id":"oi_005","order_id":"o_004","variant_id":"v_074","product_name":"와이드 데님 팬츠","color":"미드블루","size":"M","unit_price":109000,"quantity":1},{"id":"oi_006","order_id":"o_005","variant_id":"v_054","product_name":"플리츠 미디 스커트","color":"차콜","size":"M","unit_price":139000,"quantity":1}],"order_claims":[{"id":"oc_20261119_1001","order_id":"o_004","user_id":"u_001","claim_type":"return","reason_category":"defect","reason_detail":"밑단 박음질이 풀려 있고 오른쪽 무릎 부분에 5cm 정도 올이 나 있습니다.","shipping_fee":0,"payment_status":"free","payment_key":null,"payment_mode":"free","exchange_option":null,"status":"requested","stock_restored":0,"created_at":"2026-11-19T09:20:00+09:00","updated_at":"2026-11-19T09:20:00+09:00"},{"id":"oc_20261121_1002","order_id":"o_005","user_id":"u_001","claim_type":"exchange","reason_category":"size_color","reason_detail":"허리가 조금 커서 S 사이즈로 교환하고 싶습니다.","shipping_fee":6000,"payment_status":"paid","payment_key":"test_claim_seed_6f1c","payment_mode":"test-client","exchange_option":"차콜 / S","status":"approved","stock_restored":0,"created_at":"2026-11-21T10:12:00+09:00","updated_at":"2026-11-22T09:00:00+09:00"}],"coupons":[{"id":"c_001","code":"WELCOME10","name":"신규 회원 10% 할인","discount_type":"percent","discount_value":10,"min_order_amount":30000,"expires_at":"2027-12-31T23:59:59+09:00","is_active":true,"target_user_ids":[],"target_grades":[],"created_at":"2026-11-01T10:00:00+09:00"},{"id":"c_002","code":"MONO5000","name":"5,000원 할인 쿠폰","discount_type":"fixed","discount_value":5000,"min_order_amount":50000,"expires_at":"2027-06-30T23:59:59+09:00","is_active":true,"target_user_ids":[],"target_grades":[],"created_at":"2026-11-05T10:00:00+09:00"},{"id":"c_003","code":"VIP15","name":"VIP 회원 전용 15% 할인","discount_type":"percent","discount_value":15,"min_order_amount":50000,"expires_at":"2027-03-31T23:59:59+09:00","is_active":true,"target_user_ids":["u_001"],"target_grades":[],"created_at":"2026-11-20T10:00:00+09:00"}],"site_settings":{"id":"default","hero_image":"hero.webp","hero_eyebrow":"FALL / WINTER 2026 — THE QUIET COLLECTION","hero_title":"Quiet luxury,\nfor every day.","hero_subtitle":"매일 손이 가는 단정한 실루엣.\n좋은 소재만 골라 만든 모노 아뜰리에의 가을·겨울.","hero_cta_label":"컬렉션 보기","hero_cta2_label":"브랜드 스토리","hero_effect":"zoom","hero_overlay":42,"brand_blurb":"단정한 실루엣, 좋은 소재. 서울에서 만드는 모던 컨템포러리 브랜드입니다.","company_name":"모노 아뜰리에","company_ceo":"홍길동","company_reg_no":"000-00-00000","company_mail_order_no":"제2026-서울송파-0000호","company_address":"서울특별시 송파구 올림픽로 300 101동 1203호","company_phone":"02-0000-0000","company_email":"help@mono.kr","updated_at":"2026-11-27T08:20:00+09:00"},"help_topics":[{"id":"help_delivery","title":"배송 안내","sort_order":1,"body":"평일 오후 2시 이전 결제 시 당일 출고됩니다.\n100,000원 이상 구매 시 무료배송이며, 미만은 배송비 3,000원입니다.\n제주·도서산간 지역은 추가 배송비가 발생할 수 있습니다."},{"id":"help_exchange","title":"교환·반품 안내","sort_order":2,"body":"수령 후 7일 이내 교환·반품 신청이 가능합니다.\n제품 하자·오배송은 판매자 귀책으로 배송비가 무료이며, 단순 변심은 반품 3,000원 · 교환(왕복) 6,000원입니다.\n교환·반품은 마이페이지 → 주문 내역에서 신청할 수 있습니다."},{"id":"help_size","title":"사이즈·세탁 가이드","sort_order":3,"body":"각 상품 상세의 실측 사이즈와 모델 착용 정보를 확인해 주세요.\n울·캐시미어는 드라이클리닝을 권장하며, 데님은 찬물 단독 세탁 후 그늘에서 건조해 주세요."},{"id":"help_faq","title":"고객센터 · FAQ","sort_order":4,"body":"고객센터 운영 시간: 평일 10:00 – 17:00 (점심 12:30 – 13:30, 주말·공휴일 휴무)\n자주 묻는 질문: 쿠폰은 결제 화면에서 적용할 수 있고, 회원 등급별 전용 쿠폰이 발급됩니다."}]};
   var EMBEDDED = {};
-  var APP_VERSION = '1.7.0';
+  var APP_VERSION = '1.8.0';
 
   var LS_DB = 'mono_atelier_db_v1';
   var LS_SESSION = 'mono_atelier_session_v1';
@@ -1767,7 +1907,20 @@ table.data.claims { min-width: 780px; }
     '실버': '#C7C9CC', 'silver': '#C7C9CC',
     '골드': '#C3A15C', 'gold': '#C3A15C'
   };
-  function isHexColor(v) { return /^#[0-9a-f]{6}$/i.test(String(v || '').trim()); }
+  var DEFAULT_HEX = '#1B1B1D';
+  /* HEX 정규화 — '#' 없이 입력한 FFFFFF·fff(3자리)도 받아들인다.
+     (끝값 흰색·검정을 손으로 입력할 때 값이 조용히 무시되던 문제를 없앤다) */
+  function normalizeHex(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return null;
+    if (s.charAt(0) !== '#') s = '#' + s;
+    if (/^#[0-9a-f]{3}$/i.test(s)) {
+      s = '#' + s.charAt(1) + s.charAt(1) + s.charAt(2) + s.charAt(2) + s.charAt(3) + s.charAt(3);
+    }
+    if (!/^#[0-9a-f]{6}$/i.test(s)) return null;
+    return s.toUpperCase();
+  }
+  function isHexColor(v) { return !!normalizeHex(v); }
   function colorHexFromName(name) {
     var key = String(name || '').trim().toLowerCase().replace(/\s+/g, '');
     if (!key) return null;
@@ -1777,23 +1930,189 @@ table.data.claims { min-width: 780px; }
     }
     return null;
   }
-  /* 옵션 렌더링용 HEX — 저장된 color_hex(관리자가 고른 값)를 우선하고,
-     비어 있거나 기본값(#1B1B1D)뿐이면 색상명 매핑을 쓴다. */
+  /* 옵션 렌더링용 HEX — 저장된 color_hex(관리자가 고른 값)를 그대로 신뢰한다.
+     값이 비어 있거나 형식이 깨졌을 때만 색상명 매핑 → 기본색 순서로 보정한다.
+     (예전에는 #1B1B1D 를 '미지정'으로 취급해, 관리자가 고른 검정이 색상명 매핑값으로
+      덮어써지는 바람에 HEX 가 변하지 않는 것처럼 보였다) */
   function resolveColorHex(name, hex) {
-    var stored = String(hex || '').trim();
-    if (isHexColor(stored) && stored.toLowerCase() !== '#1b1b1d') return stored.toUpperCase();
+    var stored = normalizeHex(hex);
+    if (stored) return stored;
     var mapped = colorHexFromName(name);
-    if (mapped) return mapped;
-    return isHexColor(stored) ? stored.toUpperCase() : '#1B1B1D';
+    return mapped || DEFAULT_HEX;
   }
-  /* 밝은 색(흰색·아이보리·크림)은 배경과 구분되도록 테두리를 준다 */
-  function isLightHex(hex) {
-    var h = String(resolveColorHex('', hex) || '#000000').replace('#', '');
-    if (h.length !== 6) return false;
+  /* 저장용 — 입력값이 없을 때만 색상명 매핑으로 채운다 */
+  function normalizeStoredHex(name, hex) {
+    return normalizeHex(hex) || colorHexFromName(name) || DEFAULT_HEX;
+  }
+  /* 한국어 색상명 목록 — 이미지에서 뽑은 색에 가장 가까운 이름을 추천할 때 쓴다 */
+  var COLOR_NAME_LIST = (function () {
+    var seen = {}, out = [];
+    Object.keys(COLOR_HEX_MAP).forEach(function (k) {
+      if (/[a-z]/i.test(k)) return;                     // 영문 키는 제외
+      var hex = String(COLOR_HEX_MAP[k]).toUpperCase();
+      if (seen[hex]) return;
+      seen[hex] = 1;
+      out.push({ name: k, hex: hex });
+    });
+    [['라이트그레이', '#D5D7DA'], ['카키', '#7C7A5E'], ['레몬', '#EBD661'], ['라벤더', '#B7A9C9'],
+     ['민트', '#A8C7B6'], ['코랄', '#D98A78'], ['버건디', '#6E2B33'], ['흰색', '#FFFFFF'], ['검정색', '#000000']]
+      .forEach(function (pair) {
+        if (out.some(function (c) { return c.hex === pair[1]; })) return;
+        out.push({ name: pair[0], hex: pair[1] });
+      });
+    return out;
+  })();
+  function hexLuma(hex) {
+    var h = String(normalizeHex(hex) || '#000000').slice(1);
     var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
-    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 >= 0.86;
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  }
+  /* 두 HEX 의 지각적 거리(가중 RGB) — 이름 추천·팔레트 중복 제거에 쓴다 */
+  function hexDistance(a, b) {
+    var x = String(normalizeHex(a) || '#000000').slice(1), y = String(normalizeHex(b) || '#000000').slice(1);
+    var r1 = parseInt(x.slice(0, 2), 16), g1 = parseInt(x.slice(2, 4), 16), b1 = parseInt(x.slice(4, 6), 16);
+    var r2 = parseInt(y.slice(0, 2), 16), g2 = parseInt(y.slice(2, 4), 16), b2 = parseInt(y.slice(4, 6), 16);
+    var rm = (r1 + r2) / 2;
+    var dr = r1 - r2, dg = g1 - g2, db = b1 - b2;
+    return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db);
+  }
+  function nearestColorName(hex) {
+    var n = normalizeHex(hex) || DEFAULT_HEX;
+    /* 채도가 거의 없는 색은 밝기로 부른다(회색 계열이 '카키'로 추천되던 문제) */
+    if (hexSaturation(n) <= 0.06) {
+      var l = hexLuma(n);
+      if (l >= 0.93) return { name: '하얀색', hex: '#FFFFFF', distance: 0 };
+      if (l >= 0.72) return { name: '라이트그레이', hex: '#D5D7DA', distance: 0 };
+      if (l >= 0.45) return { name: '그레이', hex: '#B9B7B1', distance: 0 };
+      if (l >= 0.22) return { name: '차콜', hex: '#35353A', distance: 0 };
+      return { name: '검정색', hex: '#000000', distance: 0 };
+    }
+    var best = COLOR_NAME_LIST[0], bestD = Infinity;
+    for (var i = 0; i < COLOR_NAME_LIST.length; i++) {
+      var d = hexDistance(n, COLOR_NAME_LIST[i].hex);
+      if (d < bestD) { bestD = d; best = COLOR_NAME_LIST[i]; }
+    }
+    return { name: best.name, hex: best.hex, distance: Math.round(bestD) };
+  }
+  /* 밝은 색(흰색·아이보리·크림)은 배경과 구분되도록 바깥 테두리를 준다 */
+  function isLightHex(hex) {
+    return hexLuma(resolveColorHex('', hex)) >= 0.86;
   }
   function swatchClass(hex) { return 'sw' + (isLightHex(hex) ? ' light' : ''); }
+  /* =========================== 색상 프리셋 · 이미지 색 추출 (관리자 편집기)
+     · 프리셋: 자주 쓰는 16색(흰색·검정 끝값 포함)을 한 번에 적용
+     · 추출: 대표(또는 선택한) 갤러리 이미지를 canvas 로 샘플링해 주요 색 6개 + 가까운 한국어 색상명 */
+  var COLOR_PRESETS = [
+    ['하얀색', '#FFFFFF'], ['아이보리', '#F7F1E1'], ['크림', '#F3EAD9'], ['오트밀', '#D9CBB5'],
+    ['베이지', '#D7C3A3'], ['샌드', '#C9B79C'], ['카멜', '#B08A5E'], ['브라운', '#6B4F3A'],
+    ['그레이', '#B9B7B1'], ['차콜', '#35353A'], ['블랙', '#000000'], ['네이비', '#2B3A55'],
+    ['미드블루', '#5C7CA6'], ['올리브', '#5A6247'], ['레드', '#A33A32'], ['핑크', '#E3B6BE']
+  ];
+  function hexSaturation(hex) {
+    var h = String(normalizeHex(hex) || '#000000').slice(1);
+    var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    return mx === 0 ? 0 : (mx - mn) / mx;
+  }
+  function rgbToHex(r, g, b) {
+    var to = function (n) { var s = Math.max(0, Math.min(255, Math.round(n))).toString(16).toUpperCase(); return s.length < 2 ? '0' + s : s; };
+    return '#' + to(r) + to(g) + to(b);
+  }
+  /* 이미지 → 주요 색 팔레트(최대 6) — 흰 배경 같은 극단 노이즈는 비중이 크면 걸러낸다 */
+  function sampleImageColors(src, opts, cb) {
+    var url = imgSrc(src);
+    if (!url) { cb({ ok: false, colors: [], message: '분석할 이미지가 없습니다.' }); return; }
+    var img = new Image();
+    var done = false;
+    var finish = function (res) { if (done) return; done = true; cb(res); };
+    img.onload = function () {
+      try {
+        var S = 96;
+        var cv = document.createElement('canvas');
+        cv.width = S; cv.height = S;
+        var cx = cv.getContext('2d');
+        cx.drawImage(img, 0, 0, S, S);
+        var data = cx.getImageData(0, 0, S, S).data;
+        var at = function (x, y) { var i = (y * S + x) * 4; return [data[i], data[i + 1], data[i + 2], data[i + 3]]; };
+        /* 배경색 추정 — 네 모서리 6×6 패치의 평균(스튜디오 배경이 흰색이든 회색이든 걸러낸다) */
+        var corner = [0, 0, 0], cornerN = 0;
+        [[0, 0], [S - 6, 0], [0, S - 6], [S - 6, S - 6]].forEach(function (c0) {
+          for (var yy = c0[1]; yy < c0[1] + 6; yy++) for (var xx = c0[0]; xx < c0[0] + 6; xx++) {
+            var px = at(xx, yy);
+            if (px[3] < 125) continue;
+            corner[0] += px[0]; corner[1] += px[1]; corner[2] += px[2]; cornerN++;
+          }
+        });
+        var bgHex = cornerN ? rgbToHex(corner[0] / cornerN, corner[1] / cornerN, corner[2] / cornerN) : null;
+        var buckets = {}, total = 0, kept = 0;
+        for (var i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 125) continue;
+          var r = data[i], g = data[i + 1], b = data[i + 2];
+          total++;
+          var hexPx = rgbToHex(r, g, b);
+          /* 배경과 거의 같은 픽셀은 버린다(의류 본체만 남긴다) */
+          if (bgHex && hexDistance(hexPx, bgHex) < 34) continue;
+          var key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+          var bk = buckets[key] || (buckets[key] = { n: 0, r: 0, g: 0, b: 0 });
+          bk.n++; bk.r += r; bk.g += g; bk.b += b;
+          kept++;
+        }
+        /* 배경 제거가 너무 많이 지웠다면(옷이 배경과 같은 색) 배경 필터를 끄고 다시 */
+        if (kept < total * 0.10) {
+          buckets = {}; kept = 0;
+          for (var j = 0; j < data.length; j += 4) {
+            if (data[j + 3] < 125) continue;
+            var r2 = data[j], g2 = data[j + 1], b2 = data[j + 2];
+            var k2 = ((r2 >> 4) << 8) | ((g2 >> 4) << 4) | (b2 >> 4);
+            var b2k = buckets[k2] || (buckets[k2] = { n: 0, r: 0, g: 0, b: 0 });
+            b2k.n++; b2k.r += r2; b2k.g += g2; b2k.b += b2; kept++;
+          }
+        }
+        if (!kept) { finish({ ok: false, colors: [], message: '이미지에서 색을 찾지 못했습니다.' }); return; }
+        var list = Object.keys(buckets).map(function (k) {
+          var bk = buckets[k];
+          var hex = rgbToHex(bk.r / bk.n, bk.g / bk.n, bk.b / bk.n);
+          return { hex: hex, share: bk.n / kept, luma: hexLuma(hex), sat: hexSaturation(hex) };
+        }).filter(function (c) { return c.share >= 0.005; }).sort(function (a, b) { return b.share - a.share; });
+        /* 비슷한 색은 비중 가중 평균으로 합친다(미세한 그림자·노이즈 제거) */
+        var merged = [];
+        list.forEach(function (c) {
+          for (var m = 0; m < merged.length; m++) {
+            if (hexDistance(merged[m].hex, c.hex) < 22) {
+              var g2 = merged[m];
+              var w = g2.share + c.share;
+              var hr = parseInt(g2.hex.slice(1, 3), 16) * g2.share + parseInt(c.hex.slice(1, 3), 16) * c.share;
+              var hg = parseInt(g2.hex.slice(3, 5), 16) * g2.share + parseInt(c.hex.slice(3, 5), 16) * c.share;
+              var hb = parseInt(g2.hex.slice(5, 7), 16) * g2.share + parseInt(c.hex.slice(5, 7), 16) * c.share;
+              g2.hex = rgbToHex(hr / w, hg / w, hb / w);
+              g2.share = w;
+              return;
+            }
+          }
+          merged.push({ hex: c.hex, share: c.share });
+        });
+        merged.sort(function (a, b) { return b.share - a.share; });
+        var picked = [];
+        for (var t2 = 0; t2 < 2 && picked.length < 4; t2++) {
+          var minDist = t2 === 0 ? 46 : 24;
+          merged.forEach(function (c) {
+            if (picked.length >= 6) return;
+            if (picked.every(function (p) { return hexDistance(p.hex, c.hex) >= minDist; })) picked.push(c);
+          });
+        }
+        var colors = picked.slice(0, 6).map(function (c) {
+          var near = nearestColorName(c.hex);
+          return { hex: c.hex, name: near.name, share: Math.round(c.share * 100), distance: near.distance };
+        });
+        finish({ ok: colors.length > 0, colors: colors, message: colors.length ? '' : '이미지에서 색을 찾지 못했습니다.' });
+      } catch (e) {
+        finish({ ok: false, colors: [], message: '이미지 색을 읽을 수 없습니다(보안 제한). 로컬 서버(http)로 열거나 업로드한 사진으로 시도해 주세요.' });
+      }
+    };
+    img.onerror = function () { finish({ ok: false, colors: [], message: '이미지를 불러오지 못했습니다.' }); };
+    try { img.crossOrigin = 'anonymous'; } catch (e) {}
+    img.src = url;
+  }
   var SIZE_ORDER = ['S', 'M', 'L', 'XL', 'FREE'];
   var STATUS = {
     paid: { label: '결제완료', cls: 'paid' },
@@ -2032,6 +2351,31 @@ table.data.claims { min-width: 780px; }
 
   /* ------------------------------------------------------------- entities */
   function productById(id) { return db.products.filter(function (p) { return p.id === id; })[0] || null; }
+  /* ------------------------------------------------- 제품고유키(제품번호)
+     MA-0001 형식 · 대소문자 무시 유일 · 신규 등록 시 가장 큰 번호 다음을 자동 추천 */
+  var PRODUCT_CODE_PREFIX = 'MA-';
+  function normalizeProductCode(v) { return String(v == null ? '' : v).trim().toUpperCase(); }
+  function nextProductCode() {
+    var max = 0;
+    db.products.forEach(function (p) {
+      var m = String(p.product_code || '').match(/^MA-(\d+)$/i);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return PRODUCT_CODE_PREFIX + ('0000' + (max + 1)).slice(-4);
+  }
+  function productCodeTaken(code, exceptId) {
+    var c = normalizeProductCode(code);
+    if (!c) return false;
+    return db.products.some(function (p) {
+      return p.id !== exceptId && normalizeProductCode(p.product_code) === c;
+    });
+  }
+  function productCodeOf(p) { return p ? (normalizeProductCode(p.product_code) || '-') : '-'; }
+  function productByCode(code) {
+    var c = normalizeProductCode(code);
+    if (!c) return null;
+    return db.products.filter(function (p) { return normalizeProductCode(p.product_code) === c; })[0] || null;
+  }
   function variantById(id) { return db.product_variants.filter(function (v) { return v.id === id; })[0] || null; }
   function variantsOf(pid) {
     return db.product_variants.filter(function (v) { return v.product_id === pid; });
@@ -2045,6 +2389,12 @@ table.data.claims { min-width: 780px; }
       if (!seen[v.color]) { seen[v.color] = 1; out.push({ color: v.color, hex: resolveColorHex(v.color, v.color_hex) }); }
     });
     return out;
+  }
+  /* 컬러명의 상품 대표 HEX — 상세·장바구니·주문내역·교환모달이 같은 값을 보여주게 한다 */
+  function hexOfColor(pid, color) {
+    var list = colorsOf(pid);
+    for (var i = 0; i < list.length; i++) if (list[i].color === color) return list[i].hex;
+    return null;
   }
   function sizesOf(pid, color) {
     return variantsOf(pid)
@@ -2517,7 +2867,7 @@ table.data.claims { min-width: 780px; }
   var routeApplying = false;
   var routeBackTarget = null;
   var routeBackTries = 0;
-  var TRACKED_LAYERS = { product: 1, auth: 1, order: 1, receipt: 1, claim: 1 };
+  var TRACKED_LAYERS = { product: 1, auth: 1, order: 1, receipt: 1, claim: 1, help: 1 };
   function routeOf() {
     var m = ui.modal;
     var tracked = m && TRACKED_LAYERS[m.type] ? m.type : null;
@@ -2527,6 +2877,7 @@ table.data.claims { min-width: 780px; }
       layer: tracked,
       pid: tracked === 'product' ? m.pid : null,
       oid: (tracked === 'order' || tracked === 'receipt' || tracked === 'claim') ? m.oid : null,
+      tid: tracked === 'help' ? m.topicId : null,
       img: tracked === 'product' ? (m.img || 0) : 0,
       cart: !!ui.cartOpen,
       zoom: ui.lightbox ? 1 : 0,
@@ -2539,7 +2890,7 @@ table.data.claims { min-width: 780px; }
   }
   function sameRoute(a, b) {
     return !!a && !!b && a.view === b.view && a.layer === b.layer && a.cart === b.cart &&
-      a.pid === b.pid && a.oid === b.oid && a.img === b.img &&
+      a.pid === b.pid && a.oid === b.oid && a.tid === b.tid && a.img === b.img &&
       (a.zoom || 0) === (b.zoom || 0) && (a.zimg || 0) === (b.zimg || 0);
   }
   function syncRoute() {
@@ -2609,6 +2960,8 @@ table.data.claims { min-width: 780px; }
         type: 'claim', oid: s.oid, claim_type: 'return', reason_category: 'change_of_mind',
         reason_detail: '', exchange_option: '', error: ''
       };
+    } else if (s.layer === 'help' && helpTopicById(s.tid)) {
+      ui.modal = { type: 'help', topicId: s.tid };
     } else if (s.layer === 'receipt' && s.oid && orderById(s.oid)) {
       ui.modal = { type: 'receipt', oid: s.oid };
     } else {
@@ -3208,6 +3561,14 @@ table.data.claims { min-width: 780px; }
   }
   function saveProduct(input) {
     if (!String(input.name || '').trim()) return { ok: false, message: '상품명을 입력해 주세요.' };
+    /* 제품고유키(제품번호) — 비었으면 자동 채번, 형식·중복(대소문자 무시)은 저장 전에 막는다 */
+    var code = normalizeProductCode(input.product_code) || nextProductCode();
+    if (!/^[A-Z0-9][A-Z0-9._-]{1,23}$/.test(code)) {
+      return { ok: false, message: '제품번호는 영문·숫자·하이픈(-) 2~24자로 입력해 주세요. (예: MA-0014)' };
+    }
+    if (productCodeTaken(code, input.id)) {
+      return { ok: false, message: '제품번호 ' + code + ' 은(는) 이미 다른 상품에서 사용 중입니다. 다른 번호를 입력해 주세요.' };
+    }
     var price = parseInt(input.price, 10);
     if (!(price > 0)) return { ok: false, message: '판매가를 올바르게 입력해 주세요.' };
     var original = input.original_price === '' || input.original_price == null ? null : parseInt(input.original_price, 10);
@@ -3229,6 +3590,7 @@ table.data.claims { min-width: 780px; }
     if (input.id) {
       p = productById(input.id);
       if (!p) return { ok: false, message: '상품을 찾을 수 없습니다.' };
+      p.product_code = code;
       p.name = String(input.name).trim();
       p.brand = String(input.brand || 'MONO ATELIER').trim();
       p.category = category;
@@ -3250,11 +3612,11 @@ table.data.claims { min-width: 780px; }
         var match = existing.filter(function (e) { return e.color === v.color && e.size === v.size; })[0];
         if (match) {
           match.stock = parseInt(v.stock, 10) || 0;
-          match.color_hex = resolveColorHex(v.color, v.color_hex);
+          match.color_hex = normalizeStoredHex(v.color, v.color_hex);
           nextIds[match.id] = 1;
         } else {
           var nv = {
-            id: newId('v'), product_id: p.id, color: v.color, color_hex: resolveColorHex(v.color, v.color_hex),
+            id: newId('v'), product_id: p.id, color: v.color, color_hex: normalizeStoredHex(v.color, v.color_hex),
             size: v.size, stock: parseInt(v.stock, 10) || 0,
             sku: 'MA-' + String(category).toUpperCase() + '-' + idSeq(3).toUpperCase() + '-' + v.size
           };
@@ -3274,6 +3636,7 @@ table.data.claims { min-width: 780px; }
     } else {
       p = {
         id: newId('p'),
+        product_code: code,
         name: String(input.name).trim(),
         brand: String(input.brand || 'MONO ATELIER').trim(),
         category: category,
@@ -3292,7 +3655,7 @@ table.data.claims { min-width: 780px; }
       syncProductImages(p);
       variants.forEach(function (v) {
         db.product_variants.push({
-          id: newId('v'), product_id: p.id, color: v.color, color_hex: resolveColorHex(v.color, v.color_hex),
+          id: newId('v'), product_id: p.id, color: v.color, color_hex: normalizeStoredHex(v.color, v.color_hex),
           size: v.size, stock: parseInt(v.stock, 10) || 0,
           sku: 'MA-' + String(category).toUpperCase() + '-' + idSeq(3).toUpperCase() + '-' + v.size
         });
@@ -3326,7 +3689,7 @@ table.data.claims { min-width: 780px; }
   function exportPayload() {
     return {
       meta: {
-        app: 'MONO ATELIER', schema_version: 6, app_version: APP_VERSION,
+        app: 'MONO ATELIER', schema_version: 7, app_version: APP_VERSION,
         exported_at: nowISO(), storage: 'localStorage'
       },
       users: db.users,
@@ -3338,7 +3701,9 @@ table.data.claims { min-width: 780px; }
       orders: db.orders,
       order_items: db.order_items,
       order_claims: db.order_claims,
-      coupons: db.coupons
+      coupons: db.coupons,
+      site_settings: db.site_settings,
+      help_topics: db.help_topics
     };
   }
   function exportJSON() {
@@ -3564,13 +3929,14 @@ table.data.claims { min-width: 780px; }
       (found.length ? found.map(function (p) {
         return '<button class="sp-item" data-action="open-product" data-pid="' + p.id + '">' +
           '<img src="' + imgSrc(p.image) + '" alt="">' +
-          '<span><span class="n">' + esc(p.name) + '</span><br><span class="p">' + won(p.price) + '</span></span>' +
+          '<span><span class="n">' + esc(p.name) + '</span><br><span class="p">' + won(p.price) +
+            ' · <span class="code-badge">' + esc(productCodeOf(p)) + '</span></span></span>' +
         '</button>';
       }).join('') : '<div class="sp-empty">‘' + esc(q) + '’에 대한 결과가 없습니다.</div>') +
       '</div>';
   }
   function matchesQuery(p, q) {
-    var hay = [p.name, p.brand, p.description, catLabel(p.category)].join(' ').toLowerCase();
+    var hay = [p.name, p.brand, p.description, catLabel(p.category), productCodeOf(p)].join(' ').toLowerCase();
     return hay.indexOf(q.toLowerCase()) >= 0;
   }
   /* 자동완성 팝업만 부분 갱신 — 검색 input DOM 은 다시 그리지 않는다
@@ -3640,17 +4006,98 @@ table.data.claims { min-width: 780px; }
     /* 기본(최신순) — 방금 등록한 상품이 언제나 맨 앞. created_at 내림차순 */
     return arr.sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
   }
+  /* ---------------------------------------------- 사이트 설정 (히어로·푸터·HELP)
+     관리자 「메인/사이트 관리」에서 편집하고 스토어에 즉시 반영한다. */
+  var HERO_EFFECTS = { none: '없음', zoom: '부드러운 줌인', fade: '페이드', slide: '슬라이드' };
+  var HERO_TEXT_KEYS = ['hero_image', 'hero_eyebrow', 'hero_title', 'hero_subtitle', 'hero_cta_label', 'hero_cta2_label'];
+  var FOOTER_TEXT_KEYS = ['brand_blurb', 'company_name', 'company_ceo', 'company_reg_no',
+    'company_mail_order_no', 'company_address', 'company_phone', 'company_email'];
+  function siteSettings() {
+    var base = (SEED && SEED.site_settings) || {};
+    var cur = db.site_settings || {};
+    var out = {};
+    Object.keys(base).forEach(function (k) { out[k] = cur[k] == null ? base[k] : cur[k]; });
+    Object.keys(cur).forEach(function (k) { out[k] = cur[k]; });
+    out.id = out.id || 'default';
+    out.hero_effect = HERO_EFFECTS[out.hero_effect] ? out.hero_effect : 'none';
+    out.hero_overlay = Math.max(0, Math.min(90, parseInt(out.hero_overlay, 10) || 0));
+    return out;
+  }
+  function helpTopics() {
+    var list = Array.isArray(db.help_topics) ? db.help_topics : ((SEED && SEED.help_topics) || []);
+    return list.slice().sort(function (a, b) { return (a.sort_order || 0) - (b.sort_order || 0); });
+  }
+  function helpTopicById(id) {
+    var list = helpTopics();
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+  /* 예전 저장소(v1.7 이하)에는 사이트 설정이 없다 — 시드 기본값으로 한 번 채운다 */
+  function migrateSiteData() {
+    if (!db.meta) db.meta = {};
+    var changed = false;
+    if (!db.site_settings) { db.site_settings = clone((SEED && SEED.site_settings) || {}); changed = true; }
+    if (!Array.isArray(db.help_topics)) { db.help_topics = clone((SEED && SEED.help_topics) || []); changed = true; }
+    if (changed || !db.meta.site_settings_v18) {
+      db.meta.site_settings_v18 = true;
+      save();
+    }
+  }
+  function saveSiteSettings(input) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var next = siteSettings();
+    HERO_TEXT_KEYS.concat(FOOTER_TEXT_KEYS).forEach(function (k) {
+      if (input[k] != null) next[k] = String(input[k]).trim();
+    });
+    if (!next.hero_title) return { ok: false, message: '메인 타이틀을 입력해 주세요.' };
+    var eff = String(input.hero_effect || next.hero_effect || 'none');
+    if (!HERO_EFFECTS[eff]) return { ok: false, message: '히어로 효과를 다시 선택해 주세요.' };
+    next.hero_effect = eff;
+    var ov = parseInt(input.hero_overlay, 10);
+    next.hero_overlay = Math.max(0, Math.min(90, isNaN(ov) ? next.hero_overlay : ov));
+    if (!next.hero_image) next.hero_image = 'hero.webp';
+    if (next.company_email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(next.company_email)) {
+      return { ok: false, message: '고객센터 이메일 형식을 확인해 주세요.' };
+    }
+    next.updated_at = nowISO();
+    db.site_settings = next;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, settings: next };
+  }
+  function saveHelpTopics(list) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var rows = [], seen = {};
+    (list || []).forEach(function (t) {
+      var title = String((t && t.title) || '').trim();
+      var body = String((t && t.body) || '').trim();
+      if (!title) return;
+      var id = String((t && t.id) || '').trim() || newId('help');
+      if (seen[id]) id = newId('help');
+      seen[id] = 1;
+      rows.push({ id: id, title: title, body: body, sort_order: rows.length + 1 });
+    });
+    if (!rows.length) return { ok: false, message: 'HELP 항목을 1개 이상 입력해 주세요.' };
+    db.help_topics = rows;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, topics: rows };
+  }
+  function heroTitleHTML(t) {
+    return esc(t).replace(/\n/g, '<br>');
+  }
   function heroHTML() {
+    var s = siteSettings();
+    var eff = HERO_EFFECTS[s.hero_effect] ? s.hero_effect : 'none';
+    var overlay = (s.hero_overlay || 0) / 100;
     return '' +
-      '<section class="hero">' +
-        '<img src="' + imgSrc('hero.webp') + '" alt="MONO ATELIER 2026 가을·겨울 컬렉션">' +
+      '<section class="hero hero--' + eff + '" data-hero-effect="' + eff + '" style="--hero-overlay:' + overlay.toFixed(2) + '">' +
+        '<img src="' + imgSrc(s.hero_image) + '" alt="' + esc(s.hero_title || 'MONO ATELIER') + '">' +
         '<div class="hero-inner">' +
-          '<div class="eyebrow">FALL / WINTER 2026 — THE QUIET COLLECTION</div>' +
-          '<h1>Quiet luxury,<br>for every day.</h1>' +
-          '<p>매일 손이 가는 단정한 실루엣.<br>좋은 소재만 골라 만든 모노 아틀리에의 가을·겨울.</p>' +
+          (s.hero_eyebrow ? '<div class="eyebrow">' + esc(s.hero_eyebrow) + '</div>' : '') +
+          '<h1>' + heroTitleHTML(s.hero_title) + '</h1>' +
+          (s.hero_subtitle ? '<p>' + heroTitleHTML(s.hero_subtitle) + '</p>' : '') +
           '<div class="hero-actions">' +
-            '<button class="btn light" data-action="scroll-shop">컬렉션 보기</button>' +
-            '<button class="btn outline-light" data-action="scroll-editorial">브랜드 스토리</button>' +
+            (s.hero_cta_label ? '<button class="btn light" data-action="scroll-shop">' + esc(s.hero_cta_label) + '</button>' : '') +
+            (s.hero_cta2_label ? '<button class="btn outline-light" data-action="scroll-editorial">' + esc(s.hero_cta2_label) + '</button>' : '') +
           '</div>' +
         '</div>' +
         '<div class="hero-meta"><span>SEOUL 37.56°N</span><span>EST. 2026</span><span>MADE IN KOREA</span></div>' +
@@ -3749,21 +4196,30 @@ table.data.claims { min-width: 780px; }
       '</article>';
   }
   function footerHTML() {
+    var s = siteSettings();
+    var topics = helpTopics();
     return '' +
       '<footer class="site-footer"><div class="wrap">' +
         '<div class="footer-grid">' +
-          '<div>' +
+          '<div class="footer-brandcol">' +
             '<div class="footer-brand">MONO ATELIER</div>' +
-            '<p class="footer-note">단정한 실루엣, 좋은 소재.<br>서울에서 만드는 모던 컨템포러리 브랜드.<br>hello@monoatelier.kr</p>' +
+            '<p class="footer-note" data-footer="brand-blurb">' + heroTitleHTML(s.brand_blurb) + '</p>' +
+            '<ul class="footer-company" data-footer="company">' +
+              '<li>상호 ' + esc(s.company_name) + ' · 대표 ' + esc(s.company_ceo) + '</li>' +
+              '<li>사업자등록번호 ' + esc(s.company_reg_no) + ' · 통신판매업 신고 ' + esc(s.company_mail_order_no) + '</li>' +
+              '<li>' + esc(s.company_address) + '</li>' +
+              '<li>고객센터 ' + esc(s.company_phone) + ' · ' + esc(s.company_email) + '</li>' +
+            '</ul>' +
           '</div>' +
-          '<div class="footer-col"><h5>Shop</h5><ul>' +
-            categories().slice(1).map(function (c) { return '<li><button class="btn link" data-action="nav-category" data-cat="' + c.id + '">' + c.label + '</button></li>'; }).join('') +
-          '</ul></div>' +
-          '<div class="footer-col"><h5>Help</h5><ul>' +
-            '<li>배송 안내</li><li>교환·반품 안내</li><li>사이즈 가이드</li><li>이용약관</li><li>개인정보처리방침</li>' +
+          '<div class="footer-col" data-footer="help"><h5>Help</h5><ul>' +
+            topics.map(function (t) {
+              return '<li><button type="button" class="btn link" data-action="open-help" data-help="' + esc(t.id) + '">' + esc(t.title) + '</button></li>';
+            }).join('') +
           '</ul></div>' +
           '<div class="footer-col"><h5>Contact</h5><ul>' +
-            '<li>고객센터 1544-0000</li><li>평일 10:00 – 17:00</li><li>서울특별시 송파구 올림픽로 300</li>' +
+            '<li>고객센터 ' + esc(s.company_phone) + '</li>' +
+            '<li>평일 10:00 – 17:00 · 주말·공휴일 휴무</li>' +
+            '<li>' + esc(s.company_email) + '</li>' +
           '</ul></div>' +
         '</div>' +
         '<div class="footer-bottom">' +
@@ -3794,6 +4250,10 @@ table.data.claims { min-width: 780px; }
     if (v.stock <= 0) return { text: '선택한 옵션은 품절입니다', cls: ' out' };
     if (v.stock <= 3) return { text: '재고 ' + v.stock + '개 · 품절 임박', cls: ' low' };
     return { text: '재고 ' + v.stock + '개 · 바로 출고 가능', cls: '' };
+  }
+  /* 주문 항목의 색 — 상품 대표색 > 색상명 매핑 > 기본색 */
+  function orderedColorHex(p, oi) {
+    return hexOfColor(p ? p.id : '', oi.color) || colorHexFromName(oi.color) || DEFAULT_HEX;
   }
   function colorChipsHTML(p, m) {
     return colorsOf(p.id).map(function (c) {
@@ -3828,25 +4288,28 @@ table.data.claims { min-width: 780px; }
     var th = freeShipThresholdOf(p);
     return '' +
       '<div class="modal product-modal" role="dialog" aria-modal="true" aria-label="상품 상세">' +
-        '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
         '<div class="pm-media" data-gallery>' +
           '<div class="pm-stage" data-hook="stage">' +
             '<img data-hook="main-img" src="' + imgSrc(images[idx]) + '" alt="' + esc(imageAltOf(p, idx)) + '" draggable="false" aria-label="이미지 확대 보기">' +
-            '<div class="pm-stage-hint" data-hook="stage-hint">좌우로 밀어 다른 컷 · 더블탭 2x 확대</div>' +
           '</div>' +
-          '<button class="pm-zoom" data-action="lb-open" aria-label="이미지 확대 보기">' +
-            '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6"/></svg><span>확대</span></button>' +
           (images.length > 1
             ? '<button class="pm-nav prev" data-action="gallery-prev" aria-label="이전 이미지">‹</button>' +
               '<button class="pm-nav next" data-action="gallery-next" aria-label="다음 이미지">›</button>' +
-              '<div class="pm-count" data-hook="img-count">' + (idx + 1) + ' / ' + images.length + '</div>' +
               '<div class="pm-thumbs" data-hook="thumbs">' + images.map(function (img, i) {
                 return '<button class="pm-thumb' + (i === idx ? ' active' : '') + '" data-action="pick-image" data-idx="' + i + '" aria-label="' + esc(imageAltOf(p, i)) + '" aria-pressed="' + (i === idx ? 'true' : 'false') + '">' +
                   '<img src="' + imgSrc(img) + '" alt="" loading="lazy"></button>';
               }).join('') + '</div>'
             : '') +
+          '<div class="pm-media-foot">' +
+            '<span class="pm-hint pm-stage-hint" data-hook="stage-hint">이미지를 누르면 확대 · 좌우로 밀어 다른 컷</span>' +
+            (images.length > 1 ? '<span class="pm-photocount" data-hook="img-count">' + (idx + 1) + ' / ' + images.length + '</span>' : '') +
+          '</div>' +
         '</div>' +
         '<div class="pm-info">' +
+          '<div class="pm-topline">' +
+            '<span class="pm-code" data-hook="pm-code">' + esc(productCodeOf(p)) + '</span>' +
+            '<button type="button" class="pm-close" data-action="close-modal" aria-label="상품 상세 닫기">닫기 ✕</button>' +
+          '</div>' +
           (badge ? '<div><span class="pm-badge ' + badgeClass(badge) + '" data-hook="badge">' + esc(badge) + '</span></div>' : '') +
           '<div class="pm-brand">' + esc(p.brand) + ' — ' + catLabel(p.category) + '</div>' +
           '<h2 class="pm-title">' + esc(p.name) + '</h2>' +
@@ -3876,13 +4339,6 @@ table.data.claims { min-width: 780px; }
             '</div>' +
             '<div class="qty-total">총 상품금액<b data-hook="total">' + won(p.price * m.qty) + '</b></div>' +
           '</div>' +
-          '<div class="pm-buybar">' +
-            '<div class="pm-selected" data-hook="selected-summary" aria-live="polite">' + selectedSummaryHTML(m) + '</div>' +
-            '<div class="pm-actions">' +
-              '<button class="btn ghost" data-action="add-cart"' + (soldout ? ' disabled' : '') + '>장바구니 담기</button>' +
-              '<button class="btn" data-action="buy-now"' + (soldout ? ' disabled' : '') + '>바로 구매</button>' +
-            '</div>' +
-          '</div>' +
           '<div class="pm-shipnote" data-hook="shipnote"><b>' + esc(shipLabel) + '</b>' +
             (th === 0 ? ' · 이 상품은 배송비가 없습니다' : ' · 미만 3,000원') + ' · 평일 오후 2시 이전 결제 시 당일 출고</div>' +
           '<dl class="pm-meta">' +
@@ -3891,6 +4347,14 @@ table.data.claims { min-width: 780px; }
             '<div><dt>배송</dt><dd>' + esc(shipLabel) + (th === 0 ? ' · 배송비 없음' : ' / 미만 ' + won(SHIPPING_FEE)) + '</dd></div>' +
             '<div><dt>교환·반품</dt><dd>수령 후 7일 이내 가능</dd></div>' +
           '</dl>' +
+        '</div>' +
+        /* 구매 바는 모달의 마지막 자식 — 모바일에서 모달 전체가 스크롤돼도 하단에 sticky 로 붙는다 */
+        '<div class="pm-buybar">' +
+          '<div class="pm-selected" data-hook="selected-summary" aria-live="polite">' + selectedSummaryHTML(m) + '</div>' +
+          '<div class="pm-actions">' +
+            '<button class="btn ghost" data-action="add-cart"' + (soldout ? ' disabled' : '') + '>장바구니 담기</button>' +
+            '<button class="btn" data-action="buy-now"' + (soldout ? ' disabled' : '') + '>바로 구매</button>' +
+          '</div>' +
         '</div>' +
       '</div>';
   }
@@ -3928,7 +4392,7 @@ table.data.claims { min-width: 780px; }
     img.style.transform = 'translate(' + Math.round(m.px || 0) + 'px, ' + Math.round(m.py || 0) + 'px) scale(' + z + ')';
     if (stage) stage.classList.toggle('zoomed', z > 1);
     var hint = $('[data-hook=stage-hint]', host);
-    if (hint) hint.textContent = z > 1 ? '2x · 더블탭하면 원래 크기' : '좌우로 밀어 다른 컷 · 더블탭 2x 확대';
+    if (hint) hint.textContent = z > 1 ? '2x · 더블탭하면 원래 크기' : '이미지를 누르면 확대 · 좌우로 밀어 다른 컷';
   }
   function setStageZoom(z) {
     var m = ui.modal;
@@ -4062,18 +4526,23 @@ table.data.claims { min-width: 780px; }
     var p = productById(lb.pid);
     return p ? productImages(p) : [];
   }
+  /* 라이트버스 열림·닫힘·컷 전환은 반드시 history 에 한 겹으로 기록한다.
+     (예전에는 상세 이미지를 탭해 열 때 syncRoute 가 호출되지 않아, 뒤로가기 한 번에
+      확대 뷰어와 상세 모달이 함께 닫히고 목록으로 나가졌다) */
   function openLightbox() {
     var m = ui.modal;
     if (!m || m.type !== 'product') return;
     ui.lightbox = { pid: m.pid, img: m.img || 0, zoom: 1, x: 0, y: 0 };
     renderLightbox();
     syncLock();
+    syncRoute();
   }
   function closeLightbox() {
     if (!ui.lightbox) return;
     ui.lightbox = null;
     renderLightbox();
     syncLock();
+    syncRoute();
   }
   function applyLightboxTransform() {
     var lb = ui.lightbox;
@@ -4118,6 +4587,7 @@ table.data.claims { min-width: 780px; }
     lb.img = ((lb.img || 0) + dir + images.length) % images.length;
     lb.zoom = 1; lb.x = 0; lb.y = 0;
     renderLightbox();
+    syncRoute();
   }
   function lightboxHTML() {
     var lb = ui.lightbox;
@@ -4345,7 +4815,7 @@ table.data.claims { min-width: 780px; }
             '<div class="cart-info">' +
               '<div class="brand">' + esc(r.product.brand) + '</div>' +
               '<div class="name">' + esc(r.product.name) + '</div>' +
-              '<div class="opt">' + esc(r.variant.color) + ' / ' + esc(r.variant.size) + '</div>' +
+              '<div class="opt"><i class="dot opt-dot' + (isLightHex(resolveColorHex(r.variant.color, r.variant.color_hex)) ? ' light' : '') + '" style="background:' + esc(resolveColorHex(r.variant.color, r.variant.color_hex)) + '" data-hex="' + esc(resolveColorHex(r.variant.color, r.variant.color_hex)) + '" title="' + esc(r.variant.color) + '"></i>' + esc(r.variant.color) + ' / ' + esc(r.variant.size) + '</div>' +
               '<div class="opt cart-ship">' + esc(shippingLabelOf(r.product)) + '</div>' +
               (r.item.quantity > r.variant.stock ? '<div class="cart-stock-warn">재고가 부족합니다 (남은 수량 ' + Math.max(0, r.variant.stock) + '개)</div>' : '') +
               '<div class="row">' +
@@ -4624,7 +5094,9 @@ table.data.claims { min-width: 780px; }
         var p = v ? productById(v.product_id) : null;
         return '<div class="order-item">' +
           '<img src="' + imgSrc(p ? p.image : 'coat.webp') + '" alt="">' +
-          '<div><div class="name">' + esc(oi.product_name) + '</div><div class="opt">' + esc(oi.color) + ' / ' + esc(oi.size) + '</div></div>' +
+          '<div><div class="name">' + esc(oi.product_name) + '</div><div class="opt">' +
+            '<i class="dot opt-dot' + (isLightHex(orderedColorHex(p, oi)) ? ' light' : '') + '" style="background:' + esc(orderedColorHex(p, oi)) + '" data-hex="' + esc(orderedColorHex(p, oi)) + '"></i>' +
+            esc(oi.color) + ' / ' + esc(oi.size) + '</div></div>' +
           '<div><div class="price">' + won(oi.unit_price * oi.quantity) + '</div><div class="qty">수량 ' + oi.quantity + '</div></div>' +
         '</div>';
       }).join('') +
@@ -4675,7 +5147,9 @@ table.data.claims { min-width: 780px; }
           var p = v ? productById(v.product_id) : null;
           return '<div class="order-item" style="padding:12px 0">' +
             '<img src="' + imgSrc(p ? p.image : 'coat.webp') + '" alt="">' +
-            '<div><div class="name">' + esc(oi.product_name) + '</div><div class="opt">' + esc(oi.color) + ' / ' + esc(oi.size) + ' · ' + won(oi.unit_price) + '</div></div>' +
+            '<div><div class="name"><span class="oi-code" data-code="' + esc(productCodeOf(p)) + '">' + esc(productCodeOf(p)) + '</span>' + esc(oi.product_name) + '</div><div class="opt">' +
+              '<i class="dot opt-dot' + (isLightHex(orderedColorHex(p, oi)) ? ' light' : '') + '" style="background:' + esc(orderedColorHex(p, oi)) + '" data-hex="' + esc(orderedColorHex(p, oi)) + '"></i>' +
+              esc(oi.color) + ' / ' + esc(oi.size) + ' · ' + won(oi.unit_price) + '</div></div>' +
             '<div><div class="price">' + won(oi.unit_price * oi.quantity) + '</div><div class="qty">수량 ' + oi.quantity + '</div></div>' +
           '</div>';
         }).join('') +
@@ -4822,12 +5296,14 @@ table.data.claims { min-width: 780px; }
         '<button data-action="admin-tab" data-tab="orders" class="' + (ui.adminTab === 'orders' ? 'active' : '') + '">주문 관리</button>' +
         '<button data-action="admin-tab" data-tab="coupons" class="' + (ui.adminTab === 'coupons' ? 'active' : '') + '">쿠폰 관리</button>' +
         '<button data-action="admin-tab" data-tab="categories" class="' + (ui.adminTab === 'categories' ? 'active' : '') + '">카테고리</button>' +
+        '<button data-action="admin-tab" data-tab="site" class="' + (ui.adminTab === 'site' ? 'active' : '') + '">메인/사이트</button>' +
         '<button data-action="admin-tab" data-tab="data" class="' + (ui.adminTab === 'data' ? 'active' : '') + '">데이터 관리</button>' +
       '</div>' +
       (ui.adminTab === 'products' ? adminProductsHTML()
         : ui.adminTab === 'orders' ? adminOrdersHTML(orders)
         : ui.adminTab === 'coupons' ? adminCouponsHTML()
         : ui.adminTab === 'categories' ? adminCategoriesHTML()
+        : ui.adminTab === 'site' ? adminSiteHTML()
         : dataHTML(true)) +
     '</div>';
   }
@@ -4836,7 +5312,7 @@ table.data.claims { min-width: 780px; }
      · 상품명/브랜드/카테고리/뱃지 실시간 검색 */
   function adminProductMatches(p, q) {
     if (!q) return true;
-    var hay = [p.name, p.brand, catLabel(p.category), p.badge || ''].join(' ').toLowerCase();
+    var hay = [p.name, p.brand, catLabel(p.category), p.badge || '', productCodeOf(p)].join(' ').toLowerCase();
     return q.split(/\s+/).filter(Boolean).every(function (w) { return hay.indexOf(w) >= 0; });
   }
   function adminProductList() {
@@ -4855,6 +5331,7 @@ table.data.claims { min-width: 780px; }
         return '<tr data-pid="' + esc(p.id) + '">' +
           '<td data-label="상품"><div class="prod-cell"><img src="' + imgSrc(p.image) + '" alt=""><div><div class="n">' + esc(p.name) +
             (p.badge ? '<span class="mini-badge" data-badge="' + esc(p.badge) + '">' + esc(p.badge) + '</span>' : '') +
+            '<span class="code-badge" data-code="' + esc(productCodeOf(p)) + '">' + esc(productCodeOf(p)) + '</span>' +
             '</div><div class="m">' + esc(p.brand) + ' · ' + variantsOf(p.id).length + '개 옵션' +
             ' · <span class="photo-count" data-photos="' + photoCount + '">사진 ' + photoCount + '장</span></div></div></div></td>' +
           '<td data-label="카테고리">' + catLabel(p.category) + '</td>' +
@@ -4870,12 +5347,140 @@ table.data.claims { min-width: 780px; }
       }).join('') : '<tr><td colspan="6" class="empty-cell">검색 결과가 없습니다.</td></tr>') +
       '</tbody></table>';
   }
+  /* ------------------------------------------------- 관리자: 메인/사이트 관리
+     히어로 배너(사진·문구·효과) / 푸터 브랜드 소개·사업자 정보 / HELP 항목 편집 */
+  function siteHeroImageLabel(v) {
+    if (isDataImage(v)) return '업로드한 사진';
+    return v;
+  }
+  function siteHeroPanelHTML(s) {
+    var imgList = ALL_IMAGES.slice();
+    if (s.hero_image && imgList.indexOf(s.hero_image) < 0) imgList.unshift(s.hero_image);
+    return '<div class="panel" data-site-hero="1">' +
+      '<div class="panel-head"><h2>메인 히어로 배너</h2><span class="sub">저장하면 스토어 첫 화면에 바로 반영됩니다</span></div>' +
+      '<div class="site-hero-grid">' +
+        '<div class="site-hero-preview"><img data-hook="hero-preview" src="' + imgSrc(s.hero_image) + '" alt="히어로 배너 미리보기">' +
+          '<span class="shp-badge" data-hook="hero-effect-badge">' + esc(HERO_EFFECTS[s.hero_effect]) + ' · 오버레이 ' + s.hero_overlay + '%</span></div>' +
+        '<div class="site-hero-form">' +
+          '<div class="field"><label>배너 사진</label>' +
+            '<select id="site-hero-image" data-hook="hero-image-pick">' +
+              imgList.map(function (v) {
+                return '<option value="' + esc(v) + '"' + (v === s.hero_image ? ' selected' : '') + '>' + esc(siteHeroImageLabel(v).slice(0, 60)) + '</option>';
+              }).join('') +
+            '</select>' +
+            '<label class="btn ghost small upload-btn site-upload"><span class="up-ico" aria-hidden="true">📷</span><span class="up-txt">사진 업로드</span>' +
+              '<input type="file" id="site-hero-upload" accept="image/*" aria-label="히어로 배너 사진 업로드"></label>' +
+          '</div>' +
+          '<div class="field"><label>뱃지 문구</label><input id="site-hero-eyebrow" maxlength="60" value="' + esc(s.hero_eyebrow) + '" placeholder="예: FALL / WINTER 2026 — THE QUIET COLLECTION"></div>' +
+          '<div class="field"><label>메인 타이틀 <small>줄바꿈은 그대로 표시됩니다</small></label><textarea id="site-hero-title" rows="2" maxlength="120">' + esc(s.hero_title) + '</textarea></div>' +
+          '<div class="field"><label>서브 문구</label><textarea id="site-hero-subtitle" rows="2" maxlength="160">' + esc(s.hero_subtitle) + '</textarea></div>' +
+          '<div class="field-row">' +
+            '<div class="field"><label>버튼 1 문구</label><input id="site-hero-cta" maxlength="20" value="' + esc(s.hero_cta_label) + '"></div>' +
+            '<div class="field"><label>버튼 2 문구</label><input id="site-hero-cta2" maxlength="20" value="' + esc(s.hero_cta2_label) + '"></div>' +
+          '</div>' +
+          '<div class="field-row">' +
+            '<div class="field"><label>효과</label><select id="site-hero-effect">' +
+              Object.keys(HERO_EFFECTS).map(function (k) {
+                return '<option value="' + k + '"' + (s.hero_effect === k ? ' selected' : '') + '>' + esc(HERO_EFFECTS[k]) + '</option>';
+              }).join('') + '</select></div>' +
+            '<div class="field"><label>오버레이 농도 <small>사진 위 어둡게</small></label>' +
+              '<input id="site-hero-overlay" type="range" min="0" max="90" step="2" value="' + s.hero_overlay + '" aria-label="오버레이 농도">' +
+              '<div class="range-val" data-hook="overlay-val">' + s.hero_overlay + '%</div></div>' +
+          '</div>' +
+          '<div class="site-actions"><span class="site-hint" data-hook="site-hero-hint">배너를 바꾸면 아래 스토어 홈에 바로 적용됩니다.</span>' +
+            '<button class="btn small" data-action="save-site">히어로 저장</button></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  function siteFooterPanelHTML(s) {
+    return '<div class="panel" data-site-footer="1">' +
+      '<div class="panel-head"><h2>하단 브랜드 소개 · 사업자 정보</h2><span class="sub">푸터에 그대로 표시됩니다</span></div>' +
+      '<div class="field"><label>브랜드 소개 문구 <small>줄바꿈 그대로</small></label>' +
+        '<textarea id="site-brand-blurb" rows="3" maxlength="220">' + esc(s.brand_blurb) + '</textarea></div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>상호</label><input id="site-company-name" maxlength="40" value="' + esc(s.company_name) + '"></div>' +
+        '<div class="field"><label>대표자</label><input id="site-company-ceo" maxlength="20" value="' + esc(s.company_ceo) + '"></div>' +
+      '</div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>사업자등록번호</label><input id="site-company-reg" maxlength="20" value="' + esc(s.company_reg_no) + '"></div>' +
+        '<div class="field"><label>통신판매업 신고번호</label><input id="site-company-mail" maxlength="30" value="' + esc(s.company_mail_order_no) + '"></div>' +
+      '</div>' +
+      '<div class="field"><label>주소</label><input id="site-company-address" maxlength="80" value="' + esc(s.company_address) + '"></div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>고객센터 전화</label><input id="site-company-phone" maxlength="20" value="' + esc(s.company_phone) + '"></div>' +
+        '<div class="field"><label>고객센터 이메일</label><input id="site-company-email" maxlength="60" value="' + esc(s.company_email) + '"></div>' +
+      '</div>' +
+      '<div class="site-actions"><span class="site-hint">개인정보가 아닌 사업자 표기용 예시값을 사용하세요.</span>' +
+        '<button class="btn small" data-action="save-site">푸터 저장</button></div>' +
+    '</div>';
+  }
+  function helpRowHTML(t, i) {
+    return '<div class="help-row" data-help-id="' + esc(t.id || '') + '">' +
+      '<div class="help-row-head">' +
+        '<span class="help-no">' + (i + 1) + '</span>' +
+        '<input class="help-title" data-help-title maxlength="30" value="' + esc(t.title || '') + '" aria-label="HELP 항목 제목" placeholder="예: 배송 안내">' +
+        '<button class="icon-x" type="button" data-action="remove-help-topic" aria-label="HELP 항목 삭제">✕</button>' +
+      '</div>' +
+      '<textarea class="help-body-input" data-help-body rows="3" maxlength="800" aria-label="HELP 항목 본문" placeholder="안내 내용을 입력하세요 (줄바꿈 그대로 표시)">' + esc(t.body || '') + '</textarea>' +
+    '</div>';
+  }
+  function siteHelpPanelHTML() {
+    var topics = helpTopics();
+    return '<div class="panel" data-site-help="1">' +
+      '<div class="panel-head"><h2>하단 HELP 메뉴</h2><span class="sub">누르면 안내 모달이 열립니다 · 제목·본문 편집</span></div>' +
+      '<div class="help-rows" data-hook="help-rows">' + topics.map(helpRowHTML).join('') + '</div>' +
+      '<div class="site-actions"><button class="btn ghost small" data-action="add-help-topic">+ 항목 추가</button>' +
+        '<button class="btn small" data-action="save-help">HELP 저장</button></div>' +
+    '</div>';
+  }
+  function adminSiteHTML() {
+    var s = siteSettings();
+    return '<div class="admin-site" data-admin-site="1">' +
+      siteHeroPanelHTML(s) + siteFooterPanelHTML(s) + siteHelpPanelHTML() +
+    '</div>';
+  }
+  function readSiteForm() {
+    var out = {};
+    var v = function (id) { var el = $('#' + id); return el ? el.value : null; };
+    if ($('#site-hero-title')) {
+      out.hero_image = ($('#site-hero-image') || {}).value || '';
+      out.hero_eyebrow = v('site-hero-eyebrow');
+      out.hero_title = v('site-hero-title');
+      out.hero_subtitle = v('site-hero-subtitle');
+      out.hero_cta_label = v('site-hero-cta');
+      out.hero_cta2_label = v('site-hero-cta2');
+      out.hero_effect = v('site-hero-effect');
+      out.hero_overlay = v('site-hero-overlay');
+    }
+    if ($('#site-brand-blurb')) {
+      out.brand_blurb = v('site-brand-blurb');
+      out.company_name = v('site-company-name');
+      out.company_ceo = v('site-company-ceo');
+      out.company_reg_no = v('site-company-reg');
+      out.company_mail_order_no = v('site-company-mail');
+      out.company_address = v('site-company-address');
+      out.company_phone = v('site-company-phone');
+      out.company_email = v('site-company-email');
+    }
+    return out;
+  }
+  function readHelpRows() {
+    return $$('[data-hook=help-rows] .help-row').map(function (row) {
+      return {
+        id: row.dataset.helpId || '',
+        title: (row.querySelector('[data-help-title]') || {}).value || '',
+        body: (row.querySelector('[data-help-body]') || {}).value || ''
+      };
+    });
+  }
+
   function adminProductsHTML() {
     var list = adminProductList();
     return '<div class="admin-products" data-admin-products="1">' +
       '<div class="admin-search">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>' +
-        '<input id="admin-product-search" type="search" placeholder="상품명·브랜드·카테고리·뱃지 검색" autocomplete="off" value="' + esc(ui.adminQuery || '') + '" aria-label="상품 검색">' +
+        '<input id="admin-product-search" type="search" placeholder="상품명·제품번호·브랜드·뱃지 검색" autocomplete="off" value="' + esc(ui.adminQuery || '') + '" aria-label="상품 검색">' +
         '<span class="admin-search-count" data-hook="admin-product-count">' + list.length + ' / ' + db.products.length + '개</span>' +
       '</div>' +
       '<div class="table-wrap" data-hook="admin-product-table">' + adminProductTableHTML(list) + '</div>' +
@@ -5251,6 +5856,17 @@ table.data.claims { min-width: 780px; }
     '</div>';
   }
 
+  /* 주문관리 행 · 주문 상세 — 각 주문 상품의 제품고유키(product_code)를 함께 보여준다 */
+  function orderItemCodesHTML(items) {
+    if (!items || !items.length) return '-';
+    var head = items.slice(0, 2).map(function (oi) {
+      var v = variantById(oi.variant_id);
+      var p = v ? productById(v.product_id) : null;
+      return '<div class="admin-order-item"><span class="admin-item-code" data-code="' + esc(productCodeOf(p)) + '">' + esc(productCodeOf(p)) + '</span>' +
+        esc(oi.product_name) + ' <span style="color:var(--muted)">' + esc(oi.color) + ' / ' + esc(oi.size) + '</span></div>';
+    }).join('');
+    return head + (items.length > 2 ? '<div style="font-size:10px;color:var(--muted)">외 ' + (items.length - 2) + '건</div>' : '');
+  }
   function adminOrdersHTML(orders) {
     var claims = adminClaimsHTML();
     if (!orders.length) {
@@ -5266,7 +5882,7 @@ table.data.claims { min-width: 780px; }
           '<td data-label="주문자">' + esc(u ? u.name : o.recipient_name) +
             (u ? ' <span class="grade-badge ' + GRADES[gradeOf(u)].cls + '">' + gradeLabel(u) + '</span>' : '') +
             '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc(o.recipient_phone) + '</div></td>' +
-          '<td data-label="상품">' + esc(items[0] ? items[0].product_name + (items.length > 1 ? ' 외 ' + (items.length - 1) + '건' : '') : '-') + '</td>' +
+          '<td data-label="상품">' + orderItemCodesHTML(items) + '</td>' +
           '<td data-label="결제금액"><b>' + won(o.total_amount) + '</b><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc(PAYMENTS[o.payment_method] || '') + '</div></td>' +
           '<td data-label="일시" style="white-space:nowrap;font-size:11px;color:var(--muted)">' + fmtDateTime(o.created_at) + '</td>' +
           '<td data-label="상태 변경"><select class="mini-select" data-action="admin-order-status" data-oid="' + o.id + '"' + (o.status === 'cancelled' ? ' disabled' : '') + '>' +
@@ -5286,7 +5902,7 @@ table.data.claims { min-width: 780px; }
   }
   function defaultDraft() {
     return {
-      id: null, name: '', brand: 'MONO ATELIER', category: firstCategoryId(), price: '', original_price: '',
+      id: null, product_code: nextProductCode(), name: '', brand: 'MONO ATELIER', category: firstCategoryId(), price: '', original_price: '',
       badge: '', description: '', image: 'coat.webp', images: ['coat.webp'], uploads: [], free_shipping: '',
       model_info: '', is_active: true, base_hex: '#1B1B1D',
       variants: [{ key: 'r1', color: '', color_hex: '#1B1B1D', size: 'M', stock: 10 }]
@@ -5294,7 +5910,7 @@ table.data.claims { min-width: 780px; }
   }
   function draftFromProduct(p) {
     return {
-      id: p.id, name: p.name, brand: p.brand, category: p.category, price: p.price,
+      id: p.id, product_code: productCodeOf(p), name: p.name, brand: p.brand, category: p.category, price: p.price,
       original_price: p.original_price || '', badge: p.badge || '', description: p.description || '',
       model_info: p.model_info || '',
       image: p.image, images: productImages(p), uploads: [],
@@ -5382,16 +5998,117 @@ table.data.claims { min-width: 780px; }
   /* 옵션 행 — 컬러명 · 컬러 피커 · HEX(직접 입력) · 사이즈 · 재고 */
   function variantRowHTML(v, idx) {
     var hex = resolveColorHex(v.color, v.color_hex);
-    return '<div class="var-row" data-vid="' + (v.id || '') + '">' +
-      '<input name="color" placeholder="컬러명 (예: 하얀색)" value="' + esc(v.color) + '" autocomplete="off">' +
+    return '<div class="var-row" data-vid="' + (v.id || '') + '" data-row="' + idx + '">' +
+      '<input name="color" placeholder="컬러명 (예: 하얀색)" value="' + esc(v.color) + '" autocomplete="off" aria-label="컬러명">' +
       '<input name="hex" type="color" value="' + esc(hex) + '" aria-label="컬러 피커">' +
-      '<input name="hexText" type="text" maxlength="7" class="hex-text" value="' + esc(hex) + '" aria-label="컬러 HEX 코드" autocomplete="off" spellcheck="false">' +
+      '<input name="hexText" type="text" maxlength="7" class="hex-text" value="' + esc(hex) + '" aria-label="컬러 HEX 코드" autocomplete="off" spellcheck="false" placeholder="#FFFFFF">' +
       '<select name="size">' + SIZE_ORDER.map(function (s) {
         return '<option value="' + s + '"' + (v.size === s ? ' selected' : '') + '>' + s + '</option>';
       }).join('') + '</select>' +
       '<input name="stock" type="number" min="0" step="1" value="' + (v.stock == null ? 0 : v.stock) + '" aria-label="재고">' +
       '<button class="icon-x" type="button" data-action="remove-variant" aria-label="옵션 삭제">✕</button>' +
     '</div>';
+  }
+  /* ------------- 편집기 색상 적용 도우미 (기본 색상 · 프리셋 · 이미지 팔레트 공통) */
+  function editorRows() { return $$('#variant-rows .var-row'); }
+  function rowIndexOf(row) {
+    var rows = editorRows();
+    for (var i = 0; i < rows.length; i++) if (rows[i] === row) return i;
+    return -1;
+  }
+  /* 지금 색을 적용할 옵션 행 — 사용자가 마지막으로 만지던 행, 없으면 첫 행 */
+  function targetEditorRow() {
+    var rows = editorRows();
+    if (!rows.length) return null;
+    var idx = ui.editRow;
+    if (idx == null || idx < 0 || idx >= rows.length) return rows[0];
+    return rows[idx];
+  }
+  function setRowHex(row, hex) {
+    var n = normalizeHex(hex);
+    if (!row || !n) return false;
+    var pick = row.querySelector('[name=hex]');
+    var text = row.querySelector('[name=hexText]');
+    if (pick && String(pick.value || '').toUpperCase() !== n) pick.value = n;
+    if (text && String(text.value || '').toUpperCase() !== n) text.value = n;
+    return true;
+  }
+  function setBaseHexInputs(hex) {
+    var n = normalizeHex(hex);
+    if (!n) return false;
+    var pick = $('#pe-base-color');
+    var text = $('#pe-base-hex');
+    /* 지금 조작 중인 입력는 건드리지 않는다(브라우저 색상 피커가 튀는 현상 방지) */
+    if (pick && String(pick.value || '').toUpperCase() !== n) pick.value = n;
+    if (text && String(text.value || '').toUpperCase() !== n) text.value = n;
+    if (ui.modal && ui.modal.draft) ui.modal.draft.base_hex = n;
+    return true;
+  }
+  /* 적용 대상 라벨·활성 행 표시 — “기본색을 눌렀는데 어느 옵션이 바뀌나?” 를 없앤다 */
+  function updateColorTarget() {
+    var rows = editorRows();
+    var row = targetEditorRow();
+    rows.forEach(function (r) { r.classList.toggle('active', !!row && r === row); });
+    var el = $('[data-hook=color-target]');
+    if (!el) return;
+    if (!row) { el.textContent = '적용 대상: 기본 색상'; return; }
+    var nm = String((row.querySelector('[name=color]') || {}).value || '').trim();
+    el.textContent = '적용 대상: ' + (rowIndexOf(row) + 1) + '번 옵션' + (nm ? ' · ' + nm : '') +
+      (rowIndexOf(row) === 0 ? ' (첫 옵션)' : '');
+  }
+  /* HEX 를 편집기에 적용 — opts.toBase 면 기본 색상까지 같이, 아니면 지금 옵션에만 */
+  function applyEditorColor(hex, name, opts) {
+    opts = opts || {};
+    var n = normalizeHex(hex);
+    if (!n) return { ok: false, message: '올바른 HEX 값이 아닙니다.' };
+    var row = targetEditorRow();
+    if (!row) return { ok: false, message: '옵션을 먼저 추가해 주세요.' };
+    setRowHex(row, n);
+    var nameInput = row.querySelector('[name=color]');
+    var named = '';
+    if (nameInput && !String(nameInput.value || '').trim() && name) { nameInput.value = name; named = name; }
+    if (opts.toBase) setBaseHexInputs(n);
+    updateColorTarget();
+    return { ok: true, hex: n, rowIndex: rowIndexOf(row), name: named, label: nameInput ? String(nameInput.value || '').trim() : '' };
+  }
+  function colorPresetsHTML() {
+    return COLOR_PRESETS.map(function (p) {
+      return '<button type="button" class="preset" data-action="pick-preset" data-hex="' + p[1] + '" data-name="' + esc(p[0]) + '"' +
+        ' title="' + esc(p[0] + ' ' + p[1]) + '" aria-label="' + esc(p[0]) + ' ' + p[1] + '">' +
+        '<i class="preset-dot' + (isLightHex(p[1]) ? ' light' : '') + '" style="--c:' + p[1] + '"></i><span>' + esc(p[0]) + '</span></button>';
+    }).join('');
+  }
+  function paletteSourceHTML(d) {
+    var imgs = (d.images && d.images.length) ? d.images : [d.image || 'coat.webp'];
+    return imgs.map(function (img, i) {
+      var label = (i === 0 ? '대표' : (i + 1) + '번째') + ' · ' + imageOptionLabel(img, d.uploads);
+      return '<option value="' + i + '">' + esc(label) + '</option>';
+    }).join('');
+  }
+  function colorExtractHTML(d) {
+    return '<div class="color-extract" data-hook="color-extract">' +
+        '<div class="ce-head">' +
+          '<span class="ce-title">이미지에서 색상 추출 <small>상품 사진의 주요 색을 찾아 바로 적용</small></span>' +
+          '<select id="pe-palette-src" class="ce-src" aria-label="분석할 이미지">' + paletteSourceHTML(d) + '</select>' +
+          '<button type="button" class="btn ghost small" data-action="extract-palette">색 추출</button>' +
+        '</div>' +
+        '<div class="ce-body" data-hook="palette"><span class="ce-empty">대표 이미지를 분석해 주요 색 6개를 찾아 드립니다.</span></div>' +
+      '</div>';
+  }
+  function renderEditorPalette(colors, message) {
+    var host = $('[data-hook=palette]');
+    if (!host) return;
+    if (!colors || !colors.length) {
+      host.innerHTML = '<span class="ce-empty">' + esc(message || '색을 찾지 못했습니다.') + '</span>';
+      return;
+    }
+    host.innerHTML = colors.map(function (c) {
+      return '<button type="button" class="pal" data-action="pick-palette" data-hex="' + esc(c.hex) + '" data-name="' + esc(c.name) + '"' +
+        ' title="' + esc(c.name + ' ' + c.hex + ' · ' + c.share + '%') + '" aria-label="' + esc(c.name + ' ' + c.hex) + ' 적용">' +
+        '<i class="pal-dot' + (isLightHex(c.hex) ? ' light' : '') + '" style="--c:' + esc(c.hex) + '"></i>' +
+        '<b>' + esc(c.hex) + '</b><span>' + esc(c.name) + '</span>' +
+        '<em class="pal-share">' + c.share + '%</em></button>';
+    }).join('');
   }
   function productEditorHTML() {
     var d = ui.modal.draft;
@@ -5403,6 +6120,9 @@ table.data.claims { min-width: 780px; }
         (ui.editError ? '<div class="form-error">' + esc(ui.editError) + '</div>' : '') +
         '<div class="form-grid">' +
           '<div class="field span2"><label>상품명</label><input id="pe-name" value="' + esc(d.name) + '" placeholder="예: 울 더블 브레스티드 코트"></div>' +
+          '<div class="field span2"><label>제품고유키(제품번호) <small>상품을 구분하는 번호 · 비우면 자동 채번 · 중복 불가</small></label>' +
+            '<input id="pe-code" value="' + esc(d.product_code || '') + '" placeholder="예: MA-0014" autocomplete="off" spellcheck="false" style="text-transform:uppercase">' +
+            '<div class="field-hint" data-hook="code-hint">다음 자동 번호: ' + esc(nextProductCode()) + '</div></div>' +
           '<div class="field"><label>브랜드</label><input id="pe-brand" value="' + esc(d.brand) + '"></div>' +
           '<div class="field"><label>카테고리</label><select id="pe-category">' +
             categoriesSorted().map(function (c) { return '<option value="' + c.id + '"' + (d.category === c.id ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') +
@@ -5426,10 +6146,17 @@ table.data.claims { min-width: 780px; }
         '<div class="var-editor">' +
           '<div class="panel-head" style="margin-bottom:10px"><h2 style="font-size:11px;letter-spacing:.14em">옵션별 재고</h2><button class="btn ghost small" data-action="add-variant">+ 옵션 추가</button></div>' +
           '<div class="base-color" data-hook="base-color">' +
-            '<span class="bc-label">기본 색상 <small>새 옵션의 기본값 · 첫 옵션에도 적용</small></span>' +
-            '<input type="color" id="pe-base-color" value="' + esc(resolveColorHex('', d.base_hex)) + '" aria-label="기본 색상 피커">' +
-            '<input type="text" id="pe-base-hex" class="hex-text" maxlength="7" value="' + esc(resolveColorHex('', d.base_hex)) + '" aria-label="기본 색상 HEX" autocomplete="off" spellcheck="false">' +
+            '<div class="bc-head">' +
+              '<span class="bc-label">기본 색상 <small>새 옵션의 기본값 · 지금 선택한 옵션에도 적용</small></span>' +
+              '<span class="bc-target" data-hook="color-target">적용 대상: 1번 옵션 (첫 옵션)</span>' +
+            '</div>' +
+            '<div class="bc-inputs">' +
+              '<input type="color" id="pe-base-color" value="' + esc(resolveColorHex('', d.base_hex)) + '" aria-label="기본 색상 피커">' +
+              '<input type="text" id="pe-base-hex" class="hex-text" maxlength="7" value="' + esc(resolveColorHex('', d.base_hex)) + '" aria-label="기본 색상 HEX" autocomplete="off" spellcheck="false" placeholder="#FFFFFF">' +
+            '</div>' +
+            '<div class="color-presets" data-hook="color-presets" role="group" aria-label="색상 프리셋">' + colorPresetsHTML() + '</div>' +
           '</div>' +
+          colorExtractHTML(d) +
           '<div class="var-row-head"><span>컬러</span><span>색상</span><span>HEX</span><span>사이즈</span><span>재고</span><span></span></div>' +
           '<div id="variant-rows">' + d.variants.map(variantRowHTML).join('') + '</div>' +
         '</div>' +
@@ -5443,13 +6170,14 @@ table.data.claims { min-width: 780px; }
   function readEditor() {
     var rows = $$('#variant-rows .var-row').map(function (r) {
       var name = r.querySelector('[name=color]').value.trim();
-      var picker = r.querySelector('[name=hex]').value;
-      var text = (r.querySelector('[name=hexText]') || {}).value || '';
-      var hex = isHexColor(text) ? text : picker;
+      var picker = normalizeHex(r.querySelector('[name=hex]').value);
+      var text = normalizeHex((r.querySelector('[name=hexText]') || {}).value);
+      /* HEX 텍스트가 유효하면 그 값을 쓴다(직접 입력이 피커보다 늘 우선) */
+      var hex = text || picker || DEFAULT_HEX;
       return {
         id: r.dataset.vid || null,
         color: name,
-        color_hex: resolveColorHex(name, hex),
+        color_hex: normalizeStoredHex(name, hex),
         size: r.querySelector('[name=size]').value,
         stock: parseInt(r.querySelector('[name=stock]').value, 10) || 0
       };
@@ -5467,6 +6195,7 @@ table.data.claims { min-width: 780px; }
     var activeEl = $('#pe-active');
     return {
       id: ui.modal.draft.id,
+      product_code: normalizeProductCode(($('#pe-code') || {}).value),
       name: $('#pe-name').value,
       brand: $('#pe-brand').value,
       category: $('#pe-category').value,
@@ -5480,7 +6209,7 @@ table.data.claims { min-width: 780px; }
       uploads: (ui.modal.draft.uploads || []).slice(),
       free_shipping_threshold: freeShip,
       is_active: activeEl ? !!activeEl.checked : (ui.modal.draft.is_active !== false),
-      base_hex: ($('#pe-base-hex') || {}).value || d.base_hex || '#1B1B1D',
+      base_hex: normalizeHex(($('#pe-base-hex') || {}).value) || normalizeHex(d.base_hex) || DEFAULT_HEX,
       variants: rows
     };
   }
@@ -5695,12 +6424,19 @@ table.data.claims { min-width: 780px; }
     var idx = Math.max(0, Math.min(rows.length - 1, parseInt(m.exchange_item, 10) || 0));
     var row = rows[idx];
     var colors = colorsOf(row.p.id);
-    var color = m.exchange_color || (colors[0] || {}).color || '';
-    if (!colors.some(function (c) { return c.color === color; })) color = (colors[0] || {}).color || '';
+    /* 기본값은 '주문한 그 옵션' — 예전에는 상품의 첫 컬러로 시작해, 카멜을 주문해도 교환 화면에
+       차콜(첫 컬러) 스와치가 보였다. 주문 스냅샷(order_items)의 컬러·사이즈를 먼저 쓴다. */
+    var orderedColor = String((row.oi && row.oi.color) || '').trim();
+    var orderedSize = String((row.oi && row.oi.size) || '').trim();
+    var wantColor = String(m.exchange_color || '').trim();
+    var color = wantColor && colors.some(function (c) { return c.color === wantColor; }) ? wantColor
+      : (colors.some(function (c) { return c.color === orderedColor; }) ? orderedColor : ((colors[0] || {}).color || ''));
     var sizes = sizesOf(row.p.id, color);
-    var size = m.exchange_size || '';
-    if (size && !sizes.some(function (s2) { return s2.size === size; })) size = '';
-    return { rows: rows, idx: idx, row: row, colors: colors, color: color, sizes: sizes, size: size };
+    var size = '';
+    var wantSize = String(m.exchange_size || '').trim();
+    if (wantSize && sizes.some(function (s2) { return s2.size === wantSize; })) size = wantSize;
+    return { rows: rows, idx: idx, row: row, colors: colors, color: color, sizes: sizes, size: size,
+             orderedColor: orderedColor, orderedSize: orderedSize };
   }
   function claimExchangeHTML(o, m) {
     var st = claimExchangeState(o, m);
@@ -5710,7 +6446,10 @@ table.data.claims { min-width: 780px; }
         '<div class="claim-hint">상품 정보를 찾을 수 없어 직접 입력으로 안내합니다.</div>';
     }
     var row = st.row;
-    var colorHex = (st.colors.filter(function (c) { return c.color === st.color; })[0] || {}).hex || '#1B1B1D';
+    var colorHex = (st.colors.filter(function (c) { return c.color === st.color; })[0] || {}).hex || DEFAULT_HEX;
+    /* 주문한 옵션의 실제 HEX — 주문 variant 의 color_hex > 상품 대표색 > 스냅샷 매핑 순서 */
+    var orderedHex = resolveColorHex(st.orderedColor,
+      (row.v && row.v.color_hex) || hexOfColor(row.p.id, st.orderedColor));
     var sizeStock = st.size ? ((st.sizes.filter(function (s2) { return s2.size === st.size; })[0] || {}).stock || 0) : null;
     return '<label class="claim-field-label">교환 희망 옵션 <span class="opt">상품의 실제 옵션에서 선택</span></label>' +
       (st.rows.length > 1
@@ -5718,9 +6457,14 @@ table.data.claims { min-width: 780px; }
             st.rows.map(function (r, i) {
               return '<option value="' + i + '"' + (i === st.idx ? ' selected' : '') + '>' + esc(r.oi.product_name) + ' / ' + esc(r.oi.color) + ' ' + esc(r.oi.size) + '</option>';
             }).join('') + '</select></div>'
-        : '<div class="claim-ex-item">' + esc(row.oi.product_name) + ' <span class="m">' + esc(row.oi.color) + ' / ' + esc(row.oi.size) + '</span></div>') +
+        : '<div class="claim-ex-item">' + esc(row.oi.product_name) + '</div>') +
+      '<div class="claim-opt-row claim-ordered-row" data-hook="claim-ordered">' +
+        '<span>주문 옵션</span>' +
+        '<span class="claim-color-dot ' + swatchClass(orderedHex) + '" style="background:' + esc(orderedHex) + '" data-hex="' + esc(orderedHex) + '"></span>' +
+        '<span class="claim-ordered-txt">' + esc(st.orderedColor || '-') + ' / ' + esc(st.orderedSize || '-') + '</span>' +
+      '</div>' +
       '<div class="claim-opt-row"><span>컬러</span>' +
-        '<span class="claim-color-dot ' + swatchClass(colorHex) + '" style="background:' + esc(colorHex) + '"></span>' +
+        '<span class="claim-color-dot ' + swatchClass(colorHex) + '" style="background:' + esc(colorHex) + '" data-hex="' + esc(colorHex) + '" data-hook="claim-ex-dot"></span>' +
         '<select class="claim-select" data-action="claim-ex-color" data-hook="claim-ex-color" aria-label="교환 컬러">' +
           st.colors.map(function (c) {
             var total = variantsOf(row.p.id).filter(function (v) { return v.color === c.color; }).reduce(function (sum, v) { return sum + Math.max(0, v.stock); }, 0);
@@ -5834,6 +6578,26 @@ table.data.claims { min-width: 780px; }
     }
   }
 
+  /* 푸터 HELP 항목 → 안내 모달 (관리자가 편집한 제목·본문 그대로) */
+  function helpModalHTML() {
+    var m = ui.modal;
+    var t = helpTopicById(m.topicId);
+    if (!t) {
+      return '<div class="modal help-modal" role="dialog" aria-modal="true" aria-label="안내">' +
+        '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+        '<div class="modal-head"><div class="eyebrow">HELP</div><h2>안내</h2></div>' +
+        '<div class="help-body">해당 안내를 찾을 수 없습니다. 관리자에게 문의해 주세요.</div>' +
+        '<div class="help-foot"><button class="btn small" data-action="close-modal">확인</button></div>' +
+      '</div>';
+    }
+    return '<div class="modal help-modal" role="dialog" aria-modal="true" aria-label="' + esc(t.title) + '" data-help-topic="' + esc(t.id) + '">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">HELP — MONO ATELIER</div><h2>' + esc(t.title) + '</h2></div>' +
+      '<div class="help-body" data-hook="help-body">' + heroTitleHTML(t.body) + '</div>' +
+      '<div class="help-foot"><button class="btn small" data-action="close-modal">확인</button></div>' +
+    '</div>';
+  }
+
   function renderModal() {
     var layer = $('#modal-layer');
     if (!layer) return;
@@ -5848,6 +6612,7 @@ table.data.claims { min-width: 780px; }
     else if (m.type === 'receipt') inner += receiptHTML(orderById(m.oid) || m.order);
     else if (m.type === 'edit') inner += productEditorHTML();
     else if (m.type === 'coupon-edit') inner += couponEditorHTML();
+    else if (m.type === 'help') inner += helpModalHTML();
     else if (m.type === 'confirm') inner += confirmHTML();
     layer.innerHTML = inner;
     if (m.type === 'product') { applyStageTransform(layer); bindProductStage(); }
@@ -5961,6 +6726,13 @@ table.data.claims { min-width: 780px; }
       }
       case 'quick-add': ev.stopPropagation(); openProduct(el.dataset.pid); break;
       case 'close-modal': closeModal(); break;
+      case 'open-help': {
+        var topic = helpTopicById(el.dataset.help);
+        if (!topic) { toast('안내를 찾을 수 없습니다.', 'warn'); break; }
+        ui.modal = { type: 'help', topicId: topic.id };
+        renderModal(); syncLock();
+        break;
+      }
       case 'lb-open': openLightbox(); break;
       case 'lb-close': closeLightbox(); break;
       case 'lb-prev': lightboxStep(-1); break;
@@ -6257,9 +7029,50 @@ table.data.claims { min-width: 780px; }
         if (!isAdmin()) { openAuth('login', '관리자 계정으로 로그인해 주세요.'); break; }
         ui.adminTab = 'products'; go('admin'); break;
       case 'admin-tab': ui.adminTab = el.dataset.tab; ui.integrity = null; ui.couponFormError = ''; renderAll(); break;
+      case 'save-site': {
+        if (!isAdmin()) break;
+        var siteRes = saveSiteSettings(readSiteForm());
+        if (!siteRes.ok) { toast(siteRes.message, 'warn'); break; }
+        ui.adminTab = 'site';
+        renderAll();
+        toast('사이트 설정을 저장했습니다. 스토어에 바로 반영됩니다.');
+        break;
+      }
+      case 'add-help-topic': {
+        if (!isAdmin()) break;
+        var hrHost = $('[data-hook=help-rows]');
+        if (!hrHost) break;
+        hrHost.insertAdjacentHTML('beforeend', helpRowHTML({ id: '', title: '', body: '' }, hrHost.children.length));
+        var lastRow = hrHost.lastElementChild;
+        var lastTitle = lastRow ? lastRow.querySelector('[data-help-title]') : null;
+        if (lastTitle) { try { lastTitle.focus(); } catch (e) {} }
+        break;
+      }
+      case 'remove-help-topic': {
+        if (!isAdmin()) break;
+        var rrow = el.closest('.help-row');
+        var rhost = $('[data-hook=help-rows]');
+        if (!rrow || !rhost) break;
+        if (rhost.children.length <= 1) { toast('HELP 항목은 최소 1개가 필요합니다.', 'warn'); break; }
+        rrow.remove();
+        $$('[data-hook=help-rows] .help-row').forEach(function (r2, i) {
+          var no = r2.querySelector('.help-no');
+          if (no) no.textContent = i + 1;
+        });
+        break;
+      }
+      case 'save-help': {
+        if (!isAdmin()) break;
+        var hr = saveHelpTopics(readHelpRows());
+        if (!hr.ok) { toast(hr.message, 'warn'); break; }
+        renderAll();
+        toast('HELP 메뉴 ' + hr.topics.length + '개를 저장했습니다.');
+        break;
+      }
       case 'admin-new-product':
         if (!isAdmin()) break;
         ui.editError = '';
+        ui.editRow = null;
         ui.modal = { type: 'edit', draft: defaultDraft() };
         renderModal(); syncLock();
         break;
@@ -6268,6 +7081,7 @@ table.data.claims { min-width: 780px; }
         var p = productById(el.dataset.pid);
         if (!p) break;
         ui.editError = '';
+        ui.editRow = null;
         ui.modal = { type: 'edit', draft: draftFromProduct(p) };
         renderModal(); syncLock();
         break;
@@ -6276,8 +7090,35 @@ table.data.claims { min-width: 780px; }
         var rowsHost = $('#variant-rows');
         if (!rowsHost) break;
         var count = rowsHost.children.length;
-        var baseHex = (ui.modal && ui.modal.draft && ui.modal.draft.base_hex) || '#1B1B1D';
+        var baseHex = normalizeHex(($('#pe-base-hex') || {}).value) ||
+          normalizeHex(ui.modal && ui.modal.draft && ui.modal.draft.base_hex) || DEFAULT_HEX;
         rowsHost.insertAdjacentHTML('beforeend', variantRowHTML({ color: '', color_hex: baseHex, size: SIZE_ORDER[Math.min(count, SIZE_ORDER.length - 1)], stock: 5 }, count));
+        updateColorTarget();
+        break;
+      }
+      case 'pick-preset':
+      case 'pick-palette': {
+        if (!ui.modal || ui.modal.type !== 'edit') break;
+        var ap = applyEditorColor(el.dataset.hex, el.dataset.name, { toBase: el.dataset.action === 'pick-preset' });
+        if (!ap.ok) { toast(ap.message, 'warn'); break; }
+        toast('색상 ' + ap.hex + ' 을(를) ' + (ap.label ? '‘' + ap.label + '’ 옵션' : (ap.rowIndex + 1) + '번 옵션') + '에 적용했습니다');
+        break;
+      }
+      case 'extract-palette': {
+        if (!ui.modal || ui.modal.type !== 'edit') break;
+        var ed = ui.modal.draft;
+        var imgs = (ed.images && ed.images.length) ? ed.images : [ed.image || 'coat.webp'];
+        var sel = $('#pe-palette-src');
+        var srcIdx = sel ? Math.max(0, Math.min(imgs.length - 1, parseInt(sel.value, 10) || 0)) : 0;
+        var pHost = $('[data-hook=palette]');
+        if (pHost) pHost.innerHTML = '<span class="ce-empty">이미지를 분석하는 중…</span>';
+        sampleImageColors(imgs[srcIdx], {}, function (res) {
+          if (!ui.modal || ui.modal.type !== 'edit') return;
+          if (!res.ok) { renderEditorPalette([], res.message); toast(res.message, 'warn'); return; }
+          ui.lastPalette = res.colors;
+          renderEditorPalette(res.colors, '');
+          toast('이미지에서 ' + res.colors.length + '가지 색을 추출했습니다. 스와치를 누르면 적용됩니다.');
+        });
         break;
       }
       case 'set-main-image': {
@@ -6416,7 +7257,13 @@ table.data.claims { min-width: 780px; }
         if (!isAdmin() || !ui.modal || ui.modal.type !== 'edit') break;
         var input = readEditor();
         var res3 = saveProduct(input);
-        if (!res3.ok) { ui.editError = res3.message; renderModal(); break; }
+        if (!res3.ok) {
+          /* 실패해도 방금 입력한 값을 그대로 되살려 다시 그린다(입력 유실 방지) */
+          ui.modal.draft = input;
+          ui.editError = res3.message;
+          renderModal();
+          break;
+        }
         ui.modal = null;
         ui.adminQuery = '';   // 방금 등록한 상품이 목록 맨 위에 보이도록 검색을 비운다
         renderAll();
@@ -6588,49 +7435,104 @@ table.data.claims { min-width: 780px; }
       if (emptyEl) emptyEl.hidden = !(q && !shown);
       return;
     }
-    /* 옵션 컬러명 입력 → HEX 자동 매핑 (크림·하얀색·아이보리·베이지 등) */
+    /* 사이트 관리: 오버레이 농도 실시간 표시 */
+    if (t.id === 'site-hero-overlay') {
+      var oval = $('[data-hook=overlay-val]');
+      if (oval) oval.textContent = t.value + '%';
+      var obadge = $('[data-hook=hero-effect-badge]');
+      var oeff = ($('#site-hero-effect') || {}).value || 'none';
+      if (obadge) obadge.textContent = (HERO_EFFECTS[oeff] || '없음') + ' · 오버레이 ' + t.value + '%';
+      return;
+    }
+    /* 제품고유키(제품번호) 입력 — 중복을 즉시 안내하고 자동 채번 번호를 보여준다 */
+    if (t.id === 'pe-code') {
+      var hintEl = $('[data-hook=code-hint]');
+      if (hintEl && ui.modal && ui.modal.type === 'edit') {
+        var cv = normalizeProductCode(t.value);
+        var bad = !!cv && productCodeTaken(cv, ui.modal.draft.id);
+        hintEl.textContent = !cv ? '비우면 저장 시 ' + nextProductCode() + ' 으로 자동 채번됩니다.'
+          : bad ? '이미 사용 중인 제품번호입니다.' : '사용 가능한 제품번호입니다.';
+        hintEl.classList.toggle('bad', bad);
+      }
+      return;
+    }
+    /* 옵션 컬러명 입력 → HEX 자동 매핑 (크림·하얀색·아이보리·베이지 등)
+       + 컬러 피커·HEX·기본 색상 동기화 (input/change 공통) */
+    if (syncEditorColorInput(t)) return;
+  });
+  /* 편집기 색상 입력 공통 처리 — input(끌어서 조절 중)과 change(선택 완료) 모두에서 동작.
+     · 삼성 인터넷·안드로이드 색상 피커는 change 만 보내는 경우가 있어 둘 다 받는다
+     · 조작 중인 입력 자신에게는 값을 다시 쓰지 않는다(피커가 끝값에서 튀는 현상 제거) */
+  function syncEditorColorInput(t) {
+    if (!t || !ui.modal || ui.modal.type !== 'edit') return false;
+    /* 옵션 컬러명 → 색상명 매핑 */
     if (t.name === 'color') {
-      var vrow = t.closest('.var-row');
+      var row = t.closest('.var-row');
       var mapped = colorHexFromName(t.value);
-      if (vrow && mapped) {
-        var hexTextEl = vrow.querySelector('[name=hexText]');
-        var pickEl = vrow.querySelector('[name=hex]');
-        var curHex = hexTextEl ? String(hexTextEl.value || '').trim().toUpperCase() : '';
-        if (!curHex || curHex === '#1B1B1D' || curHex === '') {
-          if (hexTextEl) hexTextEl.value = mapped;
-          if (pickEl) pickEl.value = mapped;
+      if (row && mapped) {
+        var textEl = row.querySelector('[name=hexText]');
+        var pickEl = row.querySelector('[name=hex]');
+        var cur = normalizeHex(textEl ? textEl.value : '') || normalizeHex(pickEl ? pickEl.value : '');
+        /* 비어 있거나 기본값(#1B1B1D)일 때만 매핑으로 채운다 — 관리자가 고른 색을 덮어쓰지 않는다 */
+        if (!cur || cur === DEFAULT_HEX) {
+          if (textEl && String(textEl.value).toUpperCase() !== mapped) textEl.value = mapped;
+          if (pickEl && String(pickEl.value).toUpperCase() !== mapped) pickEl.value = mapped;
         }
       }
-      return;
+      updateColorTarget();
+      return true;
     }
-    /* HEX 직접 입력 → 컬러 피커 동기화 */
-    if (t.name === 'hexText') {
-      var vr = t.closest('.var-row');
-      var pk = vr ? vr.querySelector('[name=hex]') : null;
-      if (pk && isHexColor(t.value)) pk.value = String(t.value).toUpperCase();
-      return;
-    }
-    /* 기본 색상 — 첫 옵션과 새 옵션 기본값에 바로 반영 */
-    if (t.id === 'pe-base-color' || t.id === 'pe-base-hex') {
-      var base = String(t.value || '').trim();
-      if (!isHexColor(base)) return;
-      var baseHexEl = $('#pe-base-hex');
-      var basePick = $('#pe-base-color');
-      if (baseHexEl) baseHexEl.value = base.toUpperCase();
-      if (basePick) basePick.value = base.toUpperCase();
-      if (ui.modal && ui.modal.draft) ui.modal.draft.base_hex = base.toUpperCase();
-      var firstRow = $('#variant-rows .var-row');
-      if (firstRow) {
-        var fh = firstRow.querySelector('[name=hexText]');
-        var fp = firstRow.querySelector('[name=hex]');
-        if (fh) fh.value = base.toUpperCase();
-        if (fp) fp.value = base.toUpperCase();
+    /* 옵션별 컬러 피커 → HEX 텍스트 */
+    if (t.name === 'hex') {
+      var row2 = t.closest('.var-row');
+      var n2 = normalizeHex(t.value);
+      if (row2 && n2) {
+        var tx2 = row2.querySelector('[name=hexText]');
+        if (tx2 && String(tx2.value || '').toUpperCase() !== n2) tx2.value = n2;
       }
-      return;
+      return true;
     }
-  });
+    /* 옵션별 HEX 직접 입력 → 컬러 피커 (F0F0F0 · #fff 모두 허용) */
+    if (t.name === 'hexText') {
+      var row3 = t.closest('.var-row');
+      var n3 = normalizeHex(t.value);
+      var pk3 = row3 ? row3.querySelector('[name=hex]') : null;
+      if (pk3 && n3 && String(pk3.value || '').toUpperCase() !== n3) pk3.value = n3;
+      return true;
+    }
+    /* 기본 색상 → 기본값 + 지금 선택한 옵션 */
+    if (t.id === 'pe-base-color' || t.id === 'pe-base-hex') {
+      var base = normalizeHex(t.value);
+      if (!base) return true;
+      var baseText = $('#pe-base-hex');
+      var basePick = $('#pe-base-color');
+      if (baseText && baseText !== t && String(baseText.value || '').toUpperCase() !== base) baseText.value = base;
+      if (basePick && basePick !== t && String(basePick.value || '').toUpperCase() !== base) basePick.value = base;
+      if (ui.modal && ui.modal.draft) ui.modal.draft.base_hex = base;
+      var trow = targetEditorRow();
+      if (trow) setRowHex(trow, base);
+      updateColorTarget();
+      return true;
+    }
+    return false;
+  }
+  /* 어떤 옵션 행을 만지고 있는지 기록 — 기본색·프리셋·팔레트가 그 행에 적용된다 */
+  function trackEditorRow(ev) {
+    if (!ui.modal || ui.modal.type !== 'edit') return;
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    var row = t.closest('#variant-rows .var-row');
+    if (!row) return;
+    var idx = rowIndexOf(row);
+    if (idx < 0) return;
+    if (ui.editRow !== idx) { ui.editRow = idx; updateColorTarget(); }
+  }
+  document.addEventListener('focusin', trackEditorRow);
+  document.addEventListener('pointerdown', trackEditorRow, true);
   document.addEventListener('change', function (ev) {
     var t = ev.target;
+    /* 컬러 피커·HEX·기본 색상 — change 만 보내는 브라우저 보정 */
+    if (syncEditorColorInput(t)) return;
     if (t.id === 'sort-select') { ui.sort = t.value; renderView(); }
     if (t.id === 'pe-active') {
       var tg = t.closest('.toggle');
@@ -6667,6 +7569,41 @@ table.data.claims { min-width: 780px; }
       var exHost = $('[data-hook=claim-exchange]');
       var exOrder = orderById(cm.oid);
       if (exHost && exOrder) exHost.innerHTML = claimExchangeHTML(exOrder, cm);
+      return;
+    }
+    /* 사이트 관리: 히어로 배너 사진 업로드/선택 */
+    if (t.id === 'site-hero-upload') {
+      var heroFiles = t.files;
+      if (heroFiles && heroFiles.length) {
+        resizeImageFile(heroFiles[0]).then(function (row) {
+          var sel = $('#site-hero-image');
+          if (sel) {
+            var opt = document.createElement('option');
+            opt.value = row.data;
+            opt.textContent = '업로드한 사진';
+            sel.insertBefore(opt, sel.firstChild);
+            sel.value = row.data;
+          }
+          var prev = $('[data-hook=hero-preview]');
+          if (prev) prev.src = row.data;
+          toast('배너 사진을 준비했습니다. 「히어로 저장」을 누르면 반영됩니다.');
+        })['catch'](function (err) {
+          toast(err && err.message ? err.message : '사진을 불러오지 못했습니다.', 'warn');
+        });
+      }
+      try { t.value = ''; } catch (e) {}
+      return;
+    }
+    if (t.id === 'site-hero-image') {
+      var heroPrev = $('[data-hook=hero-preview]');
+      if (heroPrev) heroPrev.src = imgSrc(t.value);
+      return;
+    }
+    if (t.id === 'site-hero-effect' || t.id === 'site-hero-overlay') {
+      var badge = $('[data-hook=hero-effect-badge]');
+      var eff = ($('#site-hero-effect') || {}).value || 'none';
+      var ovl = ($('#site-hero-overlay') || {}).value || '0';
+      if (badge) badge.textContent = (HERO_EFFECTS[eff] || '없음') + ' · 오버레이 ' + ovl + '%';
       return;
     }
     if (t.id === 'pe-upload') {
@@ -6742,10 +7679,57 @@ table.data.claims { min-width: 780px; }
   }
 
   /* ------------------------------------------------------------------ boot */
+  /* 예전 버전은 '미지정' HEX 를 #1B1B1D 로 저장해, 하얀색·크림 같은 밝은 옵션이
+     기본색(검정)으로 남아 있는 데이터가 있다. 색상명이 있으면 매핑으로 한 번만 보정한다. */
+  function repairVariantHexes() {
+    var changed = 0;
+    for (var i = 0; i < db.product_variants.length; i++) {
+      var v = db.product_variants[i];
+      var stored = normalizeHex(v.color_hex);
+      var mapped = colorHexFromName(v.color);
+      if ((!stored || stored === DEFAULT_HEX) && mapped && mapped !== stored) {
+        v.color_hex = mapped;
+        changed++;
+      }
+    }
+    return changed;
+  }
+  function migrateColorData() {
+    if (!db || !db.product_variants) return 0;
+    if (!db.meta) db.meta = {};
+    if (db.meta.color_repair_v18) return 0;
+    var changed = repairVariantHexes();
+    db.meta.color_repair_v18 = true;
+    save();
+    return changed;
+  }
+  /* 예전 데이터에 제품번호가 없거나 중복이면 저장 가능한 빈 번호를 채번해 채운다 */
+  function migrateProductCodes() {
+    if (!db || !db.products) return 0;
+    if (!db.meta) db.meta = {};
+    if (db.meta.product_code_v18) return 0;
+    var changed = 0, seen = {};
+    db.products.forEach(function (p) {
+      var c = normalizeProductCode(p.product_code);
+      if (c && !seen[c]) { seen[c] = 1; p.product_code = c; return; }
+      var next = '';
+      do { next = nextProductCode(); } while (seen[next] || productCodeTaken(next, p.id));
+      seen[next] = 1;
+      p.product_code = next;
+      changed++;
+    });
+    db.meta.product_code_v18 = true;
+    save();
+    return changed;
+  }
+
   function boot() {
     var loaded = loadDB();
     db = loaded || clone(SEED);
     if (!loaded) save();
+    migrateColorData();   // 예전 데이터의 '미지정 #1B1B1D' 를 색상명 매핑으로 한 번만 보정
+    migrateProductCodes(); // 제품번호가 없는 예전 상품에 MA-#### 를 채운다
+    migrateSiteData();     // 히어로·푸터·HELP 설정이 없으면 시드 기본값으로 채운다
     loadSession();
     loadPaymentConfig();   // 관리자가 화면에서 저장한 결제 설정이 있으면 우선 적용
     if (session && !db.users.some(function (u) { return u.id === session.userId; })) {
@@ -6765,6 +7749,45 @@ table.data.claims { min-width: 780px; }
   window.__MONO__ = {
     version: APP_VERSION,
     getDB: function () { return clone(db); },
+    colorPresets: function () { return COLOR_PRESETS.map(function (p) { return { name: p[0], hex: p[1] }; }); },
+    nearestColorName: function (hex) { return nearestColorName(hex); },
+    normalizeHex: function (v) { return normalizeHex(v); },
+    colorOf: function (pid, color) { return hexOfColor(pid, color); },
+    siteSettings: function () { return clone(siteSettings()); },
+    helpTopics: function () { return clone(helpTopics()); },
+    saveSiteSettings: function (input) { return clone(saveSiteSettings(input || {})); },
+    saveHelpTopics: function (list) { return clone(saveHelpTopics(list || [])); },
+    helpTopic: function (id) { var t = helpTopicById(id); return t ? clone(t) : null; },
+    nextProductCode: function () { return nextProductCode(); },
+    productCodeOf: function (pid) { return productCodeOf(productById(pid)); },
+    productCodeTaken: function (code, exceptId) { return productCodeTaken(code, exceptId); },
+    productByCode: function (code) { var p = productByCode(code); return p ? clone(p) : null; },
+    paletteOfImage: function (src) {
+      return new Promise(function (resolve) { sampleImageColors(src, {}, resolve); });
+    },
+    editorState: function () {
+      var rows = $$('#variant-rows .var-row').map(function (r, i) {
+        return {
+          index: i,
+          active: r.classList.contains('active'),
+          color: (r.querySelector('[name=color]') || {}).value || '',
+          picker: (r.querySelector('[name=hex]') || {}).value || '',
+          text: (r.querySelector('[name=hexText]') || {}).value || '',
+          size: (r.querySelector('[name=size]') || {}).value || '',
+          stock: (r.querySelector('[name=stock]') || {}).value || ''
+        };
+      });
+      return {
+        base: ($('#pe-base-hex') || {}).value || '',
+        basePicker: ($('#pe-base-color') || {}).value || '',
+        target: ($('[data-hook=color-target]') || {}).textContent || '',
+        focusRow: ui.editRow == null ? null : ui.editRow,
+        rows: rows,
+        palette: $$('[data-hook=palette] .pal').map(function (b) {
+          return { hex: b.getAttribute('data-hex'), name: b.getAttribute('data-name'), label: b.textContent.trim() };
+        })
+      };
+    },
     hash: sha256Hex,
     totals: function () { return totalsOf(selectedRows(), ui.coupon); },
     checkoutTotals: function () { return totalsOf(checkoutRows(), ui.coupon); },
