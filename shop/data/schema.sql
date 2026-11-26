@@ -13,14 +13,25 @@ CREATE TABLE users (
   phone         TEXT NOT NULL,
   address       TEXT NOT NULL DEFAULT '',
   role          TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer','admin')),
+  grade         TEXT NOT NULL DEFAULT 'NORMAL' CHECK (grade IN ('NORMAL','SILVER','GOLD','VIP')),
+                -- 회원 등급 — 쿠폰 발급 대상(등급별)에 사용
   created_at    TEXT NOT NULL
+);
+
+-- 카테고리 — 관리자 콘솔에서 추가·이름 수정·삭제·순서 변경 (products.category 가 참조)
+CREATE TABLE categories (
+  id         TEXT PRIMARY KEY,
+  label      TEXT NOT NULL,
+  en         TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
 );
 
 CREATE TABLE products (
   id             TEXT PRIMARY KEY,
   name           TEXT NOT NULL,
   brand          TEXT NOT NULL DEFAULT 'MONO ATELIER',
-  category       TEXT NOT NULL CHECK (category IN ('outer','top','bottom','dress','acc')),
+  category       TEXT NOT NULL REFERENCES categories(id),
   price          INTEGER NOT NULL CHECK (price >= 0),
   original_price INTEGER CHECK (original_price IS NULL OR original_price >= price),
   badge          TEXT CHECK (badge IS NULL OR (length(trim(badge)) BETWEEN 1 AND 16)),
@@ -133,6 +144,7 @@ CREATE TABLE coupons (
   min_order_amount INTEGER NOT NULL DEFAULT 0 CHECK (min_order_amount >= 0),
   expires_at       TEXT,                                    -- NULL = 무기한
   is_active        INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  target_grades    TEXT NOT NULL DEFAULT '[]',              -- JSON 배열: 발급 대상 회원 등급 ([] = 등급 제한 없음)
   created_at       TEXT NOT NULL
 );
 

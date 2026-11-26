@@ -1,9 +1,11 @@
 # MONO ATELIER — 의류 쇼핑몰 프로토타입
 
 프론트엔드만으로 완결되는 모던 컨템포러리 의류 쇼핑몰입니다.
-모든 데이터는 **정규화된 9개 테이블(JSON)** 로 관리되고 브라우저 `localStorage`에 저장되며,
-`data/schema.sql`(SQLite 10개 테이블 — `coupon_targets`·`order_claims` 포함)로 **1:1 이식**할 수 있게 설계했습니다.
+모든 데이터는 **정규화된 10개 테이블(JSON)** 로 관리되고 브라우저 `localStorage`에 저장되며,
+`data/schema.sql`(SQLite 11개 테이블 — `categories`·`coupon_targets`·`order_claims` 포함)로 **1:1 이식**할 수 있게 설계했습니다.
 
+> **v1.7 (2026-11-26 실기기 QA 19가지 대개편)** — ① 상세 이미지 **좌우 스와이프**로 컷 전환 + **더블탭 1x↔2x**(상세·라이트박스) ② 교환 신청 시 **주문 상품의 실제 컬러·사이즈 옵션(재고 표시)** 선택 ③ 반품 주문 상세의 **`NaN`** 출력 제거 ④ 회원 **등급(NORMAL/SILVER/GOLD/VIP)** + **등급별 쿠폰** + 발급 대상 **실시간 회원 검색** ⑤ 발행된 **쿠폰 수정** ⑥ 412px 관리자 표를 **카드형 행**으로(찌그러짐·가로 잘림 0) ⑦ 관리자 화면에서 **결제 설정(모드·클라이언트 키·승인 URL) 직접 저장/초기화**(localStorage 우선) ⑧ **📷 사진 업로드** 버튼 정렬 ⑨ 갤러리 이미지를 **썸네일 그리드 클릭**으로 추가/해제 ⑩ 색조 스와치 표시 안정화(흰색·크림 테두리) ⑪ **기본 색상 컬러 피커 + HEX** ⑫⑬ 한글 색상명→HEX 자동 매핑(**하얀색=#ffffff**) ⑭ **카테고리 관리**(추가·수정·삭제·순서, 스토어·상품 등록 즉시 연동) ⑮ **판매 OFF** 신규 등록 정확 저장 ⑯ **최신 등록 상품 맨 위** 정렬 ⑰ 관리자 **상품 실시간 검색** ⑱ 추가 이미지 2장+ **모두 저장·표시(사진 수 배지)** ⑲ 이미지 **대표 지정**.
+>
 > **v1.6 (2026-11-26 상세 이미지·모델 정보)** — 상품 상세 대표 이미지를 **탭하거나 「확대」 버튼**을 누르면 **전체 화면 이미지 뷰어(라이트박스)**가 열립니다. 원본 비율로 화면을 채우고 **1x ↔ 2x(최대 3x) 확대·축소, 드래그 이동, 두 손가락 핀치 줌, ‹ › 컷 전환, ✕·Esc·브라우저 뒤로가기로 뷰어만 닫기**(상세 모달 유지)를 지원합니다. 상품에 **`model_info`(모델 착용 정보)** 를 추가해 상세 정보 표에 「모델 정보」로 노출하고(예: `모델 174cm · 54kg · M 사이즈 착용`), 관리자 상품 등록/수정에서 「모델 정보 (선택)」으로 입력·수정할 수 있습니다(비우면 숨김).
 >
 > **v1.5 (2026-11-26 교환/반품 요청)** — 마이페이지 주문 내역에서 **교환/반품 신청**을 할 수 있습니다.
@@ -65,14 +67,14 @@ fashion-shop/
 ├─ assets/                     # AI 생성 스튜디오 컷 13종 + 갤러리 디테일 크롭 24종 (webp, 1.8MB)
 ├─ make_gallery_assets.py      # 대표 컷에서 디테일 크롭(-detail/-fabric) 생성
 ├─ data/
-│  ├─ schema-seed.json         # 정규화 시드 데이터 (9 tables + meta)
+│  ├─ schema-seed.json         # 정규화 시드 데이터 (10 tables + meta)
 │  ├─ schema.sql               # SQLite DDL (FK·CHECK·INDEX·VIEW)
 │  ├─ build_sqlite.py          # 시드 → SQLite 변환·검증 스크립트
 │  ├─ payment_confirm_example.py # 토스페이먼츠 결제 승인(서버) 예제 — 시크릿 키는 환경변수
 │  └─ mono-atelier.db          # 위 스크립트로 만든 샘플 SQLite DB (192KB)
 └─ tests/
-   ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (429 checks)
-   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / 라이트박스 / file:// 프리뷰, 452 checks)
+   ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (508 checks)
+   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / 라이트박스 / v1.7 19가지 / file:// 프리뷰, 543 checks)
    ├─ make_screenshots.py      # 대표 스크린샷 생성
    ├─ verify_deploy.py         # 배포본 검수 (HTTP 200·콘솔 에러 0·이미지 깨짐 0·개인정보 0)
    └─ smoke.py                 # 단일 페이지 스모크(콘솔 에러 확인)
@@ -94,7 +96,8 @@ orders.coupon_code ───────────────< coupons (code 
 
 | 테이블 | 컬럼 | 비고 |
 | --- | --- | --- |
-| `users` | id, email, password_hash, name, phone, address, role, created_at | role: customer/admin |
+| `users` | id, email, password_hash, name, phone, address, role, **grade**, created_at | role: customer/admin · grade: NORMAL/SILVER/GOLD/VIP |
+| `categories` | id, label, en, sort_order, created_at | 관리자 「카테고리 관리」에서 추가·수정·삭제·순서 변경 · products.category 가 참조 |
 | `products` | id, name, brand, category, price, original_price, badge, description, image, **images**, **model_info**, **free_shipping_threshold**, created_at, is_active | `images` = 갤러리 배열(JSON) · `model_info` = 모델 착용 정보(예: `모델 174cm · 54kg · M 사이즈 착용`, NULL = 숨김) · category: outer/top/bottom/dress/acc |
 | `product_images` | id, product_id, image, alt, sort_order | 갤러리 정규화 테이블(SQLite) · (product,image) UNIQUE |
 | `product_variants` | id, product_id, color, color_hex, size, stock, sku | size: S/M/L/XL/FREE, (product,color,size) UNIQUE |
@@ -102,7 +105,7 @@ orders.coupon_code ───────────────< coupons (code 
 | `orders` | id, order_no, user_id, status, total_amount, shipping_fee, **coupon_code**, **discount_amount**, recipient_name, recipient_phone, shipping_address, payment_method, payment_provider, payment_key, payment_mode, created_at | status: paid/preparing/shipping/delivered/cancelled · payment_provider: demo/tosspayments · payment_mode: demo/demo-fallback/test-client/server |
 | `order_items` | id, order_id, variant_id, product_name, color, size, unit_price, quantity | 상품명·컬러·사이즈·가격은 **주문 시점 스냅샷** |
 | `order_claims` | id, order_id, user_id, claim_type, reason_category, reason_detail, shipping_fee, payment_status, payment_key, payment_mode, exchange_option, status, stock_restored, created_at, updated_at | 교환/반품 접수 — claim_type: return/exchange · reason_category: defect/wrong_item/change_of_mind/size_color · payment_status: free/paid/pending · status: requested/approved/completed/rejected · 한 주문당 1건(order_id UNIQUE) |
-| `coupons` | id, code, name, discount_type, discount_value, min_order_amount, expires_at, is_active, **target_user_ids**, created_at | discount_type: percent(%)/fixed(원) · expires_at NULL = 무기한 · `target_user_ids` = 발급 대상(빈 배열 = 전체 공용) |
+| `coupons` | id, code, name, discount_type, discount_value, min_order_amount, expires_at, is_active, **target_user_ids**, **target_grades**, created_at | discount_type: percent(%)/fixed(원) · expires_at NULL = 무기한 · `target_user_ids`/`target_grades` 가 모두 비면 전체 공용, 등급 대상이면 그 등급 회원, 회원 지정이면 그 회원만 사용 |
 | `coupon_targets` | id, coupon_id, user_id, created_at | 전용 쿠폰 발급 대상 정규화 테이블(SQLite) · (coupon,user) UNIQUE |
 
 * `total_amount` = 상품금액 합계 + `shipping_fee` − `discount_amount` (전 건 검증됨).
@@ -110,7 +113,9 @@ orders.coupon_code ───────────────< coupons (code 
 * `products.badge`: 프리셋(`BEST`/`NEW`/`SALE`/`LIMITED`) 또는 관리자가 입력한 16자 이내 문구. `NULL` = 뱃지 없음.
 * `products.model_info`: 모델 키·체중·착용 사이즈 문구(60자 이내). `NULL`/빈 값이면 상세에서 「모델 정보」 항목을 그리지 않습니다. 시드 13개 상품 모두 값이 있습니다(잡화는 `모델 172cm 착용 컷`).
 * `coupons.target_user_ids`: `[]` = 전체 공용. 값이 있으면 그 회원만 목록 노출·코드 적용이 가능하고 다른 계정은 `이 계정에 발급된 쿠폰이 아닙니다.`로 거부됩니다. SQLite에서는 `coupon_targets` 행으로 전개됩니다.
-* 시드 규모: users 2 · products 13(판매중 12, 숨김 1) · product_images 39 · product_variants 88 · orders 5(배송완료 3 포함) · order_items 6 · order_claims 2(무료 1 + 유료 1) · coupons 3(공용 2 + 전용 1) · coupon_targets 1.
+* `coupons.target_grades`: `[]` = 등급 제한 없음. `['GOLD','VIP']` 처럼 지정하면 그 등급 회원에게만 노출·적용됩니다(회원 지정과 동시에 쓰면 합집합). 관리자 화면에서는 `전체 공용 / 회원 등급별 / 특정 회원 지정` 3모드로 고릅니다.
+* `users.grade`: 시드 데모 회원은 `GOLD`, 관리자 계정은 `NORMAL`. 신규 가입은 `NORMAL`. 마이페이지 프로필과 관리자 주문/회원 목록에 등급 배지가 표시됩니다.
+* 시드 규모: users 2 · categories 5 · products 13(판매중 12, 숨김 1) · product_images 39 · product_variants 88 · orders 5(배송완료 3 포함) · order_items 6 · order_claims 2(무료 1 + 유료 1) · coupons 3(공용 2 + 전용 1) · coupon_targets 1.
 * `order_claims.shipping_fee`: `defect`·`wrong_item` = **0원**, `change_of_mind`·`size_color` = 반품 **3,000원** / 교환 **6,000원**(왕복). 무료 접수는 `payment_status='free'`, 유료 접수는 토스 결제 후 `'paid'` + `payment_key`.
 * `order_claims.stock_restored`: 반품을 `완료`로 바꿀 때 재고 복구를 **한 번만** 하기 위한 플래그(0/1).
 * 교환/반품 신청 가능 단계는 **배송중(`shipping`)·배송완료(`delivered`)** 이고, 배송 전 주문은 `주문 취소`로 처리합니다. 시드의 `o_001`(배송완료·접수 이력 없음)에 데모 계정으로 로그인하면 바로 신청 버튼을 눌러볼 수 있습니다.
@@ -131,7 +136,7 @@ python3 fashion-shop/data/build_sqlite.py      # → data/mono-atelier.db 재생
 ```
 
 ```
-users 2 · products 13 · product_images 39 · product_variants 88 · orders 5 · order_items 6 · order_claims 2 · coupons 3
+users 2 · categories 5 · products 13 · product_images 39 · product_variants 88 · orders 5 · order_items 6 · order_claims 2 · coupons 3
 foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 · 한 주문당 클레임 1건: OK
   교환/반품 접수: return defect 무료 (requested), exchange size_color 6000원 결제 (approved)
 ```
@@ -144,7 +149,7 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 - 29CM/무신사/COS 무드의 에디토리얼 레이아웃, 히어로·아틀리에 노트·서비스 안내·푸터
 - 카테고리 탭(전체/아우터/상의/하의/원피스/잡화), 실시간 검색(자동완성 팝업), 정렬(인기/낮은 가격/높은 가격)
 - 품절 상품 `SOLD OUT` 오버레이, 할인율·정가 표시, 컬러 도트
-- 상품 상세: 컬러 칩 → 사이즈 선택 시 **해당 옵션의 실시간 재고**(`재고 N개 · 품절 임박`), 품절 옵션 비활성, 수량 조절, 총액, 장바구니/바로 구매
+- 상품 상세: **좌우 스와이프로 갤러리 컷 전환**, **더블탭 1x↔2x 확대**(상세·라이트박스), 컬러 칩 → 사이즈 선택 시 **해당 옵션의 실시간 재고**(`재고 N개 · 품절 임박`), 품절 옵션 비활성, 수량 조절, 총액, 장바구니/바로 구매
 - 모바일(≤720px)은 상품 상세가 바텀시트 + 하단 고정 CTA, 2열 그리드, 접이식 검색
 
 **회원**
@@ -171,6 +176,7 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 - 대표 이미지는 `object-fit: contain` + 아이보리 배경으로 **잘림 0%**. 모바일(≤720px)은 **이미지 영역 고정 + 정보 영역만 스크롤**하는 2단 시트라 이미지가 위로 밀려 잘리지 않습니다.
 - 상품별 배송 조건 표시: `무료배송` / `50,000원 이상 무료배송` / `100,000원 이상 무료배송`
 - 상세 상단·상품 카드·관리자 목록에 상품 뱃지 표시
+- **색상명→HEX 자동 매핑**: `하얀색`·`화이트`=`#ffffff`, `크림`·`아이보리`·`베이지` 등 한글/영문 색상명을 HEX로 자동 변환하고, 관리자가 지정한 `color_hex`가 있으면 그것을 우선 사용합니다. 흰색·크림처럼 밝은 색조는 **연한 테두리(.light)** 로 배경과 구분합니다.
 - **모델 정보**: 상세 정보 표의 첫 줄에 `모델 정보 — 모델 174cm · 54kg · M 사이즈 착용` 처럼 표시(`products.model_info`, 관리자 입력·수정, 비우면 숨김)
 
 **이미지 전체 화면 확대 — 라이트박스 (v1.6)**
@@ -183,7 +189,7 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 - 관리자 상품 등록/수정에서 `없음` · `BEST` · `NEW` · `SALE` · `LIMITED` 선택 또는 **직접 입력(16자 이내)** — 저장 즉시 카드·상세 상단·관리자 목록에 반영(`products.badge`)
 
 **사진 파일 업로드 (v1.3)**
-- 관리자 상품 등록/수정에서 `<input type="file" accept="image/*" multiple>` 로 **실제 사진 파일**을 올려 대표 이미지·갤러리(최대 6장)로 사용
+- 관리자 상품 등록/수정에서 **📷 사진 업로드** 버튼(`<input type="file" accept="image/*" multiple>`)으로 **실제 사진 파일**을 올려 대표 이미지·갤러리(최대 6장)로 사용
 - 올린 파일은 브라우저 `Canvas` 로 **긴 변 900px · JPEG 82%** 로 축소해 Data URL 로 저장 → 즉시 썸네일 미리보기/삭제, `localStorage` 5MB 초과 방지(1장당 보통 30~150KB)
 
 **할인 쿠폰 / 배송비 (v1.2 · v1.3)**
@@ -195,10 +201,12 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 
 **관리자**
 - 대시보드(판매 중 상품·전체 주문·처리 대기·누적 매출)
-- 상품 관리: 등록/수정(옵션별 컬러·컬러코드·사이즈·재고), **대표 + 갤러리 추가 이미지(최대 6장) — 기존 컷 선택 또는 사진 파일 업로드**, **모델 정보(선택, 60자)**, **무료배송 기준 금액**, **상품 뱃지(프리셋/직접 입력)**, 전체 품절, 숨김/판매재개
-- **쿠폰 관리**: 쿠폰 코드·이름·정률/정액·할인값·최소 주문금액·만료일 + **발급 대상(전체 공용 / 회원 지정)** 으로 발행, 목록에서 발급 대상·사용 건수·중지/재개
+- 상품 관리: **상품명/브랜드/카테고리/뱃지 실시간 검색**, **최신 등록순 정렬(방금 등록한 상품이 첫 행)**, **사진 수 배지**, 등록/수정(옵션별 컬러·**컬러 피커+HEX**·사이즈·재고), **대표 + 갤러리 이미지 썸네일 그리드(클릭 추가/해제, 최대 6장+대표)**, **대표 지정**, **기본 색상 피커**, **모델 정보(선택, 60자)**, **무료배송 기준 금액**, **상품 뱃지(프리셋/직접 입력)**, **판매 상태 ON/OFF 정확 저장**, 전체 품절, 숨김/판매재개
+- **쿠폰 관리**: 쿠폰 코드·이름·정률/정액·할인값·최소 주문금액·만료일 + **발급 대상(전체 공용 / 회원 등급별 / 특정 회원 지정·실시간 이름·이메일 검색)** 으로 발행, 목록에서 **발행된 쿠폰 수정**(이름·할인·최소금액·만료일·발급 대상)·발급 대상·사용 건수·중지/재개
+- **카테고리 관리**: 추가·이름/영문 코드 수정·삭제·순서 변경(↑↓). 스토어 상단 필터와 상품 등록/수정 드롭다운에 **즉시 반영**되며, 상품이 연결된 카테고리는 삭제가 차단됩니다
 - 주문 관리: 상태 변경(결제완료 → 배송준비 → 배송중 → 배송완료 / 취소) + **교환·반품 접수 목록**(신청 유형·주문/상품·사유·교환 희망 옵션·배송비 결제 여부 `무료`/`3,000원 결제완료`/`6,000원 결제완료`·접수일시)과 **상태 변경**(`접수됨 → 수거중/승인 → 완료`, 또는 `반려`). **반품을 완료하면 해당 주문 상품 재고가 한 번만 복구**됩니다(교환은 재고 변동 없음)
-- 데이터: **JSON 다운로드·클립보드 복사·시드 초기화·무결성 검사·테이블 현황·현재 JSON 미리보기** + **결제 설정 카드**(현재 결제 모드·클라이언트 키 마스킹·승인 서버 유무·키 교체 방법)
+- 데이터: **JSON 다운로드·클립보드 복사·시드 초기화·무결성 검사·테이블 현황·현재 JSON 미리보기** + **결제 설정 카드** — `결제 모드(test/live)`·`클라이언트 키`·`승인 API URL`을 화면에서 직접 입력·저장·초기화하고 **localStorage 저장값을 우선 적용**(서버 파일 수정 없이 사업자 키로 전환). 시크릿 키(`live_gsk_…`) 입력은 차단합니다.
+- **412px 관리자 표**: 상품·주문·쿠폰·교환/반품 표가 **data-label 기반 카드형 행**으로 바뀌어 찌그러짐·가로 잘림 없이 표시됩니다.
 - **모바일(≤980px) 진입 경로**: 헤더 `관리자` 버튼 / 마이페이지 헤더 `관리자 콘솔` 버튼 / 마이페이지 상단 관리자 배너. 412px에서도 탭 4종(상품 관리·주문 관리·쿠폰 관리·데이터 관리)과 `+ 상품 등록` 이 잘리지 않습니다.
 
 **화면 이동 / 검색 (v1.2 · v1.3)**
@@ -240,8 +248,8 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 ## 5. 검증 결과
 
 ```
-static_check.py        429 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·모델 정보·라이트박스 가드)
-e2e_fashion_shop.py    452 checks passed (데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.6 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
+static_check.py        508 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·모델 정보·라이트박스·v1.7 19가지 가드)
+e2e_fashion_shop.py    543 checks passed (데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.7 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
 콘솔 에러              0건
 ```
 
@@ -259,6 +267,20 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 ```
 
 > 테스트는 `LD_LIBRARY_PATH`를 워크스페이스의 `.cache/browserlibs`로 지정해 headless Chromium을 실행합니다(스크립트에 포함).
+
+**v1.7 신규 검증 (E2E `run_v17` · 87 checks)**
+- 상세: 왼쪽/오른쪽 **스와이프로 2/3 · 1/3 컷 전환**, **더블탭 → 2x(scale 2) → 다시 더블탭 1x**, 짧은 탭 → 라이트박스, 힌트 문구 노출
+- 라이트박스: **좌우 스와이프로 컷 전환**, **더블탭 1x↔2x**
+- 상품 등록: 판매 상태 **OFF → `is_active:false`** 저장·스토어 미노출·관리자 「숨김」, **최신 등록이 목록 첫 행/스토어 첫 카드**
+- 이미지: 썸네일 클릭으로 **대표+2장(3장) 저장**, `product_images` 3행 동기화, 목록 **「사진 3장」 배지**, 수정 모달 재오픈 시 3장, **「대표 지정」 → images[0]/products.image 승격**
+- 색상: `하얀색` 입력 시 HEX 자동 `#FFFFFF`, 옵션별 HEX 직접 수정, 기본 색상 피커가 첫 옵션에 반영, 저장 `color_hex`, 상세 칩 **15px·rgb(255,255,255)·`.light` inset 테두리**
+- 관리자 검색: 상품명/카테고리/뱃지 실시간 필터 + 결과 수, 지우면 전체 복원
+- 카테고리: 추가 → **스토어 상단 필터·상품 등록 드롭다운 즉시 반영**, 이름 수정, ↑ 순서 이동, **상품 연결 시 삭제 차단**, 빈 카테고리 삭제
+- 쿠폰: **등급 대상(GOLD·VIP)** 발행 → 목록 「골드등급」, **회원 검색 필터·결과 없음 안내**, **수정 모달**(코드 잠금·이름/할인/최소/만료/등급 저장), GOLD 회원은 쿠폰함 노출·NORMAL 신규 회원은 미노출
+- 결제 설정: test/live·키·승인 URL 저장 → 즉시 적용·localStorage·새로고침 유지·출처 표시, **초기화 → 기본 테스트 키**, `gsk_` 시크릿 키 저장 거부
+- 교환: 주문 상품(니트)의 **실제 컬러(크림/오트밀/블랙)와 재고**, 사이즈·재고 선택 → `exchange_option='오트밀 / L'` 접수
+- 반품 접수 주문(`o_004`) 상세 모달 **`NaN` 0건** + 금액 표시
+- 412px 관리자: **가로 넘침 0**, 탭 5종 한 줄, 표가 **카드형 flex 행 + data-label**, 주문/쿠폰 탭도 넘침 0
 
 **v1.6 신규 검증 (E2E `run_v16`)**
 - 상세 정보 표에 「모델 정보」+ 실수치 문구 표시, 「확대」 버튼 노출
@@ -310,6 +332,7 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 (v1.4 추가: `fashion-shop-mobile-detail-fixed.png`, `fashion-shop-mobile-detail-fixed-options.png`)
 (v1.5 추가: `fashion-shop-claim-modal.png`(교환 6,000원), `fashion-shop-claim-free.png`(판매자 귀책 0원), `fashion-shop-admin-claims.png`, `fashion-shop-mobile-claim.png`, `fashion-shop-mobile-claim-change.png`)
 (v1.6 추가: `fashion-shop-lightbox.png`(2x 확대), `fashion-shop-mobile-lightbox.png`)
+(v1.7 추가: `fashion-shop-v17-detail.png`(412 상세·스와이프/더블탭 힌트), `fashion-shop-v17-admin.png`(412 관리자 상품 검색·카드형 표))
 
 ---
 

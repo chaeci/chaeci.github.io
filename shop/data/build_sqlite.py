@@ -10,7 +10,7 @@ import pathlib
 import sqlite3
 
 HERE = pathlib.Path(__file__).resolve().parent
-ORDER = ["users", "products", "product_images", "product_variants", "orders", "order_items",
+ORDER = ["users", "categories", "products", "product_images", "product_variants", "orders", "order_items",
          "order_claims", "cart_items", "coupons"]
 
 
@@ -42,6 +42,8 @@ def main():
                 v = row.get(c)
                 if isinstance(v, bool):
                     v = int(v)
+                if isinstance(v, (list, dict)):   # 예: coupons.target_grades (JSON 배열)
+                    v = json.dumps(v, ensure_ascii=False)
                 values.append(v)
             payload.append(values)
         placeholders = ",".join("?" * len(cols))
@@ -82,6 +84,12 @@ def main():
     print("  전용 쿠폰 발급 대상:", ", ".join(
         f"{r[0]} → {r[1]}({r[2]})" for r in con.execute(
             "SELECT code, user_name, email FROM v_coupon_targets ORDER BY code")) or "(전체 공용만)")
+    print("  회원 등급:", ", ".join(
+        f"{r[0]} {r[1]}" for r in con.execute(
+            "SELECT name, grade FROM users ORDER BY id")))
+    print("  카테고리:", ", ".join(
+        f"{r[0]}:{r[1]}" for r in con.execute(
+            "SELECT id, label FROM categories ORDER BY sort_order")))
     print("  갤러리 이미지/상품:", con.execute(
         "SELECT ROUND(AVG(c), 1) FROM (SELECT COUNT(*) c FROM product_images GROUP BY product_id)"
     ).fetchone()[0])
