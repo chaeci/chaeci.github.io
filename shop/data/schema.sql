@@ -62,6 +62,9 @@ CREATE TABLE orders (
   recipient_phone  TEXT NOT NULL,
   shipping_address TEXT NOT NULL,
   payment_method   TEXT NOT NULL CHECK (payment_method IN ('card','easypay','bank')),
+  payment_provider TEXT NOT NULL DEFAULT 'demo',           -- demo | tosspayments
+  payment_key      TEXT,                                    -- 토스페이먼츠 paymentKey (승인·취소·조회)
+  payment_mode     TEXT NOT NULL DEFAULT 'demo',            -- demo | demo-fallback | test-client | server
   created_at       TEXT NOT NULL
 );
 

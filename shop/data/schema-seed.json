@@ -15,7 +15,7 @@
       "password_hash": "3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb",
       "name": "홍길동",
       "phone": "010-0000-0000",
-      "address": "서울특별시 송파구 올림픽로 300 101동 1001호",
+      "address": "서울특별시 송파구 올림픽로 300 101동 1203호",
       "role": "customer",
       "created_at": "2026-11-09T10:42:00+09:00"
     },
@@ -24,8 +24,8 @@
       "email": "admin@mono.kr",
       "password_hash": "b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1",
       "name": "관리자",
-      "phone": "02-1544-0000",
-      "address": "서울특별시 중구 세종대로 110 3층",
+      "phone": "02-0000-0000",
+      "address": "서울특별시 송파구 올림픽로 300 101동 1203호 3층",
       "role": "admin",
       "created_at": "2026-10-01T09:00:00+09:00"
     }
@@ -1006,8 +1006,11 @@
       "shipping_fee": 0,
       "recipient_name": "홍길동",
       "recipient_phone": "010-0000-0000",
-      "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1001호",
+      "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1203호",
       "payment_method": "card",
+      "payment_provider": "demo",
+      "payment_key": null,
+      "payment_mode": "demo",
       "created_at": "2026-11-12T10:24:00+09:00"
     },
     {
@@ -1019,8 +1022,11 @@
       "shipping_fee": 0,
       "recipient_name": "홍길동",
       "recipient_phone": "010-0000-0000",
-      "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1001호",
+      "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1203호",
       "payment_method": "easypay",
+      "payment_provider": "demo",
+      "payment_key": null,
+      "payment_mode": "demo",
       "created_at": "2026-11-24T15:40:00+09:00"
     },
     {
@@ -1032,8 +1038,11 @@
       "shipping_fee": 0,
       "recipient_name": "홍길동",
       "recipient_phone": "010-0000-0000",
-      "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1001호",
+      "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1203호",
       "payment_method": "bank",
+      "payment_provider": "demo",
+      "payment_key": null,
+      "payment_mode": "demo",
       "created_at": "2026-11-25T09:12:00+09:00"
     }
   ],

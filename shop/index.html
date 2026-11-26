@@ -158,7 +158,8 @@ ul, ol { list-style: none; }
   stroke: var(--muted); fill: none; stroke-width: 1.5; pointer-events: none;
 }
 .search-pop {
-  position: absolute; top: calc(100% + 10px); left: 0; width: 340px; background: var(--surface);
+  position: absolute; top: calc(100% + 10px); left: 0; width: 340px; max-width: calc(100vw - 32px);
+  background: var(--surface);
   border: 1px solid var(--line); box-shadow: 0 18px 40px rgba(30, 27, 20, 0.1); z-index: 70;
   max-height: 60vh; overflow: auto;
 }
@@ -467,6 +468,13 @@ ul, ol { list-style: none; }
 .page-head { margin-bottom: 34px; }
 .page-head h1 { font-family: var(--serif); font-size: clamp(28px, 3vw, 40px); font-weight: 400; margin-top: 8px; }
 .page-head p { font-size: 12px; color: var(--muted); margin-top: 8px; }
+/* 마이페이지 헤더: 이름·안내 문구와 로그아웃 버튼 (모바일/데스크톱 모두 노출) */
+.mypage-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px 20px; flex-wrap: wrap; }
+.mypage-head .logout-btn { flex: none; white-space: nowrap; letter-spacing: 0.14em; }
+@media (max-width: 720px) {
+  .mypage-head { align-items: center; }
+  .mypage-head .logout-btn { height: 34px; padding: 0 14px; }
+}
 .page-grid { display: grid; grid-template-columns: 236px 1fr; gap: 52px; align-items: start; }
 .side-nav h2 { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 18px; }
 .side-nav nav { display: flex; flex-direction: column; gap: 2px; }
@@ -555,6 +563,12 @@ ul, ol { list-style: none; }
 .agree input { appearance: none; width: 15px; height: 15px; border: 1px solid #c9c2b3; background: #fff; flex: none; margin-top: 1px; position: relative; cursor: pointer; }
 .agree input:checked { background: var(--ink); border-color: var(--ink); }
 .agree input:checked::after { content: ""; position: absolute; left: 4px; top: 0; width: 4px; height: 8px; border: solid #fff; border-width: 0 1.5px 1.5px 0; transform: rotate(43deg); }
+.pay-mode { margin-top: 12px; border: 1px dashed var(--line); background: #faf8f3; padding: 10px 12px; }
+.pay-mode .pm-tag { font-size: 9px; letter-spacing: 0.18em; color: var(--accent); margin-bottom: 5px; }
+.pay-mode .pm-body { font-size: 10.5px; line-height: 1.7; color: var(--ink-soft); letter-spacing: 0; }
+.pay-mode .pm-body b { color: var(--ink); font-weight: 600; }
+.pay-mode.demo { background: #f7f4ee; }
+.pay-mode.demo .pm-tag { color: var(--muted); }
 .pay-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .pay-opt { position: relative; }
 .pay-opt input { position: absolute; opacity: 0; pointer-events: none; }
@@ -846,6 +860,8 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
 <aside class="drawer" id="cart-drawer" aria-hidden="true" aria-label="장바구니"></aside>
 <div class="modal-layer" id="modal-layer" hidden></div>
 <div class="toast-host" id="toast-host" aria-live="polite"></div>
+<!-- 토스페이먼츠 SDK v2 (결제창). 오프라인·file:// 에서는 로드 실패해도 데모 결제로 동작합니다. -->
+<script src="https://js.tosspayments.com/v2/standard"></script>
 <script>/* =========================================================================
    MONO ATELIER — single-page fashion storefront
    Pure JSON + localStorage. Tables mirror data/schema.sql 1:1.
@@ -853,14 +869,39 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
 (function () {
   'use strict';
 
-  var SEED = {"meta":{"app":"MONO ATELIER","schema_version":1,"generated_at":"2026-11-26T18:55:00+09:00","currency":"KRW","free_shipping_threshold":100000,"shipping_fee":3000,"password_hashing":"sha256('mono-atelier$' + password) — demo only"},"users":[{"id":"u_001","email":"demo@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길동","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1001호","role":"customer","created_at":"2026-11-09T10:42:00+09:00"},{"id":"u_002","email":"admin@mono.kr","password_hash":"b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1","name":"관리자","phone":"02-1544-0000","address":"서울특별시 중구 세종대로 110 3층","role":"admin","created_at":"2026-10-01T09:00:00+09:00"}],"products":[{"id":"p_001","name":"울 더블 브레스티드 코트","brand":"MONO ATELIER","category":"outer","price":289000,"original_price":349000,"badge":"BEST","description":"두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.","image":"coat.webp","created_at":"2026-11-10T09:20:00+09:00","is_active":true},{"id":"p_002","name":"캐시미어 리브 니트","brand":"MONO ATELIER","category":"top","price":129000,"original_price":159000,"badge":"NEW","description":"캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.","image":"knit.webp","created_at":"2026-11-18T11:05:00+09:00","is_active":true},{"id":"p_003","name":"와이드 테일러드 트라우저","brand":"MONO ATELIER","category":"bottom","price":149000,"original_price":null,"badge":null,"description":"허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.","image":"pants.webp","created_at":"2026-10-25T16:30:00+09:00","is_active":true},{"id":"p_004","name":"사틴 슬립 미디 드레스","brand":"MONO ATELIER","category":"dress","price":189000,"original_price":220000,"badge":"SALE","description":"빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.","image":"dress.webp","created_at":"2026-11-02T13:10:00+09:00","is_active":true},{"id":"p_005","name":"스무스 레더 숄더백","brand":"MONO ATELIER","category":"acc","price":259000,"original_price":null,"badge":"BEST","description":"이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.","image":"bag.webp","created_at":"2026-11-08T10:00:00+09:00","is_active":true},{"id":"p_006","name":"나일론 봄버 재킷","brand":"MONO ATELIER","category":"outer","price":179000,"original_price":210000,"badge":"NEW","description":"가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.","image":"jacket.webp","created_at":"2026-11-20T09:45:00+09:00","is_active":true},{"id":"p_007","name":"오버사이즈 코튼 셔츠","brand":"MONO ATELIER","category":"top","price":89000,"original_price":null,"badge":null,"description":"두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.","image":"shirt.webp","created_at":"2026-10-28T15:20:00+09:00","is_active":true},{"id":"p_008","name":"플리츠 미디 스커트","brand":"MONO ATELIER","category":"bottom","price":139000,"original_price":168000,"badge":"SALE","description":"곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.","image":"skirt.webp","created_at":"2026-10-20T12:00:00+09:00","is_active":true},{"id":"p_009","name":"개버딘 트렌치 코트","brand":"MONO ATELIER","category":"outer","price":319000,"original_price":369000,"badge":"BEST","description":"묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.","image":"trench.webp","created_at":"2026-11-15T10:30:00+09:00","is_active":true},{"id":"p_010","name":"울 블렌드 오픈 가디건","brand":"MONO ATELIER","category":"top","price":119000,"original_price":null,"badge":null,"description":"울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.","image":"cardigan.webp","created_at":"2026-10-15T09:10:00+09:00","is_active":true},{"id":"p_011","name":"와이드 데님 팬츠","brand":"MONO ATELIER","category":"bottom","price":109000,"original_price":129000,"badge":"NEW","description":"워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.","image":"denim.webp","created_at":"2026-11-23T14:00:00+09:00","is_active":true},{"id":"p_012","name":"레더 페니 로퍼","brand":"MONO ATELIER","category":"acc","price":219000,"original_price":249000,"badge":null,"description":"블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.","image":"loafers.webp","created_at":"2026-11-05T11:40:00+09:00","is_active":true},{"id":"p_013","name":"실크 크레이프 미디 원피스","brand":"MONO ATELIER","category":"dress","price":209000,"original_price":null,"badge":null,"description":"실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)","image":"dress.webp","created_at":"2026-11-25T17:30:00+09:00","is_active":false}],"product_variants":[{"id":"v_001","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"S","stock":5,"sku":"MA-OUT-001-차콜-S"},{"id":"v_002","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"M","stock":3,"sku":"MA-OUT-001-차콜-M"},{"id":"v_003","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"L","stock":2,"sku":"MA-OUT-001-차콜-L"},{"id":"v_004","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"XL","stock":1,"sku":"MA-OUT-001-차콜-XL"},{"id":"v_005","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"S","stock":4,"sku":"MA-OUT-001-카멜-S"},{"id":"v_006","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"M","stock":6,"sku":"MA-OUT-001-카멜-M"},{"id":"v_007","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"L","stock":3,"sku":"MA-OUT-001-카멜-L"},{"id":"v_008","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"XL","stock":0,"sku":"MA-OUT-001-카멜-XL"},{"id":"v_009","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-001-블랙-S"},{"id":"v_010","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":0,"sku":"MA-OUT-001-블랙-M"},{"id":"v_011","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-OUT-001-블랙-L"},{"id":"v_012","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-OUT-001-블랙-XL"},{"id":"v_013","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"S","stock":8,"sku":"MA-TOP-002-크림-S"},{"id":"v_014","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"M","stock":12,"sku":"MA-TOP-002-크림-M"},{"id":"v_015","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"L","stock":5,"sku":"MA-TOP-002-크림-L"},{"id":"v_016","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"S","stock":3,"sku":"MA-TOP-002-오트-S"},{"id":"v_017","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"M","stock":2,"sku":"MA-TOP-002-오트-M"},{"id":"v_018","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"L","stock":6,"sku":"MA-TOP-002-오트-L"},{"id":"v_019","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"S","stock":4,"sku":"MA-TOP-002-블랙-S"},{"id":"v_020","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"M","stock":1,"sku":"MA-TOP-002-블랙-M"},{"id":"v_021","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"L","stock":0,"sku":"MA-TOP-002-블랙-L"},{"id":"v_022","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":6,"sku":"MA-BTM-003-블랙-S"},{"id":"v_023","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":9,"sku":"MA-BTM-003-블랙-M"},{"id":"v_024","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-BTM-003-블랙-L"},{"id":"v_025","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-BTM-003-블랙-XL"},{"id":"v_026","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":2,"sku":"MA-BTM-003-차콜-S"},{"id":"v_027","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":5,"sku":"MA-BTM-003-차콜-M"},{"id":"v_028","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":7,"sku":"MA-BTM-003-차콜-L"},{"id":"v_029","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"XL","stock":1,"sku":"MA-BTM-003-차콜-XL"},{"id":"v_030","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":3,"sku":"MA-DRS-004-샴페-S"},{"id":"v_031","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":0,"sku":"MA-DRS-004-샴페-M"},{"id":"v_032","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":2,"sku":"MA-DRS-004-샴페-L"},{"id":"v_033","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-DRS-004-블랙-S"},{"id":"v_034","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":5,"sku":"MA-DRS-004-블랙-M"},{"id":"v_035","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-DRS-004-블랙-L"},{"id":"v_036","product_id":"p_005","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":6,"sku":"MA-ACC-005-블랙-FREE"},{"id":"v_037","product_id":"p_005","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":2,"sku":"MA-ACC-005-다크-FREE"},{"id":"v_038","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"M","stock":5,"sku":"MA-OUT-006-올리-M"},{"id":"v_039","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"L","stock":4,"sku":"MA-OUT-006-올리-L"},{"id":"v_040","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"XL","stock":2,"sku":"MA-OUT-006-올리-XL"},{"id":"v_041","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":3,"sku":"MA-OUT-006-블랙-M"},{"id":"v_042","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":0,"sku":"MA-OUT-006-블랙-L"},{"id":"v_043","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":5,"sku":"MA-OUT-006-블랙-XL"},{"id":"v_044","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"M","stock":2,"sku":"MA-OUT-006-샌드-M"},{"id":"v_045","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"L","stock":3,"sku":"MA-OUT-006-샌드-L"},{"id":"v_046","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"XL","stock":1,"sku":"MA-OUT-006-샌드-XL"},{"id":"v_047","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"S","stock":10,"sku":"MA-TOP-007-화이-S"},{"id":"v_048","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"M","stock":14,"sku":"MA-TOP-007-화이-M"},{"id":"v_049","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"L","stock":6,"sku":"MA-TOP-007-화이-L"},{"id":"v_050","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"S","stock":4,"sku":"MA-TOP-007-스카-S"},{"id":"v_051","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"M","stock":3,"sku":"MA-TOP-007-스카-M"},{"id":"v_052","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"L","stock":2,"sku":"MA-TOP-007-스카-L"},{"id":"v_053","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":5,"sku":"MA-BTM-008-차콜-S"},{"id":"v_054","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":3,"sku":"MA-BTM-008-차콜-M"},{"id":"v_055","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":2,"sku":"MA-BTM-008-차콜-L"},{"id":"v_056","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-BTM-008-블랙-S"},{"id":"v_057","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":6,"sku":"MA-BTM-008-블랙-M"},{"id":"v_058","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":1,"sku":"MA-BTM-008-블랙-L"},{"id":"v_059","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"S","stock":0,"sku":"MA-OUT-009-베이-S"},{"id":"v_060","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"M","stock":3,"sku":"MA-OUT-009-베이-M"},{"id":"v_061","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"L","stock":4,"sku":"MA-OUT-009-베이-L"},{"id":"v_062","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"XL","stock":2,"sku":"MA-OUT-009-베이-XL"},{"id":"v_063","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-009-블랙-S"},{"id":"v_064","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":4,"sku":"MA-OUT-009-블랙-M"},{"id":"v_065","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-OUT-009-블랙-L"},{"id":"v_066","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":1,"sku":"MA-OUT-009-블랙-XL"},{"id":"v_067","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"S","stock":4,"sku":"MA-TOP-010-그레-S"},{"id":"v_068","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"M","stock":5,"sku":"MA-TOP-010-그레-M"},{"id":"v_069","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"L","stock":3,"sku":"MA-TOP-010-그레-L"},{"id":"v_070","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"S","stock":2,"sku":"MA-TOP-010-아이-S"},{"id":"v_071","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"M","stock":2,"sku":"MA-TOP-010-아이-M"},{"id":"v_072","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"L","stock":4,"sku":"MA-TOP-010-아이-L"},{"id":"v_073","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"S","stock":6,"sku":"MA-BTM-011-미드-S"},{"id":"v_074","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"M","stock":8,"sku":"MA-BTM-011-미드-M"},{"id":"v_075","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"L","stock":5,"sku":"MA-BTM-011-미드-L"},{"id":"v_076","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"XL","stock":3,"sku":"MA-BTM-011-미드-XL"},{"id":"v_077","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"S","stock":3,"sku":"MA-BTM-011-워시-S"},{"id":"v_078","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"M","stock":4,"sku":"MA-BTM-011-워시-M"},{"id":"v_079","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"L","stock":2,"sku":"MA-BTM-011-워시-L"},{"id":"v_080","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"XL","stock":0,"sku":"MA-BTM-011-워시-XL"},{"id":"v_081","product_id":"p_012","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":0,"sku":"MA-ACC-012-블랙-FREE"},{"id":"v_082","product_id":"p_012","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":0,"sku":"MA-ACC-012-다크-FREE"},{"id":"v_083","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":2,"sku":"MA-DRS-013-샴페-S"},{"id":"v_084","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":2,"sku":"MA-DRS-013-샴페-M"},{"id":"v_085","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":1,"sku":"MA-DRS-013-샴페-L"},{"id":"v_086","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":3,"sku":"MA-DRS-013-블랙-S"},{"id":"v_087","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":2,"sku":"MA-DRS-013-블랙-M"},{"id":"v_088","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":2,"sku":"MA-DRS-013-블랙-L"}],"cart_items":[],"orders":[{"id":"o_001","order_no":"MA20261112-4821","user_id":"u_001","status":"delivered","total_amount":278000,"shipping_fee":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1001호","payment_method":"card","created_at":"2026-11-12T10:24:00+09:00"},{"id":"o_002","order_no":"MA20261124-3917","user_id":"u_001","status":"paid","total_amount":178000,"shipping_fee":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1001호","payment_method":"easypay","created_at":"2026-11-24T15:40:00+09:00"},{"id":"o_003","order_no":"MA20261125-6042","user_id":"u_001","status":"preparing","total_amount":289000,"shipping_fee":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1001호","payment_method":"bank","created_at":"2026-11-25T09:12:00+09:00"}],"order_items":[{"id":"oi_001","order_id":"o_001","variant_id":"v_008","product_name":"캐시미어 리브 니트","color":"크림","size":"M","unit_price":129000,"quantity":1},{"id":"oi_002","order_id":"o_001","variant_id":"v_012","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1},{"id":"oi_003","order_id":"o_002","variant_id":"v_020","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":2},{"id":"oi_004","order_id":"o_003","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1}]};
+  var SEED = {"meta":{"app":"MONO ATELIER","schema_version":1,"generated_at":"2026-11-26T18:55:00+09:00","currency":"KRW","free_shipping_threshold":100000,"shipping_fee":3000,"password_hashing":"sha256('mono-atelier$' + password) — demo only"},"users":[{"id":"u_001","email":"demo@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길동","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","created_at":"2026-11-09T10:42:00+09:00"},{"id":"u_002","email":"admin@mono.kr","password_hash":"b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1","name":"관리자","phone":"02-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호 3층","role":"admin","created_at":"2026-10-01T09:00:00+09:00"}],"products":[{"id":"p_001","name":"울 더블 브레스티드 코트","brand":"MONO ATELIER","category":"outer","price":289000,"original_price":349000,"badge":"BEST","description":"두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.","image":"coat.webp","created_at":"2026-11-10T09:20:00+09:00","is_active":true},{"id":"p_002","name":"캐시미어 리브 니트","brand":"MONO ATELIER","category":"top","price":129000,"original_price":159000,"badge":"NEW","description":"캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.","image":"knit.webp","created_at":"2026-11-18T11:05:00+09:00","is_active":true},{"id":"p_003","name":"와이드 테일러드 트라우저","brand":"MONO ATELIER","category":"bottom","price":149000,"original_price":null,"badge":null,"description":"허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.","image":"pants.webp","created_at":"2026-10-25T16:30:00+09:00","is_active":true},{"id":"p_004","name":"사틴 슬립 미디 드레스","brand":"MONO ATELIER","category":"dress","price":189000,"original_price":220000,"badge":"SALE","description":"빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.","image":"dress.webp","created_at":"2026-11-02T13:10:00+09:00","is_active":true},{"id":"p_005","name":"스무스 레더 숄더백","brand":"MONO ATELIER","category":"acc","price":259000,"original_price":null,"badge":"BEST","description":"이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.","image":"bag.webp","created_at":"2026-11-08T10:00:00+09:00","is_active":true},{"id":"p_006","name":"나일론 봄버 재킷","brand":"MONO ATELIER","category":"outer","price":179000,"original_price":210000,"badge":"NEW","description":"가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.","image":"jacket.webp","created_at":"2026-11-20T09:45:00+09:00","is_active":true},{"id":"p_007","name":"오버사이즈 코튼 셔츠","brand":"MONO ATELIER","category":"top","price":89000,"original_price":null,"badge":null,"description":"두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.","image":"shirt.webp","created_at":"2026-10-28T15:20:00+09:00","is_active":true},{"id":"p_008","name":"플리츠 미디 스커트","brand":"MONO ATELIER","category":"bottom","price":139000,"original_price":168000,"badge":"SALE","description":"곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.","image":"skirt.webp","created_at":"2026-10-20T12:00:00+09:00","is_active":true},{"id":"p_009","name":"개버딘 트렌치 코트","brand":"MONO ATELIER","category":"outer","price":319000,"original_price":369000,"badge":"BEST","description":"묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.","image":"trench.webp","created_at":"2026-11-15T10:30:00+09:00","is_active":true},{"id":"p_010","name":"울 블렌드 오픈 가디건","brand":"MONO ATELIER","category":"top","price":119000,"original_price":null,"badge":null,"description":"울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.","image":"cardigan.webp","created_at":"2026-10-15T09:10:00+09:00","is_active":true},{"id":"p_011","name":"와이드 데님 팬츠","brand":"MONO ATELIER","category":"bottom","price":109000,"original_price":129000,"badge":"NEW","description":"워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.","image":"denim.webp","created_at":"2026-11-23T14:00:00+09:00","is_active":true},{"id":"p_012","name":"레더 페니 로퍼","brand":"MONO ATELIER","category":"acc","price":219000,"original_price":249000,"badge":null,"description":"블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.","image":"loafers.webp","created_at":"2026-11-05T11:40:00+09:00","is_active":true},{"id":"p_013","name":"실크 크레이프 미디 원피스","brand":"MONO ATELIER","category":"dress","price":209000,"original_price":null,"badge":null,"description":"실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)","image":"dress.webp","created_at":"2026-11-25T17:30:00+09:00","is_active":false}],"product_variants":[{"id":"v_001","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"S","stock":5,"sku":"MA-OUT-001-차콜-S"},{"id":"v_002","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"M","stock":3,"sku":"MA-OUT-001-차콜-M"},{"id":"v_003","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"L","stock":2,"sku":"MA-OUT-001-차콜-L"},{"id":"v_004","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"XL","stock":1,"sku":"MA-OUT-001-차콜-XL"},{"id":"v_005","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"S","stock":4,"sku":"MA-OUT-001-카멜-S"},{"id":"v_006","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"M","stock":6,"sku":"MA-OUT-001-카멜-M"},{"id":"v_007","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"L","stock":3,"sku":"MA-OUT-001-카멜-L"},{"id":"v_008","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"XL","stock":0,"sku":"MA-OUT-001-카멜-XL"},{"id":"v_009","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-001-블랙-S"},{"id":"v_010","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":0,"sku":"MA-OUT-001-블랙-M"},{"id":"v_011","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-OUT-001-블랙-L"},{"id":"v_012","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-OUT-001-블랙-XL"},{"id":"v_013","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"S","stock":8,"sku":"MA-TOP-002-크림-S"},{"id":"v_014","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"M","stock":12,"sku":"MA-TOP-002-크림-M"},{"id":"v_015","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"L","stock":5,"sku":"MA-TOP-002-크림-L"},{"id":"v_016","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"S","stock":3,"sku":"MA-TOP-002-오트-S"},{"id":"v_017","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"M","stock":2,"sku":"MA-TOP-002-오트-M"},{"id":"v_018","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"L","stock":6,"sku":"MA-TOP-002-오트-L"},{"id":"v_019","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"S","stock":4,"sku":"MA-TOP-002-블랙-S"},{"id":"v_020","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"M","stock":1,"sku":"MA-TOP-002-블랙-M"},{"id":"v_021","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"L","stock":0,"sku":"MA-TOP-002-블랙-L"},{"id":"v_022","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":6,"sku":"MA-BTM-003-블랙-S"},{"id":"v_023","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":9,"sku":"MA-BTM-003-블랙-M"},{"id":"v_024","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-BTM-003-블랙-L"},{"id":"v_025","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-BTM-003-블랙-XL"},{"id":"v_026","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":2,"sku":"MA-BTM-003-차콜-S"},{"id":"v_027","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":5,"sku":"MA-BTM-003-차콜-M"},{"id":"v_028","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":7,"sku":"MA-BTM-003-차콜-L"},{"id":"v_029","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"XL","stock":1,"sku":"MA-BTM-003-차콜-XL"},{"id":"v_030","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":3,"sku":"MA-DRS-004-샴페-S"},{"id":"v_031","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":0,"sku":"MA-DRS-004-샴페-M"},{"id":"v_032","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":2,"sku":"MA-DRS-004-샴페-L"},{"id":"v_033","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-DRS-004-블랙-S"},{"id":"v_034","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":5,"sku":"MA-DRS-004-블랙-M"},{"id":"v_035","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-DRS-004-블랙-L"},{"id":"v_036","product_id":"p_005","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":6,"sku":"MA-ACC-005-블랙-FREE"},{"id":"v_037","product_id":"p_005","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":2,"sku":"MA-ACC-005-다크-FREE"},{"id":"v_038","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"M","stock":5,"sku":"MA-OUT-006-올리-M"},{"id":"v_039","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"L","stock":4,"sku":"MA-OUT-006-올리-L"},{"id":"v_040","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"XL","stock":2,"sku":"MA-OUT-006-올리-XL"},{"id":"v_041","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":3,"sku":"MA-OUT-006-블랙-M"},{"id":"v_042","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":0,"sku":"MA-OUT-006-블랙-L"},{"id":"v_043","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":5,"sku":"MA-OUT-006-블랙-XL"},{"id":"v_044","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"M","stock":2,"sku":"MA-OUT-006-샌드-M"},{"id":"v_045","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"L","stock":3,"sku":"MA-OUT-006-샌드-L"},{"id":"v_046","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"XL","stock":1,"sku":"MA-OUT-006-샌드-XL"},{"id":"v_047","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"S","stock":10,"sku":"MA-TOP-007-화이-S"},{"id":"v_048","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"M","stock":14,"sku":"MA-TOP-007-화이-M"},{"id":"v_049","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"L","stock":6,"sku":"MA-TOP-007-화이-L"},{"id":"v_050","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"S","stock":4,"sku":"MA-TOP-007-스카-S"},{"id":"v_051","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"M","stock":3,"sku":"MA-TOP-007-스카-M"},{"id":"v_052","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"L","stock":2,"sku":"MA-TOP-007-스카-L"},{"id":"v_053","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":5,"sku":"MA-BTM-008-차콜-S"},{"id":"v_054","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":3,"sku":"MA-BTM-008-차콜-M"},{"id":"v_055","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":2,"sku":"MA-BTM-008-차콜-L"},{"id":"v_056","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-BTM-008-블랙-S"},{"id":"v_057","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":6,"sku":"MA-BTM-008-블랙-M"},{"id":"v_058","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":1,"sku":"MA-BTM-008-블랙-L"},{"id":"v_059","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"S","stock":0,"sku":"MA-OUT-009-베이-S"},{"id":"v_060","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"M","stock":3,"sku":"MA-OUT-009-베이-M"},{"id":"v_061","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"L","stock":4,"sku":"MA-OUT-009-베이-L"},{"id":"v_062","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"XL","stock":2,"sku":"MA-OUT-009-베이-XL"},{"id":"v_063","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-009-블랙-S"},{"id":"v_064","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":4,"sku":"MA-OUT-009-블랙-M"},{"id":"v_065","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-OUT-009-블랙-L"},{"id":"v_066","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":1,"sku":"MA-OUT-009-블랙-XL"},{"id":"v_067","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"S","stock":4,"sku":"MA-TOP-010-그레-S"},{"id":"v_068","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"M","stock":5,"sku":"MA-TOP-010-그레-M"},{"id":"v_069","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"L","stock":3,"sku":"MA-TOP-010-그레-L"},{"id":"v_070","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"S","stock":2,"sku":"MA-TOP-010-아이-S"},{"id":"v_071","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"M","stock":2,"sku":"MA-TOP-010-아이-M"},{"id":"v_072","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"L","stock":4,"sku":"MA-TOP-010-아이-L"},{"id":"v_073","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"S","stock":6,"sku":"MA-BTM-011-미드-S"},{"id":"v_074","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"M","stock":8,"sku":"MA-BTM-011-미드-M"},{"id":"v_075","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"L","stock":5,"sku":"MA-BTM-011-미드-L"},{"id":"v_076","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"XL","stock":3,"sku":"MA-BTM-011-미드-XL"},{"id":"v_077","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"S","stock":3,"sku":"MA-BTM-011-워시-S"},{"id":"v_078","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"M","stock":4,"sku":"MA-BTM-011-워시-M"},{"id":"v_079","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"L","stock":2,"sku":"MA-BTM-011-워시-L"},{"id":"v_080","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"XL","stock":0,"sku":"MA-BTM-011-워시-XL"},{"id":"v_081","product_id":"p_012","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":0,"sku":"MA-ACC-012-블랙-FREE"},{"id":"v_082","product_id":"p_012","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":0,"sku":"MA-ACC-012-다크-FREE"},{"id":"v_083","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":2,"sku":"MA-DRS-013-샴페-S"},{"id":"v_084","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":2,"sku":"MA-DRS-013-샴페-M"},{"id":"v_085","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":1,"sku":"MA-DRS-013-샴페-L"},{"id":"v_086","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":3,"sku":"MA-DRS-013-블랙-S"},{"id":"v_087","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":2,"sku":"MA-DRS-013-블랙-M"},{"id":"v_088","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":2,"sku":"MA-DRS-013-블랙-L"}],"cart_items":[],"orders":[{"id":"o_001","order_no":"MA20261112-4821","user_id":"u_001","status":"delivered","total_amount":278000,"shipping_fee":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-12T10:24:00+09:00"},{"id":"o_002","order_no":"MA20261124-3917","user_id":"u_001","status":"paid","total_amount":178000,"shipping_fee":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-24T15:40:00+09:00"},{"id":"o_003","order_no":"MA20261125-6042","user_id":"u_001","status":"preparing","total_amount":289000,"shipping_fee":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"bank","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-25T09:12:00+09:00"}],"order_items":[{"id":"oi_001","order_id":"o_001","variant_id":"v_008","product_name":"캐시미어 리브 니트","color":"크림","size":"M","unit_price":129000,"quantity":1},{"id":"oi_002","order_id":"o_001","variant_id":"v_012","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1},{"id":"oi_003","order_id":"o_002","variant_id":"v_020","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":2},{"id":"oi_004","order_id":"o_003","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1}]};
   var EMBEDDED = {};
-  var APP_VERSION = '1.0.0';
+  var APP_VERSION = '1.1.0';
 
   var LS_DB = 'mono_atelier_db_v1';
   var LS_SESSION = 'mono_atelier_session_v1';
+  var LS_PENDING = 'mono_atelier_pending_checkout_v1';
+  var LS_CUSTOMER_KEY = 'mono_atelier_payment_customer_key_v1';
   var FREE_SHIPPING = 100000;
   var SHIPPING_FEE = 3000;
+
+  /* ============================================================ 결제 설정
+     토스페이먼츠 SDK v2 '결제창형(구 결제위젯)' — 사업자 등록 없이 공개 테스트 키로 연동합니다.
+     · provider      : 결제 대행사
+     · clientKey     : 토스페이먼츠 개발자센터 문서에 공개된 테스트 키 (결제위젯/결제창형 연동 키)
+                       → 실결제 전환 시 개발자센터 API 키의 live_gck_… 로 이 값만 교체하면 됩니다.
+                         (같은 세트의 시크릿 키 live_gsk_… 는 서버에만 두세요)
+     · confirmApiUrl : '' 이면 정적 데모 — 서버 승인 없이 '테스트 승인'으로 처리.
+                       Python/SQLite 백엔드를 붙일 때 '/api/payments/confirm' 만 넣으면
+                       시크릿 키로 토스 결제 승인 API를 호출합니다.
+                       (예제: data/payment_confirm_example.py)
+     · successUrl/failUrl 은 현재 페이지 URL 에 ?tossResult=success / fail 로 붙습니다. */
+  var PAYMENT_CONFIG = {
+    provider: 'tosspayments',
+    clientKey: 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm',
+    clientKeyMode: 'test',
+    confirmApiUrl: '',
+    sdkUrl: 'https://js.tosspayments.com/v2/standard',
+    currency: 'KRW',
+    orderNameMax: 100
+  };
+  /* 열려 있는 토스 결제창 세션 (결제창 중복 렌더 방지 · 이벤트 시점의 최신 대기 주문 참조) */
+  var tossSession = { widgets: null, window: null, params: null, pending: null };
 
   var CATEGORIES = [
     { id: 'all', label: '전체', en: 'ALL' },
@@ -1241,57 +1282,303 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
     } while (db.orders.some(function (o) { return o.order_no === no; }));
     return no;
   }
-  function placeOrder(payload) {
-    var u = currentUser();
-    if (!u) return { ok: false, message: '로그인이 필요합니다.' };
-    var rows = cartRows().filter(function (r) { return ui.checkoutIds.indexOf(r.item.id) >= 0; });
-    if (!rows.length) return { ok: false, message: '주문할 상품이 없습니다.' };
-    for (var i = 0; i < rows.length; i++) {
-      var r = rows[i];
-      if (r.variant.stock < r.item.quantity) {
-        return {
-          ok: false,
-          message: '“' + r.product.name + ' / ' + r.variant.color + ' ' + r.variant.size + '” 재고가 부족합니다. (남은 수량 ' + Math.max(0, r.variant.stock) + '개)'
-        };
+  /* --------------------------------------------------------------- payments
+     결제 흐름
+       ① 결제하기 → 대기 주문(pending_checkout)을 localStorage 에 저장
+       ② 토스페이먼츠 결제창 호출 (successUrl/failUrl = 현재 URL + ?tossResult=…)
+       ③ 리다이렉트 복귀 → paymentKey·orderId·amount 검증 → 재고 차감·주문 확정
+       ④ file://·오프라인·SDK 로드 실패 → 자동으로 데모 모의 결제 fallback */
+  function tossAvailable() {
+    return location.protocol !== 'file:' &&
+      typeof window.TossPayments === 'function' &&
+      !!PAYMENT_CONFIG.clientKey;
+  }
+  function paymentModeLabel() {
+    if (!tossAvailable()) return '데모 모의 결제';
+    return PAYMENT_CONFIG.clientKeyMode === 'live' ? '실결제 (라이브 키)' : '토스페이먼츠 테스트 결제';
+  }
+  function savePending(p) {
+    try { localStorage.setItem(LS_PENDING, JSON.stringify(p)); } catch (e) { storageOk = false; }
+  }
+  function loadPending() {
+    try {
+      var raw = localStorage.getItem(LS_PENDING);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function clearPending() {
+    try { localStorage.removeItem(LS_PENDING); } catch (e) {}
+  }
+  /* 구매자 식별 키 — 이메일·전화번호처럼 유추 가능한 값 대신 무작위 22자 이상 */
+  function customerKey() {
+    var key = null;
+    try { key = localStorage.getItem(LS_CUSTOMER_KEY); } catch (e) { key = null; }
+    if (!key || key.length < 22) {
+      var seed;
+      if (window.crypto && window.crypto.getRandomValues) {
+        seed = Array.prototype.map.call(window.crypto.getRandomValues(new Uint8Array(16)), function (b) {
+          return pad(b.toString(16), 2);
+        }).join('');
+      } else {
+        seed = Date.now().toString(36) + Math.random().toString(36).slice(2);
+      }
+      key = 'ck_' + seed;
+      try { localStorage.setItem(LS_CUSTOMER_KEY, key); } catch (e) {}
+    }
+    return key;
+  }
+  function orderNameOf(items) {
+    if (!items || !items.length) return 'MONO ATELIER 주문';
+    var head = items.length > 1 ? items[0].product_name + ' 외 ' + (items.length - 1) + '건' : items[0].product_name;
+    return head.slice(0, PAYMENT_CONFIG.orderNameMax || 100);
+  }
+  function stockProblem(items) {
+    for (var i = 0; i < items.length; i++) {
+      var v = variantById(items[i].variant_id);
+      if (!v) return '주문 상품을 찾을 수 없습니다.';
+      if (v.stock < items[i].quantity) {
+        return '“' + items[i].product_name + ' / ' + items[i].color + ' ' + items[i].size + '” 재고가 부족합니다. (남은 수량 ' + Math.max(0, v.stock) + '개)';
       }
     }
+    return '';
+  }
+  function buildPending(payload) {
+    var u = currentUser();
+    var rows = checkoutRows();
     var t = totalsOf(rows);
-    var order = {
-      id: newId('o'),
+    return {
       order_no: makeOrderNo(),
       user_id: u.id,
-      status: 'paid',
-      total_amount: t.total,
-      shipping_fee: t.shipping,
+      cart_ids: rows.map(function (r) { return r.item.id; }),
+      items: rows.map(function (r) {
+        return {
+          variant_id: r.variant.id, product_id: r.product.id, product_name: r.product.name,
+          color: r.variant.color, size: r.variant.size,
+          unit_price: r.product.price, quantity: r.item.quantity
+        };
+      }),
+      subtotal: t.subtotal, shipping_fee: t.shipping, amount: t.total,
       recipient_name: String(payload.recipient_name || '').trim(),
       recipient_phone: String(payload.recipient_phone || '').trim(),
       shipping_address: String(payload.shipping_address || '').trim(),
-      payment_method: payload.payment_method,
+      payment_method: payload.payment_method || 'card',
+      provider: PAYMENT_CONFIG.provider,
       created_at: nowISO()
     };
-    if (!order.recipient_name || !order.recipient_phone || !order.shipping_address) {
-      return { ok: false, message: '배송지 정보를 모두 입력해 주세요.' };
+  }
+  /* 결제 완료 → 재고 차감·주문 확정 (데모·토스 공통) */
+  function finalizeOrder(pending, payInfo) {
+    var u = currentUserById(pending.user_id);
+    if (!u) return { ok: false, message: '로그인이 필요합니다. 다시 로그인해 주세요.' };
+    if (payInfo.payment_key) {
+      var dup = db.orders.filter(function (o) { return o.payment_key === payInfo.payment_key; })[0];
+      if (dup) return { ok: true, order: dup, duplicate: true };
     }
-    rows.forEach(function (r) { r.variant.stock -= r.item.quantity; });
-    db.orders.push(order);
-    rows.forEach(function (r) {
+    var exist = db.orders.filter(function (o) { return o.order_no === pending.order_no; })[0];
+    if (exist) return { ok: true, order: exist, duplicate: true };
+    var problem = stockProblem(pending.items || []);
+    if (problem) return { ok: false, message: problem };
+    var order = {
+      id: newId('o'),
+      order_no: pending.order_no,
+      user_id: u.id,
+      status: 'paid',
+      total_amount: pending.amount,
+      shipping_fee: pending.shipping_fee,
+      recipient_name: pending.recipient_name,
+      recipient_phone: pending.recipient_phone,
+      shipping_address: pending.shipping_address,
+      payment_method: pending.payment_method,
+      payment_provider: payInfo.provider || 'demo',
+      payment_key: payInfo.payment_key || null,
+      payment_mode: payInfo.mode || 'demo',
+      created_at: nowISO()
+    };
+    (pending.items || []).forEach(function (it) {
+      var v = variantById(it.variant_id);
+      if (v) v.stock -= it.quantity;
       db.order_items.push({
-        id: newId('oi'),
-        order_id: order.id,
-        variant_id: r.variant.id,
-        product_name: r.product.name,
-        color: r.variant.color,
-        size: r.variant.size,
-        unit_price: r.product.price,
-        quantity: r.item.quantity
+        id: newId('oi'), order_id: order.id, variant_id: it.variant_id,
+        product_name: it.product_name, color: it.color, size: it.size,
+        unit_price: it.unit_price, quantity: it.quantity
       });
     });
-    var ids = rows.map(function (r) { return r.item.id; });
+    db.orders.push(order);
+    var ids = pending.cart_ids || [];
     db.cart_items = db.cart_items.filter(function (c) { return ids.indexOf(c.id) < 0; });
     ids.forEach(function (id) { delete ui.cartSel[id]; });
     save();
-    return { ok: true, order: order, items: orderItemsOf(order.id) };
+    clearPending();
+    return { ok: true, order: order };
   }
+  function showReceipt(order) {
+    ui.checkoutIds = [];
+    ui.view = 'home';
+    ui.modal = { type: 'receipt', oid: order.id };
+    renderAll();
+    window.scrollTo({ top: 0 });
+  }
+  function tossReturnUrl(kind) {
+    return location.origin + location.pathname + '?tossResult=' + kind;
+  }
+  function tossErrorCode(err) {
+    return (err && (err.code || err.errorCode)) || (err && err.message) || 'UNKNOWN';
+  }
+  function isTossCancel(err) {
+    var code = tossErrorCode(err);
+    return code === 'PAY_PROCESS_CANCELED' || code === 'PAY_PROCESS_ABORTED';
+  }
+  function tossFallback(pending, why) {
+    toast('토스페이먼츠 결제창을 열 수 없어 데모 모의 결제로 진행합니다.' + (why ? ' (' + why + ')' : ''), 'warn');
+    var res = finalizeOrder(pending, { provider: 'demo', mode: 'demo-fallback', payment_key: null });
+    if (res.ok) showReceipt(res.order);
+    else toast(res.message || '주문을 확정하지 못했습니다.', 'warn');
+  }
+  /* 결제창형(구 결제위젯) 흐름:
+     widgets → setAmount → renderPaymentWindow → (구매자가 결제하기) → paymentRequest 이벤트
+     → widgets.requestPayment({ orderId, orderName, successUrl, failUrl }) → 토스 리다이렉트 */
+  function requestTossPayment(pending, user) {
+    var orderName = orderNameOf(pending.items);
+    var params = {
+      orderId: pending.order_no,
+      orderName: orderName,
+      successUrl: tossReturnUrl('success'),
+      failUrl: tossReturnUrl('fail'),
+      customerName: user.name,
+      customerEmail: user.email
+    };
+    tossSession.params = params;
+    tossSession.pending = pending;
+    var onTossError = function (err) {
+      if (isTossCancel(err)) {
+        toast('결제를 취소했습니다.', 'warn');
+        clearPending();
+        return;
+      }
+      tossFallback(tossSession.pending || pending, tossErrorCode(err));
+    };
+    try {
+      if (!tossSession.widgets) {
+        var toss = window.TossPayments(PAYMENT_CONFIG.clientKey);
+        tossSession.widgets = toss.widgets({ customerKey: customerKey() });
+      }
+      var widgets = tossSession.widgets;
+      widgets.setAmount({ currency: PAYMENT_CONFIG.currency || 'KRW', value: pending.amount }).then(function () {
+        if (tossSession.window) return null; // 이미 열려 있으면 금액만 갱신하고 재사용
+        return widgets.renderPaymentWindow({ orderName: orderName }).then(function (win) {
+          tossSession.window = win || null;
+          if (!win || !win.on) {
+            tossSession.window = null;
+            tossFallback(pending, 'PAYMENT_WINDOW');
+            return;
+          }
+          win.on('paymentRequest', function () {
+            var live = tossSession.params || params;
+            try {
+              var ret = widgets.requestPayment({
+                orderId: live.orderId, orderName: live.orderName,
+                successUrl: live.successUrl, failUrl: live.failUrl,
+                customerName: live.customerName, customerEmail: live.customerEmail
+              });
+              if (ret && typeof ret.then === 'function') ret['catch'](onTossError);
+            } catch (err) { onTossError(err); }
+          });
+        });
+      })['catch'](onTossError);
+    } catch (err) {
+      onTossError(err);
+    }
+  }
+  /* 결제하기 → 대기 주문 저장 → 토스 결제창(또는 데모 결제) */
+  function startPayment(payload) {
+    var u = currentUser();
+    if (!u) return { ok: false, message: '로그인이 필요합니다.' };
+    var rows = checkoutRows();
+    if (!rows.length) return { ok: false, message: '주문할 상품이 없습니다.' };
+    if (!payload.recipient_name || !payload.recipient_phone || !payload.shipping_address) {
+      return { ok: false, message: '배송지 정보를 모두 입력해 주세요.' };
+    }
+    var pending = buildPending(payload);
+    var problem = stockProblem(pending.items);
+    if (problem) return { ok: false, message: problem };
+    savePending(pending);
+    if (!tossAvailable()) {
+      return finalizeOrder(pending, { provider: 'demo', mode: 'demo', payment_key: null });
+    }
+    requestTossPayment(pending, u);
+    return { ok: true, redirected: true };
+  }
+  function stripPaymentQuery() {
+    try { history.replaceState({}, document.title, location.pathname + (location.hash || '')); } catch (e) {}
+  }
+  /* successUrl 복귀 → 금액·주문번호 대조 → 승인(서버 또는 테스트) → 주문 확정 */
+  function confirmPayment(pending, info) {
+    var done = function (mode) {
+      var res = finalizeOrder(pending, { provider: PAYMENT_CONFIG.provider, mode: mode, payment_key: info.paymentKey });
+      if (!res.ok) { toast(res.message || '주문을 확정하지 못했습니다.', 'warn'); renderAll(); return; }
+      toast(res.duplicate ? '이미 확정된 결제입니다.' : '결제가 완료되었습니다.');
+      showReceipt(res.order);
+    };
+    if (!PAYMENT_CONFIG.confirmApiUrl) {
+      // 정적 데모(GitHub Pages): 서버 승인 없이 테스트 승인으로 처리.
+      // 실서비스에서는 시크릿 키를 가진 서버가 반드시 승인 API를 호출해야 한다.
+      toast('토스페이먼츠 테스트 결제가 승인되었습니다. (서버 승인 없음)');
+      setTimeout(function () { done('test-client'); }, 120);
+      return;
+    }
+    fetch(PAYMENT_CONFIG.confirmApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentKey: info.paymentKey, orderId: info.orderId, amount: info.amount })
+    }).then(function (r) {
+      return r.json().then(function (body) { return { ok: r.ok, body: body }; });
+    }).then(function (r) {
+      if (!r.ok || (r.body && r.body.ok === false)) {
+        toast('결제 승인에 실패했습니다' + (r.body && r.body.message ? ': ' + r.body.message : ''), 'warn');
+        return;
+      }
+      done('server');
+    })['catch'](function () {
+      toast('결제 승인 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.', 'warn');
+    });
+  }
+  function handlePaymentReturn() {
+    var params;
+    try { params = new URLSearchParams(location.search); } catch (e) { return false; }
+    var result = params.get('tossResult');
+    if (!result) return false;
+    var paymentKey = params.get('paymentKey');
+    var orderId = params.get('orderId');
+    var amount = parseInt(params.get('amount'), 10);
+    var code = params.get('code');
+    var msg = params.get('message');
+    stripPaymentQuery();
+    var pending = loadPending();
+    if (result === 'fail') {
+      clearPending();
+      toast('결제가 취소되었거나 실패했습니다.' + (msg ? ' (' + msg + ')' : code ? ' (' + code + ')' : ''), 'warn');
+      return true;
+    }
+    if (!pending) {
+      toast('결제 정보(대기 주문)를 찾을 수 없습니다. 다시 주문해 주세요.', 'warn');
+      return true;
+    }
+    if (!paymentKey || !orderId || !amount) {
+      toast('결제 응답이 올바르지 않습니다.', 'warn');
+      return true;
+    }
+    if (orderId !== pending.order_no) {
+      toast('결제한 주문번호가 대기 주문과 일치하지 않아 결제를 확정하지 않았습니다.', 'warn');
+      return true;
+    }
+    if (amount !== pending.amount) {
+      toast('결제 금액이 주문 금액과 다릅니다(' + won(amount) + ' / ' + won(pending.amount) + '). 결제를 확정하지 않았습니다.', 'warn');
+      return true;
+    }
+    confirmPayment(pending, { paymentKey: paymentKey, orderId: orderId, amount: amount });
+    return true;
+  }
+
   function cancelOrder(orderId) {
     var o = orderById(orderId);
     if (!o) return { ok: false, message: '주문을 찾을 수 없습니다.' };
@@ -1598,6 +1885,40 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
     var hay = [p.name, p.brand, p.description, catLabel(p.category)].join(' ').toLowerCase();
     return hay.indexOf(q.toLowerCase()) >= 0;
   }
+  /* 자동완성 팝업만 부분 갱신 — 검색 input DOM 은 다시 그리지 않는다
+     (입력값·포커스·커서 위치가 그대로 유지된다) */
+  function renderSearchPop() {
+    [{ sel: '.search-wrap', focus: 'd' }, { sel: '.mobile-search .inner', focus: 'm' }].forEach(function (h) {
+      var host = $(h.sel);
+      if (!host) return;
+      var pop = host.querySelector('.search-pop');
+      if (ui.searchFocus !== h.focus) { if (pop) pop.remove(); return; }
+      var holder = document.createElement('div');
+      holder.innerHTML = searchPopHTML();
+      var next = holder.firstElementChild;
+      if (!next) return;
+      if (pop) host.replaceChild(next, pop);
+      else host.appendChild(next);
+    });
+  }
+  /* 검색어 변경 → 결과만 교체. 다른 화면에 있었다면 스토어로 즉시 전환한다. */
+  function applySearchQuery(value, fromMobile) {
+    ui.query = value;
+    ui.searchOpen = true;
+    if (fromMobile) ui.mobileSearch = true;
+    var moved = false;
+    if (ui.view !== 'home') {
+      ui.view = 'home';
+      ui.category = 'all';
+      renderView();
+      moved = true;
+    } else if (!renderShopSection()) {
+      renderView();
+      moved = true;
+    }
+    renderSearchPop();
+    if (moved) scrollToShop();
+  }
 
   function renderView() {
     var app = $('#app');
@@ -1627,12 +1948,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
       return (rank(b) - rank(a)) || String(b.created_at).localeCompare(String(a.created_at));
     });
   }
-  function homeHTML() {
-    var list = sortedProducts(visibleProducts());
-    var cat = catLabel(ui.category);
-    var heading = ui.query.trim()
-      ? '‘' + esc(ui.query.trim()) + '’ 검색 결과'
-      : (ui.category === 'all' ? '이번 시즌, 새로 도착한 옷' : cat);
+  function heroHTML() {
     return '' +
       '<section class="hero">' +
         '<img src="' + imgSrc('hero.webp') + '" alt="MONO ATELIER 2026 가을·겨울 컬렉션">' +
@@ -1646,7 +1962,16 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
           '</div>' +
         '</div>' +
         '<div class="hero-meta"><span>SEOUL 37.56°N</span><span>EST. 2026</span><span>MADE IN KOREA</span></div>' +
-      '</section>' +
+      '</section>';
+  }
+  /* 상품 그리드 섹션만 따로 그린다 — 검색·필터 시 헤더/히어로를 건드리지 않기 위함 */
+  function shopSectionHTML() {
+    var list = sortedProducts(visibleProducts());
+    var cat = catLabel(ui.category);
+    var heading = ui.query.trim()
+      ? '‘' + esc(ui.query.trim()) + '’ 검색 결과'
+      : (ui.category === 'all' ? '이번 시즌, 새로 도착한 옷' : cat);
+    return '' +
       '<section class="wrap section" id="shop">' +
         '<div class="section-head">' +
           '<div><div class="eyebrow">' + (ui.category === 'all' ? 'SHOP — NEW ARRIVALS' : 'SHOP — ' + cat.toUpperCase()) + '</div><h2>' + heading + '</h2></div>' +
@@ -1668,7 +1993,25 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
         (list.length
           ? '<div class="grid">' + list.map(cardHTML).join('') + '</div>'
           : '<div class="empty-state"><h3>찾으시는 상품이 없습니다</h3><p>다른 카테고리를 보거나 검색어를 지워 보세요.</p><div style="margin-top:20px"><button class="btn ghost small" data-action="clear-filter">전체 상품 보기</button></div></div>') +
-      '</section>' +
+      '</section>';
+  }
+  /* #shop 섹션만 교체 — 입력 중인 검색창과 스크롤 위치는 그대로 둔다 */
+  function renderShopSection() {
+    var cur = $('#shop');
+    if (!cur) return false;
+    var holder = document.createElement('div');
+    holder.innerHTML = shopSectionHTML();
+    var next = holder.firstElementChild;
+    if (!next || !cur.parentNode) return false;
+    cur.parentNode.replaceChild(next, cur);
+    return true;
+  }
+  function scrollToShop() {
+    var shop = $('#shop');
+    if (shop) window.scrollTo({ top: shop.offsetTop - 80, behavior: 'smooth' });
+  }
+  function homeHTML() {
+    return heroHTML() + shopSectionHTML() +
       '<section class="wrap"><div class="editorial" id="editorial">' +
         '<div class="editorial-media"><img src="' + imgSrc('coat.webp') + '" alt="MONO ATELIER 아틀리에 노트"></div>' +
         '<div class="editorial-body">' +
@@ -1727,7 +2070,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
             '<li>배송 안내</li><li>교환·반품 안내</li><li>사이즈 가이드</li><li>이용약관</li><li>개인정보처리방침</li>' +
           '</ul></div>' +
           '<div class="footer-col"><h5>Contact</h5><ul>' +
-            '<li>고객센터 1544-0000</li><li>평일 10:00 – 17:00</li><li>서울특별시 중구 세종대로 110</li>' +
+            '<li>고객센터 1544-0000</li><li>평일 10:00 – 17:00</li><li>서울특별시 송파구 올림픽로 300</li>' +
           '</ul></div>' +
         '</div>' +
         '<div class="footer-bottom">' +
@@ -1750,25 +2093,34 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
     renderModal();
     syncLock();
   }
+  /* 옵션 변경 시 모달에서 달라지는 부분만 계산한다 */
+  function stockHintOf(p, m) {
+    var v = m.size ? findVariant(p.id, m.color, m.size) : null;
+    if (!v) return { text: '컬러와 사이즈를 선택해 주세요', cls: ' low' };
+    if (v.stock <= 0) return { text: '선택한 옵션은 품절입니다', cls: ' out' };
+    if (v.stock <= 3) return { text: '재고 ' + v.stock + '개 · 품절 임박', cls: ' low' };
+    return { text: '재고 ' + v.stock + '개 · 바로 출고 가능', cls: '' };
+  }
+  function colorChipsHTML(p, m) {
+    return colorsOf(p.id).map(function (c) {
+      var on = m.color === c.color;
+      return '<button class="chip' + (on ? ' active' : '') + '" data-action="pick-color" data-color="' + esc(c.color) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+        '<i class="sw" style="background:' + esc(c.hex) + '"></i>' + esc(c.color) + '</button>';
+    }).join('');
+  }
+  function sizesHTML(p, m) {
+    return sizesOf(p.id, m.color).map(function (sv) {
+      return '<button class="size-btn' + (m.size === sv.size ? ' active' : '') + '" data-action="pick-size" data-size="' + sv.size + '"' +
+        (sv.stock <= 0 ? ' disabled aria-disabled="true"' : '') + '>' + sv.size + '</button>';
+    }).join('');
+  }
   function productModalHTML() {
     var m = ui.modal;
     var p = productById(m.pid);
     if (!p) return '';
-    var colors = colorsOf(p.id);
-    var sizes = sizesOf(p.id, m.color);
-    var v = m.size ? findVariant(p.id, m.color, m.size) : null;
-    var stock = v ? v.stock : null;
     var soldout = stockOf(p.id) <= 0;
     var pct = discountPct(p);
-    var hint = '';
-    var hintCls = '';
-    if (v) {
-      if (stock <= 0) { hint = '선택한 옵션은 품절입니다'; hintCls = ' out'; }
-      else if (stock <= 3) { hint = '재고 ' + stock + '개 · 품절 임박'; hintCls = ' low'; }
-      else { hint = '재고 ' + stock + '개 · 바로 출고 가능'; }
-    } else {
-      hint = '컬러와 사이즈를 선택해 주세요'; hintCls = ' low';
-    }
+    var hint = stockHintOf(p, m);
     return '' +
       '<div class="modal product-modal" role="dialog" aria-modal="true" aria-label="상품 상세">' +
         '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
@@ -1784,26 +2136,20 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
           '<p class="pm-desc">' + esc(p.description) + '</p>' +
           '<div class="pm-divider"></div>' +
           '<div class="opt-group">' +
-            '<div class="opt-label"><span>컬러</span><b>' + esc(m.color || '선택') + '</b></div>' +
-            '<div class="chips">' + colors.map(function (c) {
-              return '<button class="chip' + (m.color === c.color ? ' active' : '') + '" data-action="pick-color" data-color="' + esc(c.color) + '">' +
-                '<i class="sw" style="background:' + esc(c.hex) + '"></i>' + esc(c.color) + '</button>';
-            }).join('') + '</div>' +
+            '<div class="opt-label"><span>컬러</span><b data-hook="color-name">' + esc(m.color || '선택') + '</b></div>' +
+            '<div class="chips" data-hook="chips">' + colorChipsHTML(p, m) + '</div>' +
           '</div>' +
           '<div class="opt-group" style="margin-top:20px">' +
-            '<div class="opt-label"><span>사이즈</span><span class="stock-hint' + hintCls + '">' + hint + '</span></div>' +
-            '<div class="sizes">' + sizes.map(function (sv) {
-              return '<button class="size-btn' + (m.size === sv.size ? ' active' : '') + '" data-action="pick-size" data-size="' + sv.size + '"' +
-                (sv.stock <= 0 ? ' disabled aria-disabled="true"' : '') + '>' + sv.size + '</button>';
-            }).join('') + '</div>' +
+            '<div class="opt-label"><span>사이즈</span><span class="stock-hint' + hint.cls + '" data-hook="stock" aria-live="polite">' + hint.text + '</span></div>' +
+            '<div class="sizes" data-hook="sizes">' + sizesHTML(p, m) + '</div>' +
           '</div>' +
           '<div class="pm-qty-row">' +
             '<div class="stepper">' +
               '<button data-action="pm-dec" aria-label="수량 줄이기">−</button>' +
-              '<span>' + m.qty + '</span>' +
+              '<span data-hook="qty">' + m.qty + '</span>' +
               '<button data-action="pm-inc" aria-label="수량 늘리기">+</button>' +
             '</div>' +
-            '<div class="qty-total">총 상품금액<b>' + won(p.price * m.qty) + '</b></div>' +
+            '<div class="qty-total">총 상품금액<b data-hook="total">' + won(p.price * m.qty) + '</b></div>' +
           '</div>' +
           '<div class="pm-actions">' +
             '<button class="btn ghost" data-action="add-cart"' + (soldout ? ' disabled' : '') + '>장바구니 담기</button>' +
@@ -1817,6 +2163,31 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
           '</dl>' +
         '</div>' +
       '</div>';
+  }
+  /* 컬러·사이즈·수량 변경 시 모달의 해당 영역만 부분 갱신한다.
+     모달 전체(innerHTML)나 <img> 를 다시 그리지 않으므로 깜빡임·스크롤 초기화가 없다. */
+  function syncProductModal() {
+    var root = $('#modal-layer .product-modal');
+    if (!root || !ui.modal || ui.modal.type !== 'product') return;
+    var m = ui.modal;
+    var p = productById(m.pid);
+    if (!p) return;
+    $$('.chips .chip', root).forEach(function (chip) {
+      var on = chip.dataset.color === m.color;
+      chip.classList.toggle('active', on);
+      chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    var nameEl = $('[data-hook=color-name]', root);
+    if (nameEl) nameEl.textContent = m.color || '선택';
+    var sizesEl = $('[data-hook=sizes]', root);
+    if (sizesEl) sizesEl.innerHTML = sizesHTML(p, m);
+    var hint = stockHintOf(p, m);
+    var hintEl = $('[data-hook=stock]', root);
+    if (hintEl) { hintEl.textContent = hint.text; hintEl.className = 'stock-hint' + hint.cls; }
+    var qtyEl = $('[data-hook=qty]', root);
+    if (qtyEl) qtyEl.textContent = m.qty;
+    var totalEl = $('[data-hook=total]', root);
+    if (totalEl) totalEl.textContent = won(p.price * m.qty);
   }
 
   /* ------------------------------------------------------------ cart drawer */
@@ -1892,6 +2263,22 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
   }
 
   /* ------------------------------------------------------------- checkout */
+  function paymentNoticeHTML() {
+    var live = tossAvailable();
+    var lines = [];
+    lines.push(live
+      ? '결제하기를 누르면 <b>토스페이먼츠 테스트 결제창</b>이 열립니다.'
+      : '이 환경(file:// · 오프라인 · SDK 로드 실패)에서는 <b>데모 모의 결제</b>로 진행됩니다.');
+    if (live) lines.push('카드·간편결제를 선택할 수 있고, 실제 금액은 청구되지 않습니다.');
+    lines.push(PAYMENT_CONFIG.confirmApiUrl
+      ? '결제 승인은 서버(' + esc(PAYMENT_CONFIG.confirmApiUrl) + ')에서 처리됩니다.'
+      : '현재는 서버 승인 없이 테스트 승인으로 처리됩니다 · 실서비스 전에는 승인 서버가 필요합니다.');
+    return '<div class="pay-mode' + (live ? '' : ' demo') + '" data-pay-mode="' + (live ? 'test' : 'demo') + '">' +
+      '<div class="pm-tag">' + (live ? 'TEST PAYMENT' : 'DEMO PAYMENT') + '</div>' +
+      '<div class="pm-body">' + lines.join('<br>') + '</div>' +
+      '</div>';
+  }
+
   function checkoutRows() {
     return cartRows().filter(function (r) { return ui.checkoutIds.indexOf(r.item.id) >= 0; });
   }
@@ -1955,7 +2342,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
         '<div class="sum-line total"><span>총 결제금액</span><b>' + won(t.total) + '</b></div>' +
         '<label class="agree"><input type="checkbox" id="co-agree" data-action="toggle-agree"> 주문 내용을 확인했으며, 결제에 동의합니다.</label>' +
         '<button class="btn block" style="margin-top:14px" data-action="place-order">' + won(t.total) + ' 결제하기</button>' +
-        '<p class="note" style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.7">데모 결제입니다 · 실제 금액이 청구되지 않습니다</p>' +
+        paymentNoticeHTML() +
       '</aside>' +
     '</div></div>';
   }
@@ -1969,17 +2356,23 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
     }
     var orders = db.orders.filter(function (o) { return o.user_id === user.id; })
       .sort(function (a, b) { return String(b.created_at).localeCompare(String(a.created_at)); });
+    // 데이터 관리(JSON 내보내기·시드 초기화)는 관리자 콘솔 전용 — 일반 회원 마이페이지에는 노출하지 않는다.
+    var canManageData = user.role === 'admin';
+    if (!canManageData && ui.myTab === 'data') ui.myTab = 'profile';
     var side = '<aside class="side-nav"><h2>My Page</h2><nav>' +
       '<button data-action="my-tab" data-tab="profile" class="' + (ui.myTab === 'profile' ? 'active' : '') + '">회원 정보</button>' +
       '<button data-action="my-tab" data-tab="orders" class="' + (ui.myTab === 'orders' ? 'active' : '') + '">주문 내역<span class="n">' + orders.length + '</span></button>' +
-      '<button data-action="my-tab" data-tab="data" class="' + (ui.myTab === 'data' ? 'active' : '') + '">데이터 관리</button>' +
-      '</nav><div class="side-foot"><button class="btn link" data-action="logout">로그아웃</button></div></aside>';
+      (canManageData ? '<button data-action="my-tab" data-tab="data" class="' + (ui.myTab === 'data' ? 'active' : '') + '">데이터 관리</button>' : '') +
+      '</nav></aside>';
     var main;
     if (ui.myTab === 'orders') main = ordersHTML(orders);
-    else if (ui.myTab === 'data') main = dataHTML(false);
+    else if (ui.myTab === 'data' && canManageData) main = dataHTML(false);
     else main = profileHTML(user, orders);
     return '<div class="page">' +
-      '<div class="page-head"><div class="eyebrow">MY PAGE</div><h1>' + esc(user.name) + '님</h1><p>주문과 회원 정보를 한곳에서 관리하세요.</p></div>' +
+      '<div class="page-head mypage-head">' +
+        '<div><div class="eyebrow">MY PAGE</div><h1>' + esc(user.name) + '님</h1><p>주문과 회원 정보를 한곳에서 관리하세요.</p></div>' +
+        '<button class="btn ghost small logout-btn" data-action="logout" aria-label="로그아웃">로그아웃</button>' +
+      '</div>' +
       '<div class="page-grid">' + side + '<div>' + main + '</div></div>' +
     '</div>';
   }
@@ -2138,7 +2531,35 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
         '<p>products · product_variants · cart_items · orders · order_items · users</p>' +
         '<pre class="json-preview">' + esc(JSON.stringify(db, null, 2)) + '</pre>' +
       '</div>' +
+      (inAdmin ? paymentSettingsHTML() : '') +
       (inAdmin ? '<p style="font-size:10px;color:var(--muted);margin-top:14px">SQLite 스키마: <code>fashion-shop/data/schema.sql</code> · 시드: <code>data/schema-seed.json</code></p>' : '');
+  }
+  /* 관리자 콘솔 — 현재 결제 모드와 키 교체 방법 안내 */
+  function maskKey(key) {
+    if (!key) return '(없음)';
+    if (key.length <= 14) return key;
+    return key.slice(0, 10) + '···' + key.slice(-4);
+  }
+  function paymentSettingsHTML() {
+    var live = tossAvailable();
+    var rows = [
+      ['결제 대행사', '토스페이먼츠 SDK v2 · 결제창형'],
+      ['현재 결제 모드', live ? paymentModeLabel() : '데모 모의 결제 (이 환경에서는 SDK 사용 불가)'],
+      ['클라이언트 키', maskKey(PAYMENT_CONFIG.clientKey) + ' · ' + (PAYMENT_CONFIG.clientKeyMode === 'live' ? 'live' : 'test')],
+      ['승인 서버', PAYMENT_CONFIG.confirmApiUrl || '미연결 — 정적 데모(서버 승인 없이 테스트 승인)'],
+      ['SDK 스크립트', PAYMENT_CONFIG.sdkUrl]
+    ];
+    return '<div class="data-card" style="margin-top:16px" data-payment-settings="1">' +
+      '<h3>결제 설정 (토스페이먼츠)</h3>' +
+      '<p>사업자 등록 없이 공개 테스트 키로 연동되어 있습니다. 실제 결제는 <code>src/app.js</code> 의 <code>PAYMENT_CONFIG</code> 값만 교체하면 됩니다.</p>' +
+      '<ul class="integrity-list">' + rows.map(function (r) {
+        return '<li><span class="ok">·</span><span><b>' + esc(r[0]) + '</b> — ' + esc(r[1]) + '</span></li>';
+      }).join('') + '</ul>' +
+      '<p style="font-size:11px;color:var(--muted);line-height:1.9;margin-top:10px">' +
+      '· <b>실결제 전환</b>: 개발자센터 &gt; API 키 &gt; 주문서형·결제창형 연동 키의 <code>live_gck_…</code> 를 <code>PAYMENT_CONFIG.clientKey</code> 에 넣고 <code>clientKeyMode</code> 를 <code>\'live\'</code> 로 바꿉니다.<br>' +
+      '· <b>서버 승인</b>: <code>PAYMENT_CONFIG.confirmApiUrl</code> 에 <code>/api/payments/confirm</code> 을 넣으면 시크릿 키(<code>live_gsk_…</code>)를 가진 서버가 토스 승인 API를 호출합니다(예제 <code>data/payment_confirm_example.py</code>).<br>' +
+      '· <b>시크릿 키는 절대 이 파일·저장소에 넣지 마세요</b> — 서버 환경변수 <code>TOSS_SECRET_KEY</code> 로만 사용합니다.' +
+      '</p></div>';
   }
 
   /* ------------------------------------------------------------------ admin */
@@ -2343,7 +2764,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
           '<div class="field"><label>비밀번호 확인</label><input id="af-password2" type="password" placeholder="다시 입력"></div></div>' +
           '<div class="field"><label>이름</label><input id="af-name" placeholder="홍길동"></div>' +
           '<div class="field"><label>연락처</label><input id="af-phone" placeholder="010-0000-0000"></div>' +
-          '<div class="field"><label>주소</label><input id="af-address" placeholder="서울특별시 중구 세종대로 110"></div>' +
+          '<div class="field"><label>주소</label><input id="af-address" placeholder="서울특별시 송파구 올림픽로 300"></div>' +
           '<button class="btn block" style="margin-top:8px" data-action="do-signup">가입하고 시작하기</button>' +
           '<p class="auth-note">가입 정보는 이 브라우저의 localStorage에만 저장되는 데모입니다.</p>') +
       '</div>' +
@@ -2365,11 +2786,13 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
           '<div style="border-top:1px solid var(--line-soft);margin:12px 0 6px"></div>' +
           '<div class="r-line"><span>상품금액</span><span>' + won(subtotal) + '</span></div>' +
           '<div class="r-line"><span>배송비</span><span>' + (order.shipping_fee ? won(order.shipping_fee) : '무료') + '</span></div>' +
-          '<div class="r-line" style="padding-top:10px"><span style="color:var(--ink);font-weight:600">총 결제금액</span><b style="font-size:17px">' + won(order.total_amount) + '</b></div>' +
+          '<div class="r-line" data-hook="receipt-total" style="padding-top:10px"><span style="color:var(--ink);font-weight:600">총 결제금액</span><b style="font-size:17px">' + won(order.total_amount) + '</b></div>' +
           '<div style="border-top:1px solid var(--line-soft);margin:12px 0 6px"></div>' +
           '<div class="r-line"><span>받는 분</span><span>' + esc(order.recipient_name) + ' · ' + esc(order.recipient_phone) + '</span></div>' +
           '<div class="r-line"><span>배송지</span><span style="text-align:right;max-width:64%">' + esc(order.shipping_address) + '</span></div>' +
           (order.payment_method === 'bank' ? '<div class="r-line"><span>입금 계좌</span><span>국민은행 123-456-7890 (주)모노아틀리에</span></div>' : '') +
+          '<div class="r-line" data-receipt-payment="1"><span>결제 처리</span><span>' + esc(paymentProviderLabel(order)) + '</span></div>' +
+          (order.payment_key ? '<div class="r-line"><span>결제 키</span><span style="font-size:10px;letter-spacing:0">' + esc(String(order.payment_key).slice(0, 18)) + '…</span></div>' : '') +
         '</div>' +
         '<div class="actions">' +
           '<button class="btn ghost" data-action="receipt-orders">주문 내역 보기</button>' +
@@ -2377,6 +2800,14 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
         '</div>' +
       '</div>' +
     '</div>';
+  }
+  function paymentProviderLabel(order) {
+    if (order.payment_provider === 'tosspayments') {
+      return order.payment_mode === 'server' ? '토스페이먼츠 (서버 승인)' : '토스페이먼츠 테스트 결제';
+    }
+    return order.payment_mode === 'demo-fallback'
+      ? '데모 모의 결제 (토스 결제창 열기 실패)'
+      : '데모 모의 결제';
   }
   function confirmHTML() {
     var c = ui.modal;
@@ -2516,14 +2947,14 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
           ui.modal.color = el.dataset.color;
           var stillValid = findVariant(ui.modal.pid, ui.modal.color, ui.modal.size);
           if (!stillValid) ui.modal.size = '';
-          renderModal();
+          syncProductModal();
         }
         break;
       case 'pick-size':
         if (ui.modal && ui.modal.type === 'product') {
           ui.modal.size = el.dataset.size;
           ui.modal.qty = 1;
-          renderModal();
+          syncProductModal();
         }
         break;
       case 'pm-inc': {
@@ -2531,11 +2962,11 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
         var pv = ui.modal.size ? findVariant(ui.modal.pid, ui.modal.color, ui.modal.size) : null;
         var max = pv ? pv.stock : 1;
         if (ui.modal.qty >= max) { toast('재고는 ' + max + '개까지 선택할 수 있습니다.', 'warn'); break; }
-        ui.modal.qty++; renderModal();
+        ui.modal.qty++; syncProductModal();
         break;
       }
       case 'pm-dec':
-        if (ui.modal && ui.modal.qty > 1) { ui.modal.qty--; renderModal(); }
+        if (ui.modal && ui.modal.qty > 1) { ui.modal.qty--; syncProductModal(); }
         break;
       case 'add-cart': doAddFromModal(false); break;
       case 'buy-now': doAddFromModal(true); break;
@@ -2595,12 +3026,10 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
         if (!payload.recipient_name || !payload.recipient_phone || !payload.shipping_address) {
           toast('받는 분, 연락처, 배송지를 모두 입력해 주세요.', 'warn'); break;
         }
-        var r = placeOrder(payload);
-        if (!r.ok) { toast(r.message, 'warn'); break; }
-        ui.checkoutIds = [];
-        ui.view = 'home';
-        ui.modal = { type: 'receipt', oid: r.order.id };
-        renderAll();
+        var pay = startPayment(payload);
+        if (!pay.ok) { toast(pay.message, 'warn'); break; }
+        if (pay.redirected) { toast('토스페이먼츠 결제창을 여는 중입니다…'); break; }
+        if (pay.order) showReceipt(pay.order);
         break;
       }
       case 'close-receipt':
@@ -2653,7 +3082,9 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
       case 'go-mypage':
         if (!currentUser()) { openAuth('login', ''); break; }
         ui.myTab = 'profile'; go('mypage'); break;
-      case 'my-tab': ui.myTab = el.dataset.tab; renderAll(); break;
+      case 'my-tab':
+        if (el.dataset.tab === 'data' && !isAdmin()) break; // 데이터 관리는 관리자 전용
+        ui.myTab = el.dataset.tab; renderAll(); break;
       case 'save-profile': {
         if (!currentUser()) break;
         var u = currentUser();
@@ -2671,7 +3102,6 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
         save(); renderAll(); toast('회원 정보를 저장했습니다.');
         break;
       }
-      case 'logout-side': logout(); break;
       case 'ask-cancel-order': {
         var oid = el.dataset.oid;
         var o = orderById(oid);
@@ -2797,16 +3227,8 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
   document.addEventListener('input', function (ev) {
     var t = ev.target;
     if (t.id === 'search-desktop' || t.id === 'search-mobile') {
-      ui.query = t.value;
-      ui.searchOpen = true;
       ui.searchFocus = t.id === 'search-desktop' ? 'd' : 'm';
-      renderHeader();
-      var input = $('#' + t.id);
-      if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
-      if (ui.view === 'home') {
-        var shop = $('#shop');
-        if (shop) renderShopOnly();
-      }
+      applySearchQuery(t.value, t.id === 'search-mobile');
       return;
     }
     if (t.id === 'sort-select') {
@@ -2836,11 +3258,10 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
     if (ev.key === 'Enter') {
       var t = ev.target;
       if (t.id === 'search-desktop' || t.id === 'search-mobile') {
-        ui.searchOpen = false; ui.mobileSearch = false; ui.searchFocus = '';
-        renderHeader();
-        if (ui.view !== 'home') { ui.view = 'home'; renderView(); }
-        var shop = $('#shop');
-        if (shop) window.scrollTo({ top: shop.offsetTop - 80, behavior: 'smooth' });
+        // 검색 실행: 검색바는 열린 채 두고, 자동완성만 닫은 뒤 결과로 이동한다.
+        ev.preventDefault();
+        ui.searchFocus = '';
+        applySearchQuery(t.value, t.id === 'search-mobile');
         return;
       }
       if (t.dataset && t.dataset.enter) {
@@ -2868,6 +3289,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
       setTimeout(function () { toast('이 브라우저에서는 저장소를 사용할 수 없어 새로고침 시 초기화됩니다.', 'warn'); }, 900);
     }
     renderAll();
+    handlePaymentReturn(); // 토스페이먼츠 successUrl/failUrl 복귀 처리
   }
 
   /* ------------------------------------------------- debug / test surface */
@@ -2882,7 +3304,21 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em
     integrity: function () { return runIntegrity(); },
     reset: function () { resetDB(); },
     login: function (e, p) { return login(e, p); },
-    cartCount: function () { return cartCount(); }
+    cartCount: function () { return cartCount(); },
+    paymentConfig: function () { return clone(PAYMENT_CONFIG); },
+    paymentMode: function () { return { available: tossAvailable(), label: paymentModeLabel() }; },
+    pendingCheckout: function () { return clone(loadPending()); },
+    clearPending: function () { clearPending(); },
+    customerKey: function () { return customerKey(); },
+    handlePaymentReturn: function () { return handlePaymentReturn(); },
+    confirmPayment: function (payKey, orderNo, amount) {
+      var pending = loadPending();
+      if (!pending) return { ok: false, message: '대기 주문 없음' };
+      if (orderNo && orderNo !== pending.order_no) return { ok: false, message: '주문번호 불일치' };
+      if (amount != null && Number(amount) !== pending.amount) return { ok: false, message: '금액 불일치' };
+      confirmPayment(pending, { paymentKey: payKey || 'test_client_key', orderId: pending.order_no, amount: pending.amount });
+      return { ok: true };
+    }
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
