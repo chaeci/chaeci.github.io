@@ -10,7 +10,8 @@ import pathlib
 import sqlite3
 
 HERE = pathlib.Path(__file__).resolve().parent
-ORDER = ["users", "products", "product_images", "product_variants", "orders", "order_items", "cart_items", "coupons"]
+ORDER = ["users", "products", "product_images", "product_variants", "orders", "order_items",
+         "order_claims", "cart_items", "coupons"]
 
 
 def main():
@@ -92,6 +93,14 @@ def main():
     fk = con.execute("PRAGMA foreign_key_check").fetchall()
     print("  foreign_key_check:", "OK" if not fk else fk)
     print("  coupon_targets:", con.execute("SELECT COUNT(*) FROM coupon_targets").fetchone()[0], "rows")
+    print("  교환/반품 접수:", ", ".join(
+        f"{r[0]} {r[1]} {'무료' if r[2] == 0 else str(r[2]) + '원 결제'} ({r[3]})"
+        for r in con.execute(
+            "SELECT claim_type, reason_category, shipping_fee, claim_status FROM v_order_claims ORDER BY created_at"))
+          or "(없음)")
+    print("  한 주문당 클레임 1건:", "OK" if not con.execute(
+        "SELECT COUNT(*) FROM (SELECT order_id FROM order_claims GROUP BY order_id HAVING COUNT(*) > 1)"
+    ).fetchone()[0] else "중복 있음")
     con.close()
 
 

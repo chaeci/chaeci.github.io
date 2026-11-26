@@ -95,6 +95,31 @@ CREATE TABLE order_items (
   quantity     INTEGER NOT NULL CHECK (quantity > 0)
 );
 
+-- 교환/반품 접수 (주문 단위, 한 주문당 1건)
+--   · 판매자 귀책(defect·wrong_item) : 배송비 0원 / payment_status='free'
+--   · 고객 귀책(change_of_mind·size_color) : 반품 3,000원, 교환(왕복) 6,000원 → 토스페이먼츠 결제 후 'paid'
+CREATE TABLE order_claims (
+  id              TEXT PRIMARY KEY,
+  order_id        TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  user_id         TEXT NOT NULL REFERENCES users(id),
+  claim_type      TEXT NOT NULL CHECK (claim_type IN ('return','exchange')),
+  reason_category TEXT NOT NULL
+                  CHECK (reason_category IN ('defect','wrong_item','change_of_mind','size_color')),
+  reason_detail   TEXT NOT NULL DEFAULT '',
+  shipping_fee    INTEGER NOT NULL DEFAULT 0 CHECK (shipping_fee >= 0),
+  payment_status  TEXT NOT NULL DEFAULT 'free' CHECK (payment_status IN ('free','paid','pending')),
+  payment_key     TEXT,                                    -- 유료 배송비 결제 시 토스페이먼츠 paymentKey
+  payment_mode    TEXT NOT NULL DEFAULT 'free',            -- free | demo-fallback | test-client | server
+  exchange_option TEXT,                                    -- 교환 희망 옵션 (예: '카멜 / L'), 반품이면 NULL
+  status          TEXT NOT NULL DEFAULT 'requested'
+                  CHECK (status IN ('requested','approved','completed','rejected')),
+  stock_restored  INTEGER NOT NULL DEFAULT 0 CHECK (stock_restored IN (0,1)),
+                  -- 반품 완료 시 재고 복구를 한 번만 수행하기 위한 플래그
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL,
+  UNIQUE (order_id)
+);
+
 -- 할인 쿠폰 — 관리자 콘솔에서 발행/중지, 체크아웃에서 코드 또는 원클릭 적용
 -- 발급 대상: coupon_targets 에 행이 없으면 전체 공용, 있으면 지정된 회원만 사용 가능
 CREATE TABLE coupons (
@@ -129,6 +154,9 @@ CREATE INDEX idx_order_items_order ON order_items(order_id);
 CREATE INDEX idx_coupons_code ON coupons(code);
 CREATE INDEX idx_coupon_targets_user ON coupon_targets(user_id);
 CREATE INDEX idx_coupon_targets_coupon ON coupon_targets(coupon_id);
+CREATE INDEX idx_claims_order ON order_claims(order_id);
+CREATE INDEX idx_claims_user ON order_claims(user_id, created_at DESC);
+CREATE INDEX idx_claims_status ON order_claims(status);
 
 -- 재고 확인용 뷰: 상품별 총 재고
 CREATE VIEW v_product_stock AS
@@ -148,6 +176,16 @@ SELECT o.id, o.order_no, o.status, o.total_amount, o.shipping_fee,
 FROM orders o
 LEFT JOIN order_items oi ON oi.order_id = o.id
 GROUP BY o.id;
+
+-- 교환/반품 접수 현황: 주문번호·회원·사유·배송비 결제·상태를 한눈에 확인
+CREATE VIEW v_order_claims AS
+SELECT c.id, o.order_no, o.status AS order_status, u.name AS user_name, u.email,
+       c.claim_type, c.reason_category, c.reason_detail, c.exchange_option,
+       c.shipping_fee, c.payment_status, c.payment_mode, c.status AS claim_status,
+       c.created_at, c.updated_at
+FROM order_claims c
+JOIN orders o ON o.id = c.order_id
+JOIN users u ON u.id = c.user_id;
 
 -- 쿠폰 발급 대상 보기: 전용 쿠폰이 누구에게 발급됐는지 한눈에 확인
 CREATE VIEW v_coupon_targets AS

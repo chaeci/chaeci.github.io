@@ -1146,6 +1146,131 @@ table.data.coupons { min-width: 640px; }
   .upload-item, .upload-item img { width: 46px; }
   .badge-editor { gap: 6px; }
 }
+
+/* ---------- 2026-11 v1.5: 교환/반품 접수 + 배송비 차등 결제 ---------- */
+/* 주문 카드·주문 상세의 접수 배지 */
+.claim-strip {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 11px 20px; border-top: 1px solid var(--line-soft); background: #f7f4ec;
+}
+.claim-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em;
+  border: 1px solid var(--ink); background: var(--ink); color: #fbfaf7;
+}
+.claim-chip.exchange { background: #2f5b7a; border-color: #2f5b7a; }
+.claim-chip::before { content: "↩"; font-size: 10px; }
+.claim-chip.exchange::before { content: "⇄"; }
+.claim-state {
+  font-size: 10px; letter-spacing: 0.08em; padding: 3px 8px;
+  border: 1px solid var(--line); background: #fff; color: var(--ink-soft);
+}
+.claim-state.approved { border-color: #c9dced; color: #2f5b7a; background: #f1f7fc; }
+.claim-state.completed { border-color: #c9dcc9; color: var(--ok); background: #f2f8f2; }
+.claim-state.rejected { border-color: #eed6d0; color: var(--danger); background: #fdf3f0; }
+.claim-when, .claim-opt { font-size: 10px; color: var(--muted); letter-spacing: 0.02em; }
+.claim-opt { border-left: 1px solid var(--line); padding-left: 8px; }
+.order-card .claim-strip + .order-bottom { border-top: 0; }
+
+/* 신청 모달 */
+.claim-modal { width: min(560px, 100%); display: flex; flex-direction: column; max-height: min(92vh, 900px); }
+.claim-modal .modal-head { flex: none; }
+.claim-order-line { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.7; word-break: keep-all; }
+.claim-body { padding: 20px 30px 6px; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+.claim-step { margin-bottom: 18px; }
+.claim-step-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 9px; }
+.claim-types { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.claim-type {
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: left;
+  border: 1px solid var(--line); background: #fff; padding: 12px 14px; transition: border-color 0.2s, background 0.2s;
+}
+.claim-type b { font-size: 13px; font-weight: 600; }
+.claim-type small { font-size: 10px; color: var(--muted); }
+.claim-type:hover { border-color: #b8b0a0; }
+.claim-type.active { border: 2px solid var(--ink); background: #f7f4ec; padding: 11px 13px; }
+.claim-type.active b::before { content: "✓ "; font-size: 11px; }
+.claim-reasons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.claim-reason {
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left;
+  border: 1px solid var(--line); background: #fff; padding: 11px 12px;
+}
+.claim-reason .cr-name { font-size: 12px; font-weight: 500; }
+.claim-reason .cr-fee { font-size: 9.5px; color: var(--muted); letter-spacing: 0.02em; }
+.claim-reason.seller .cr-fee { color: var(--ok); }
+.claim-reason:hover { border-color: #b8b0a0; }
+.claim-reason.active { border: 2px solid var(--ink); background: #f7f4ec; padding: 10px 11px; }
+.claim-reason.active .cr-name::before { content: "✓ "; font-size: 10px; }
+.claim-reason.active .cr-fee { color: var(--ink); font-weight: 600; }
+.claim-badge-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.claim-badge {
+  display: inline-block; padding: 7px 11px; font-size: 10.5px; font-weight: 600; line-height: 1.5;
+  border: 1px solid var(--line); background: #fff; color: var(--ink-soft);
+}
+.claim-badge.free { border-color: #c9dcc9; background: #f2f8f2; color: #2f6b46; }
+.claim-badge.paid { border-color: #e4d5b0; background: #fbf6e9; color: #8a6a1f; }
+.claim-badge-now { font-size: 10px; color: var(--muted); }
+.claim-exchange { margin-bottom: 18px; }
+.claim-field-label { display: block; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+.claim-field-label .opt { letter-spacing: 0; text-transform: none; color: #b6afa1; }
+.claim-exchange input, .claim-body textarea {
+  width: 100%; border: 1px solid var(--line); background: #fff; padding: 0 13px; font-size: 13px;
+}
+.claim-exchange input { height: 44px; }
+.claim-body textarea { min-height: 78px; padding: 11px 13px; line-height: 1.6; resize: vertical; }
+.claim-exchange input:focus, .claim-body textarea:focus { outline: none; border-color: var(--ink); }
+.claim-hint { font-size: 10px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+.claim-fee { border: 1px solid var(--line); background: #fbfaf6; padding: 13px 14px; margin-bottom: 4px; }
+.claim-fee-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--muted); }
+.claim-fee-row b { font-size: 17px; color: var(--ink); font-weight: 700; letter-spacing: -0.01em; }
+.claim-fee-note, .claim-fee-pay { font-size: 10px; color: var(--muted); line-height: 1.7; margin-top: 6px; }
+.claim-fee-pay { color: var(--accent); }
+.claim-foot {
+  flex: none; display: grid; grid-template-columns: 96px 1fr; gap: 8px;
+  padding: 16px 30px 22px; border-top: 1px solid var(--line-soft); background: var(--surface);
+}
+.claim-foot .btn { height: 46px; }
+.claim-foot .btn[data-hook="claim-submit"] { font-size: 10.5px; letter-spacing: 0.06em; }
+
+/* 주문 상세의 접수 상세 */
+.claim-detail-box { margin-top: 18px; border: 1px solid var(--line-soft); background: #fbfaf6; }
+.claim-detail-box .claim-strip { border-top: 0; }
+.claim-detail-text { padding: 10px 20px 0; font-size: 11px; color: var(--ink-soft); line-height: 1.7; }
+.claim-detail-meta { padding: 8px 20px 12px; font-size: 10px; color: var(--muted); }
+.claim-help {
+  margin-top: 18px; padding: 12px 14px; background: #f6f2ea;
+  font-size: 10.5px; color: var(--ink-soft); line-height: 1.7;
+}
+
+/* 관리자 — 교환/반품 접수 목록 */
+.claim-admin { margin-bottom: 16px; }
+table.data.claims { min-width: 780px; }
+.claim-cell b.claim-kind { display: inline-block; padding: 2px 7px; font-size: 10px; letter-spacing: 0.04em; background: var(--ink); color: #fbfaf7; }
+.claim-cell b.claim-kind.exchange { background: #2f5b7a; }
+.claim-cell .m, table.data.claims .m { font-size: 10px; color: var(--muted); margin-top: 3px; letter-spacing: 0.02em; }
+.fee-pill { display: inline-block; padding: 3px 8px; font-size: 10px; border: 1px solid var(--line); color: var(--ink-soft); }
+.fee-pill.free { border-color: #c9dcc9; background: #f2f8f2; color: #2f6b46; }
+.fee-pill.paid { border-color: #e4d5b0; background: #fbf6e9; color: #8a6a1f; }
+
+@media (max-width: 720px) {
+  .claim-modal {
+    align-self: center; margin: 16px; width: calc(100% - 32px);
+    max-height: calc(var(--app-height, 100dvh) - 32px);
+  }
+  .modal-layer .claim-modal { max-height: calc(var(--app-height, 100dvh) - 32px); }
+  .claim-body { padding: 16px 18px 4px; }
+  .claim-foot { padding: 12px 18px calc(14px + env(safe-area-inset-bottom)); grid-template-columns: 84px 1fr; }
+  .claim-foot .btn { height: 46px; }
+  .claim-types, .claim-reasons { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .claim-reason { padding: 10px 10px; }
+  .claim-reason .cr-name { font-size: 11.5px; }
+  .claim-reason .cr-fee { font-size: 9px; }
+  .claim-strip { padding: 10px 14px; gap: 6px; }
+  .claim-chip { font-size: 10px; padding: 3px 7px; }
+  .claim-badge { font-size: 10px; }
+  .claim-modal .modal-head { padding: 18px 18px 12px; }
+  .claim-modal .modal-head h2 { font-size: 22px; }
+  .claim-order-line { font-size: 10.5px; }
+}
 </style>
 </head>
 <body>
@@ -1165,13 +1290,14 @@ table.data.coupons { min-width: 640px; }
 (function () {
   'use strict';
 
-  var SEED = {"meta":{"app":"MONO ATELIER","schema_version":3,"generated_at":"2026-11-26T18:55:00+09:00","currency":"KRW","free_shipping_threshold":100000,"shipping_fee":3000,"password_hashing":"sha256('mono-atelier$' + password) — demo only"},"users":[{"id":"u_001","email":"demo@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길동","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","created_at":"2026-11-09T10:42:00+09:00"},{"id":"u_002","email":"admin@mono.kr","password_hash":"b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1","name":"관리자","phone":"02-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호 3층","role":"admin","created_at":"2026-10-01T09:00:00+09:00"}],"products":[{"id":"p_001","name":"울 더블 브레스티드 코트","brand":"MONO ATELIER","category":"outer","price":289000,"original_price":349000,"badge":"BEST","description":"두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.","image":"coat.webp","images":["coat.webp","coat-detail.webp","coat-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-10T09:20:00+09:00","is_active":true},{"id":"p_002","name":"캐시미어 리브 니트","brand":"MONO ATELIER","category":"top","price":129000,"original_price":159000,"badge":"NEW","description":"캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.","image":"knit.webp","images":["knit.webp","knit-detail.webp","knit-fabric.webp"],"free_shipping_threshold":50000,"created_at":"2026-11-18T11:05:00+09:00","is_active":true},{"id":"p_003","name":"와이드 테일러드 트라우저","brand":"MONO ATELIER","category":"bottom","price":149000,"original_price":null,"badge":null,"description":"허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.","image":"pants.webp","images":["pants.webp","pants-detail.webp","pants-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-10-25T16:30:00+09:00","is_active":true},{"id":"p_004","name":"사틴 슬립 미디 드레스","brand":"MONO ATELIER","category":"dress","price":189000,"original_price":220000,"badge":"SALE","description":"빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-02T13:10:00+09:00","is_active":true},{"id":"p_005","name":"스무스 레더 숄더백","brand":"MONO ATELIER","category":"acc","price":259000,"original_price":null,"badge":"BEST","description":"이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.","image":"bag.webp","images":["bag.webp","bag-detail.webp","bag-fabric.webp"],"free_shipping_threshold":0,"created_at":"2026-11-08T10:00:00+09:00","is_active":true},{"id":"p_006","name":"나일론 봄버 재킷","brand":"MONO ATELIER","category":"outer","price":179000,"original_price":210000,"badge":"NEW","description":"가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.","image":"jacket.webp","images":["jacket.webp","jacket-detail.webp","jacket-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-20T09:45:00+09:00","is_active":true},{"id":"p_007","name":"오버사이즈 코튼 셔츠","brand":"MONO ATELIER","category":"top","price":89000,"original_price":null,"badge":null,"description":"두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.","image":"shirt.webp","images":["shirt.webp","shirt-detail.webp","shirt-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-10-28T15:20:00+09:00","is_active":true},{"id":"p_008","name":"플리츠 미디 스커트","brand":"MONO ATELIER","category":"bottom","price":139000,"original_price":168000,"badge":"SALE","description":"곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.","image":"skirt.webp","images":["skirt.webp","skirt-detail.webp","skirt-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-10-20T12:00:00+09:00","is_active":true},{"id":"p_009","name":"개버딘 트렌치 코트","brand":"MONO ATELIER","category":"outer","price":319000,"original_price":369000,"badge":"LIMITED","description":"묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.","image":"trench.webp","images":["trench.webp","trench-detail.webp","trench-fabric.webp"],"free_shipping_threshold":0,"created_at":"2026-11-15T10:30:00+09:00","is_active":true},{"id":"p_010","name":"울 블렌드 오픈 가디건","brand":"MONO ATELIER","category":"top","price":119000,"original_price":null,"badge":null,"description":"울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.","image":"cardigan.webp","images":["cardigan.webp","cardigan-detail.webp","cardigan-fabric.webp"],"free_shipping_threshold":50000,"created_at":"2026-10-15T09:10:00+09:00","is_active":true},{"id":"p_011","name":"와이드 데님 팬츠","brand":"MONO ATELIER","category":"bottom","price":109000,"original_price":129000,"badge":"NEW","description":"워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.","image":"denim.webp","images":["denim.webp","denim-detail.webp","denim-fabric.webp"],"free_shipping_threshold":50000,"created_at":"2026-11-23T14:00:00+09:00","is_active":true},{"id":"p_012","name":"레더 페니 로퍼","brand":"MONO ATELIER","category":"acc","price":219000,"original_price":249000,"badge":null,"description":"블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.","image":"loafers.webp","images":["loafers.webp","loafers-detail.webp","loafers-fabric.webp"],"free_shipping_threshold":0,"created_at":"2026-11-05T11:40:00+09:00","is_active":true},{"id":"p_013","name":"실크 크레이프 미디 원피스","brand":"MONO ATELIER","category":"dress","price":209000,"original_price":null,"badge":null,"description":"실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-25T17:30:00+09:00","is_active":false}],"product_images":[{"id":"pi_001","product_id":"p_001","image":"coat.webp","alt":"울 더블 브레스티드 코트","sort_order":0},{"id":"pi_002","product_id":"p_001","image":"coat-detail.webp","alt":"울 더블 브레스티드 코트 디테일","sort_order":1},{"id":"pi_003","product_id":"p_001","image":"coat-fabric.webp","alt":"울 더블 브레스티드 코트 소재 클로즈업","sort_order":2},{"id":"pi_004","product_id":"p_002","image":"knit.webp","alt":"캐시미어 리브 니트","sort_order":0},{"id":"pi_005","product_id":"p_002","image":"knit-detail.webp","alt":"캐시미어 리브 니트 디테일","sort_order":1},{"id":"pi_006","product_id":"p_002","image":"knit-fabric.webp","alt":"캐시미어 리브 니트 소재 클로즈업","sort_order":2},{"id":"pi_007","product_id":"p_003","image":"pants.webp","alt":"와이드 테일러드 트라우저","sort_order":0},{"id":"pi_008","product_id":"p_003","image":"pants-detail.webp","alt":"와이드 테일러드 트라우저 디테일","sort_order":1},{"id":"pi_009","product_id":"p_003","image":"pants-fabric.webp","alt":"와이드 테일러드 트라우저 소재 클로즈업","sort_order":2},{"id":"pi_010","product_id":"p_004","image":"dress.webp","alt":"사틴 슬립 미디 드레스","sort_order":0},{"id":"pi_011","product_id":"p_004","image":"dress-detail.webp","alt":"사틴 슬립 미디 드레스 디테일","sort_order":1},{"id":"pi_012","product_id":"p_004","image":"dress-fabric.webp","alt":"사틴 슬립 미디 드레스 소재 클로즈업","sort_order":2},{"id":"pi_013","product_id":"p_005","image":"bag.webp","alt":"스무스 레더 숄더백","sort_order":0},{"id":"pi_014","product_id":"p_005","image":"bag-detail.webp","alt":"스무스 레더 숄더백 디테일","sort_order":1},{"id":"pi_015","product_id":"p_005","image":"bag-fabric.webp","alt":"스무스 레더 숄더백 소재 클로즈업","sort_order":2},{"id":"pi_016","product_id":"p_006","image":"jacket.webp","alt":"나일론 봄버 재킷","sort_order":0},{"id":"pi_017","product_id":"p_006","image":"jacket-detail.webp","alt":"나일론 봄버 재킷 디테일","sort_order":1},{"id":"pi_018","product_id":"p_006","image":"jacket-fabric.webp","alt":"나일론 봄버 재킷 소재 클로즈업","sort_order":2},{"id":"pi_019","product_id":"p_007","image":"shirt.webp","alt":"오버사이즈 코튼 셔츠","sort_order":0},{"id":"pi_020","product_id":"p_007","image":"shirt-detail.webp","alt":"오버사이즈 코튼 셔츠 디테일","sort_order":1},{"id":"pi_021","product_id":"p_007","image":"shirt-fabric.webp","alt":"오버사이즈 코튼 셔츠 소재 클로즈업","sort_order":2},{"id":"pi_022","product_id":"p_008","image":"skirt.webp","alt":"플리츠 미디 스커트","sort_order":0},{"id":"pi_023","product_id":"p_008","image":"skirt-detail.webp","alt":"플리츠 미디 스커트 디테일","sort_order":1},{"id":"pi_024","product_id":"p_008","image":"skirt-fabric.webp","alt":"플리츠 미디 스커트 소재 클로즈업","sort_order":2},{"id":"pi_025","product_id":"p_009","image":"trench.webp","alt":"개버딘 트렌치 코트","sort_order":0},{"id":"pi_026","product_id":"p_009","image":"trench-detail.webp","alt":"개버딘 트렌치 코트 디테일","sort_order":1},{"id":"pi_027","product_id":"p_009","image":"trench-fabric.webp","alt":"개버딘 트렌치 코트 소재 클로즈업","sort_order":2},{"id":"pi_028","product_id":"p_010","image":"cardigan.webp","alt":"울 블렌드 오픈 가디건","sort_order":0},{"id":"pi_029","product_id":"p_010","image":"cardigan-detail.webp","alt":"울 블렌드 오픈 가디건 디테일","sort_order":1},{"id":"pi_030","product_id":"p_010","image":"cardigan-fabric.webp","alt":"울 블렌드 오픈 가디건 소재 클로즈업","sort_order":2},{"id":"pi_031","product_id":"p_011","image":"denim.webp","alt":"와이드 데님 팬츠","sort_order":0},{"id":"pi_032","product_id":"p_011","image":"denim-detail.webp","alt":"와이드 데님 팬츠 디테일","sort_order":1},{"id":"pi_033","product_id":"p_011","image":"denim-fabric.webp","alt":"와이드 데님 팬츠 소재 클로즈업","sort_order":2},{"id":"pi_034","product_id":"p_012","image":"loafers.webp","alt":"레더 페니 로퍼","sort_order":0},{"id":"pi_035","product_id":"p_012","image":"loafers-detail.webp","alt":"레더 페니 로퍼 디테일","sort_order":1},{"id":"pi_036","product_id":"p_012","image":"loafers-fabric.webp","alt":"레더 페니 로퍼 소재 클로즈업","sort_order":2},{"id":"pi_037","product_id":"p_013","image":"dress.webp","alt":"실크 크레이프 미디 원피스","sort_order":0},{"id":"pi_038","product_id":"p_013","image":"dress-detail.webp","alt":"실크 크레이프 미디 원피스 디테일","sort_order":1},{"id":"pi_039","product_id":"p_013","image":"dress-fabric.webp","alt":"실크 크레이프 미디 원피스 소재 클로즈업","sort_order":2}],"product_variants":[{"id":"v_001","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"S","stock":5,"sku":"MA-OUT-001-차콜-S"},{"id":"v_002","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"M","stock":3,"sku":"MA-OUT-001-차콜-M"},{"id":"v_003","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"L","stock":2,"sku":"MA-OUT-001-차콜-L"},{"id":"v_004","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"XL","stock":1,"sku":"MA-OUT-001-차콜-XL"},{"id":"v_005","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"S","stock":4,"sku":"MA-OUT-001-카멜-S"},{"id":"v_006","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"M","stock":6,"sku":"MA-OUT-001-카멜-M"},{"id":"v_007","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"L","stock":3,"sku":"MA-OUT-001-카멜-L"},{"id":"v_008","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"XL","stock":0,"sku":"MA-OUT-001-카멜-XL"},{"id":"v_009","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-001-블랙-S"},{"id":"v_010","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":0,"sku":"MA-OUT-001-블랙-M"},{"id":"v_011","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-OUT-001-블랙-L"},{"id":"v_012","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-OUT-001-블랙-XL"},{"id":"v_013","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"S","stock":8,"sku":"MA-TOP-002-크림-S"},{"id":"v_014","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"M","stock":12,"sku":"MA-TOP-002-크림-M"},{"id":"v_015","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"L","stock":5,"sku":"MA-TOP-002-크림-L"},{"id":"v_016","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"S","stock":3,"sku":"MA-TOP-002-오트-S"},{"id":"v_017","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"M","stock":2,"sku":"MA-TOP-002-오트-M"},{"id":"v_018","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"L","stock":6,"sku":"MA-TOP-002-오트-L"},{"id":"v_019","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"S","stock":4,"sku":"MA-TOP-002-블랙-S"},{"id":"v_020","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"M","stock":1,"sku":"MA-TOP-002-블랙-M"},{"id":"v_021","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"L","stock":0,"sku":"MA-TOP-002-블랙-L"},{"id":"v_022","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":6,"sku":"MA-BTM-003-블랙-S"},{"id":"v_023","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":9,"sku":"MA-BTM-003-블랙-M"},{"id":"v_024","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-BTM-003-블랙-L"},{"id":"v_025","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-BTM-003-블랙-XL"},{"id":"v_026","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":2,"sku":"MA-BTM-003-차콜-S"},{"id":"v_027","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":5,"sku":"MA-BTM-003-차콜-M"},{"id":"v_028","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":7,"sku":"MA-BTM-003-차콜-L"},{"id":"v_029","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"XL","stock":1,"sku":"MA-BTM-003-차콜-XL"},{"id":"v_030","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":3,"sku":"MA-DRS-004-샴페-S"},{"id":"v_031","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":0,"sku":"MA-DRS-004-샴페-M"},{"id":"v_032","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":2,"sku":"MA-DRS-004-샴페-L"},{"id":"v_033","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-DRS-004-블랙-S"},{"id":"v_034","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":5,"sku":"MA-DRS-004-블랙-M"},{"id":"v_035","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-DRS-004-블랙-L"},{"id":"v_036","product_id":"p_005","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":6,"sku":"MA-ACC-005-블랙-FREE"},{"id":"v_037","product_id":"p_005","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":2,"sku":"MA-ACC-005-다크-FREE"},{"id":"v_038","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"M","stock":5,"sku":"MA-OUT-006-올리-M"},{"id":"v_039","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"L","stock":4,"sku":"MA-OUT-006-올리-L"},{"id":"v_040","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"XL","stock":2,"sku":"MA-OUT-006-올리-XL"},{"id":"v_041","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":3,"sku":"MA-OUT-006-블랙-M"},{"id":"v_042","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":0,"sku":"MA-OUT-006-블랙-L"},{"id":"v_043","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":5,"sku":"MA-OUT-006-블랙-XL"},{"id":"v_044","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"M","stock":2,"sku":"MA-OUT-006-샌드-M"},{"id":"v_045","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"L","stock":3,"sku":"MA-OUT-006-샌드-L"},{"id":"v_046","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"XL","stock":1,"sku":"MA-OUT-006-샌드-XL"},{"id":"v_047","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"S","stock":10,"sku":"MA-TOP-007-화이-S"},{"id":"v_048","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"M","stock":14,"sku":"MA-TOP-007-화이-M"},{"id":"v_049","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"L","stock":6,"sku":"MA-TOP-007-화이-L"},{"id":"v_050","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"S","stock":4,"sku":"MA-TOP-007-스카-S"},{"id":"v_051","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"M","stock":3,"sku":"MA-TOP-007-스카-M"},{"id":"v_052","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"L","stock":2,"sku":"MA-TOP-007-스카-L"},{"id":"v_053","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":5,"sku":"MA-BTM-008-차콜-S"},{"id":"v_054","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":3,"sku":"MA-BTM-008-차콜-M"},{"id":"v_055","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":2,"sku":"MA-BTM-008-차콜-L"},{"id":"v_056","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-BTM-008-블랙-S"},{"id":"v_057","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":6,"sku":"MA-BTM-008-블랙-M"},{"id":"v_058","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":1,"sku":"MA-BTM-008-블랙-L"},{"id":"v_059","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"S","stock":0,"sku":"MA-OUT-009-베이-S"},{"id":"v_060","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"M","stock":3,"sku":"MA-OUT-009-베이-M"},{"id":"v_061","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"L","stock":4,"sku":"MA-OUT-009-베이-L"},{"id":"v_062","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"XL","stock":2,"sku":"MA-OUT-009-베이-XL"},{"id":"v_063","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-009-블랙-S"},{"id":"v_064","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":4,"sku":"MA-OUT-009-블랙-M"},{"id":"v_065","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-OUT-009-블랙-L"},{"id":"v_066","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":1,"sku":"MA-OUT-009-블랙-XL"},{"id":"v_067","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"S","stock":4,"sku":"MA-TOP-010-그레-S"},{"id":"v_068","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"M","stock":5,"sku":"MA-TOP-010-그레-M"},{"id":"v_069","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"L","stock":3,"sku":"MA-TOP-010-그레-L"},{"id":"v_070","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"S","stock":2,"sku":"MA-TOP-010-아이-S"},{"id":"v_071","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"M","stock":2,"sku":"MA-TOP-010-아이-M"},{"id":"v_072","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"L","stock":4,"sku":"MA-TOP-010-아이-L"},{"id":"v_073","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"S","stock":6,"sku":"MA-BTM-011-미드-S"},{"id":"v_074","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"M","stock":8,"sku":"MA-BTM-011-미드-M"},{"id":"v_075","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"L","stock":5,"sku":"MA-BTM-011-미드-L"},{"id":"v_076","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"XL","stock":3,"sku":"MA-BTM-011-미드-XL"},{"id":"v_077","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"S","stock":3,"sku":"MA-BTM-011-워시-S"},{"id":"v_078","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"M","stock":4,"sku":"MA-BTM-011-워시-M"},{"id":"v_079","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"L","stock":2,"sku":"MA-BTM-011-워시-L"},{"id":"v_080","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"XL","stock":0,"sku":"MA-BTM-011-워시-XL"},{"id":"v_081","product_id":"p_012","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":0,"sku":"MA-ACC-012-블랙-FREE"},{"id":"v_082","product_id":"p_012","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":0,"sku":"MA-ACC-012-다크-FREE"},{"id":"v_083","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":2,"sku":"MA-DRS-013-샴페-S"},{"id":"v_084","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":2,"sku":"MA-DRS-013-샴페-M"},{"id":"v_085","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":1,"sku":"MA-DRS-013-샴페-L"},{"id":"v_086","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":3,"sku":"MA-DRS-013-블랙-S"},{"id":"v_087","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":2,"sku":"MA-DRS-013-블랙-M"},{"id":"v_088","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":2,"sku":"MA-DRS-013-블랙-L"}],"cart_items":[],"orders":[{"id":"o_001","order_no":"MA20261112-4821","user_id":"u_001","status":"delivered","total_amount":278000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-12T10:24:00+09:00"},{"id":"o_002","order_no":"MA20261124-3917","user_id":"u_001","status":"paid","total_amount":173000,"shipping_fee":0,"coupon_code":"MONO5000","discount_amount":5000,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-24T15:40:00+09:00"},{"id":"o_003","order_no":"MA20261125-6042","user_id":"u_001","status":"preparing","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"bank","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-25T09:12:00+09:00"}],"order_items":[{"id":"oi_001","order_id":"o_001","variant_id":"v_008","product_name":"캐시미어 리브 니트","color":"크림","size":"M","unit_price":129000,"quantity":1},{"id":"oi_002","order_id":"o_001","variant_id":"v_012","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1},{"id":"oi_003","order_id":"o_002","variant_id":"v_020","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":2},{"id":"oi_004","order_id":"o_003","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1}],"coupons":[{"id":"c_001","code":"WELCOME10","name":"신규 회원 10% 할인","discount_type":"percent","discount_value":10,"min_order_amount":30000,"expires_at":"2027-12-31T23:59:59+09:00","is_active":true,"target_user_ids":[],"created_at":"2026-11-01T10:00:00+09:00"},{"id":"c_002","code":"MONO5000","name":"5,000원 할인 쿠폰","discount_type":"fixed","discount_value":5000,"min_order_amount":50000,"expires_at":"2027-06-30T23:59:59+09:00","is_active":true,"target_user_ids":[],"created_at":"2026-11-05T10:00:00+09:00"},{"id":"c_003","code":"VIP15","name":"VIP 회원 전용 15% 할인","discount_type":"percent","discount_value":15,"min_order_amount":50000,"expires_at":"2027-03-31T23:59:59+09:00","is_active":true,"target_user_ids":["u_001"],"created_at":"2026-11-20T10:00:00+09:00"}]};
+  var SEED = {"meta":{"app":"MONO ATELIER","schema_version":4,"generated_at":"2026-11-26T22:40:00+09:00","currency":"KRW","free_shipping_threshold":100000,"shipping_fee":3000,"claim_return_fee":3000,"claim_exchange_fee":6000,"password_hashing":"sha256('mono-atelier$' + password) — demo only"},"users":[{"id":"u_001","email":"demo@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길동","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","created_at":"2026-11-09T10:42:00+09:00"},{"id":"u_002","email":"admin@mono.kr","password_hash":"b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1","name":"관리자","phone":"02-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호 3층","role":"admin","created_at":"2026-10-01T09:00:00+09:00"}],"products":[{"id":"p_001","name":"울 더블 브레스티드 코트","brand":"MONO ATELIER","category":"outer","price":289000,"original_price":349000,"badge":"BEST","description":"두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.","image":"coat.webp","images":["coat.webp","coat-detail.webp","coat-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-10T09:20:00+09:00","is_active":true},{"id":"p_002","name":"캐시미어 리브 니트","brand":"MONO ATELIER","category":"top","price":129000,"original_price":159000,"badge":"NEW","description":"캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.","image":"knit.webp","images":["knit.webp","knit-detail.webp","knit-fabric.webp"],"free_shipping_threshold":50000,"created_at":"2026-11-18T11:05:00+09:00","is_active":true},{"id":"p_003","name":"와이드 테일러드 트라우저","brand":"MONO ATELIER","category":"bottom","price":149000,"original_price":null,"badge":null,"description":"허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.","image":"pants.webp","images":["pants.webp","pants-detail.webp","pants-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-10-25T16:30:00+09:00","is_active":true},{"id":"p_004","name":"사틴 슬립 미디 드레스","brand":"MONO ATELIER","category":"dress","price":189000,"original_price":220000,"badge":"SALE","description":"빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-02T13:10:00+09:00","is_active":true},{"id":"p_005","name":"스무스 레더 숄더백","brand":"MONO ATELIER","category":"acc","price":259000,"original_price":null,"badge":"BEST","description":"이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.","image":"bag.webp","images":["bag.webp","bag-detail.webp","bag-fabric.webp"],"free_shipping_threshold":0,"created_at":"2026-11-08T10:00:00+09:00","is_active":true},{"id":"p_006","name":"나일론 봄버 재킷","brand":"MONO ATELIER","category":"outer","price":179000,"original_price":210000,"badge":"NEW","description":"가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.","image":"jacket.webp","images":["jacket.webp","jacket-detail.webp","jacket-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-20T09:45:00+09:00","is_active":true},{"id":"p_007","name":"오버사이즈 코튼 셔츠","brand":"MONO ATELIER","category":"top","price":89000,"original_price":null,"badge":null,"description":"두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.","image":"shirt.webp","images":["shirt.webp","shirt-detail.webp","shirt-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-10-28T15:20:00+09:00","is_active":true},{"id":"p_008","name":"플리츠 미디 스커트","brand":"MONO ATELIER","category":"bottom","price":139000,"original_price":168000,"badge":"SALE","description":"곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.","image":"skirt.webp","images":["skirt.webp","skirt-detail.webp","skirt-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-10-20T12:00:00+09:00","is_active":true},{"id":"p_009","name":"개버딘 트렌치 코트","brand":"MONO ATELIER","category":"outer","price":319000,"original_price":369000,"badge":"LIMITED","description":"묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.","image":"trench.webp","images":["trench.webp","trench-detail.webp","trench-fabric.webp"],"free_shipping_threshold":0,"created_at":"2026-11-15T10:30:00+09:00","is_active":true},{"id":"p_010","name":"울 블렌드 오픈 가디건","brand":"MONO ATELIER","category":"top","price":119000,"original_price":null,"badge":null,"description":"울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.","image":"cardigan.webp","images":["cardigan.webp","cardigan-detail.webp","cardigan-fabric.webp"],"free_shipping_threshold":50000,"created_at":"2026-10-15T09:10:00+09:00","is_active":true},{"id":"p_011","name":"와이드 데님 팬츠","brand":"MONO ATELIER","category":"bottom","price":109000,"original_price":129000,"badge":"NEW","description":"워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.","image":"denim.webp","images":["denim.webp","denim-detail.webp","denim-fabric.webp"],"free_shipping_threshold":50000,"created_at":"2026-11-23T14:00:00+09:00","is_active":true},{"id":"p_012","name":"레더 페니 로퍼","brand":"MONO ATELIER","category":"acc","price":219000,"original_price":249000,"badge":null,"description":"블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.","image":"loafers.webp","images":["loafers.webp","loafers-detail.webp","loafers-fabric.webp"],"free_shipping_threshold":0,"created_at":"2026-11-05T11:40:00+09:00","is_active":true},{"id":"p_013","name":"실크 크레이프 미디 원피스","brand":"MONO ATELIER","category":"dress","price":209000,"original_price":null,"badge":null,"description":"실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"free_shipping_threshold":null,"created_at":"2026-11-25T17:30:00+09:00","is_active":false}],"product_images":[{"id":"pi_001","product_id":"p_001","image":"coat.webp","alt":"울 더블 브레스티드 코트","sort_order":0},{"id":"pi_002","product_id":"p_001","image":"coat-detail.webp","alt":"울 더블 브레스티드 코트 디테일","sort_order":1},{"id":"pi_003","product_id":"p_001","image":"coat-fabric.webp","alt":"울 더블 브레스티드 코트 소재 클로즈업","sort_order":2},{"id":"pi_004","product_id":"p_002","image":"knit.webp","alt":"캐시미어 리브 니트","sort_order":0},{"id":"pi_005","product_id":"p_002","image":"knit-detail.webp","alt":"캐시미어 리브 니트 디테일","sort_order":1},{"id":"pi_006","product_id":"p_002","image":"knit-fabric.webp","alt":"캐시미어 리브 니트 소재 클로즈업","sort_order":2},{"id":"pi_007","product_id":"p_003","image":"pants.webp","alt":"와이드 테일러드 트라우저","sort_order":0},{"id":"pi_008","product_id":"p_003","image":"pants-detail.webp","alt":"와이드 테일러드 트라우저 디테일","sort_order":1},{"id":"pi_009","product_id":"p_003","image":"pants-fabric.webp","alt":"와이드 테일러드 트라우저 소재 클로즈업","sort_order":2},{"id":"pi_010","product_id":"p_004","image":"dress.webp","alt":"사틴 슬립 미디 드레스","sort_order":0},{"id":"pi_011","product_id":"p_004","image":"dress-detail.webp","alt":"사틴 슬립 미디 드레스 디테일","sort_order":1},{"id":"pi_012","product_id":"p_004","image":"dress-fabric.webp","alt":"사틴 슬립 미디 드레스 소재 클로즈업","sort_order":2},{"id":"pi_013","product_id":"p_005","image":"bag.webp","alt":"스무스 레더 숄더백","sort_order":0},{"id":"pi_014","product_id":"p_005","image":"bag-detail.webp","alt":"스무스 레더 숄더백 디테일","sort_order":1},{"id":"pi_015","product_id":"p_005","image":"bag-fabric.webp","alt":"스무스 레더 숄더백 소재 클로즈업","sort_order":2},{"id":"pi_016","product_id":"p_006","image":"jacket.webp","alt":"나일론 봄버 재킷","sort_order":0},{"id":"pi_017","product_id":"p_006","image":"jacket-detail.webp","alt":"나일론 봄버 재킷 디테일","sort_order":1},{"id":"pi_018","product_id":"p_006","image":"jacket-fabric.webp","alt":"나일론 봄버 재킷 소재 클로즈업","sort_order":2},{"id":"pi_019","product_id":"p_007","image":"shirt.webp","alt":"오버사이즈 코튼 셔츠","sort_order":0},{"id":"pi_020","product_id":"p_007","image":"shirt-detail.webp","alt":"오버사이즈 코튼 셔츠 디테일","sort_order":1},{"id":"pi_021","product_id":"p_007","image":"shirt-fabric.webp","alt":"오버사이즈 코튼 셔츠 소재 클로즈업","sort_order":2},{"id":"pi_022","product_id":"p_008","image":"skirt.webp","alt":"플리츠 미디 스커트","sort_order":0},{"id":"pi_023","product_id":"p_008","image":"skirt-detail.webp","alt":"플리츠 미디 스커트 디테일","sort_order":1},{"id":"pi_024","product_id":"p_008","image":"skirt-fabric.webp","alt":"플리츠 미디 스커트 소재 클로즈업","sort_order":2},{"id":"pi_025","product_id":"p_009","image":"trench.webp","alt":"개버딘 트렌치 코트","sort_order":0},{"id":"pi_026","product_id":"p_009","image":"trench-detail.webp","alt":"개버딘 트렌치 코트 디테일","sort_order":1},{"id":"pi_027","product_id":"p_009","image":"trench-fabric.webp","alt":"개버딘 트렌치 코트 소재 클로즈업","sort_order":2},{"id":"pi_028","product_id":"p_010","image":"cardigan.webp","alt":"울 블렌드 오픈 가디건","sort_order":0},{"id":"pi_029","product_id":"p_010","image":"cardigan-detail.webp","alt":"울 블렌드 오픈 가디건 디테일","sort_order":1},{"id":"pi_030","product_id":"p_010","image":"cardigan-fabric.webp","alt":"울 블렌드 오픈 가디건 소재 클로즈업","sort_order":2},{"id":"pi_031","product_id":"p_011","image":"denim.webp","alt":"와이드 데님 팬츠","sort_order":0},{"id":"pi_032","product_id":"p_011","image":"denim-detail.webp","alt":"와이드 데님 팬츠 디테일","sort_order":1},{"id":"pi_033","product_id":"p_011","image":"denim-fabric.webp","alt":"와이드 데님 팬츠 소재 클로즈업","sort_order":2},{"id":"pi_034","product_id":"p_012","image":"loafers.webp","alt":"레더 페니 로퍼","sort_order":0},{"id":"pi_035","product_id":"p_012","image":"loafers-detail.webp","alt":"레더 페니 로퍼 디테일","sort_order":1},{"id":"pi_036","product_id":"p_012","image":"loafers-fabric.webp","alt":"레더 페니 로퍼 소재 클로즈업","sort_order":2},{"id":"pi_037","product_id":"p_013","image":"dress.webp","alt":"실크 크레이프 미디 원피스","sort_order":0},{"id":"pi_038","product_id":"p_013","image":"dress-detail.webp","alt":"실크 크레이프 미디 원피스 디테일","sort_order":1},{"id":"pi_039","product_id":"p_013","image":"dress-fabric.webp","alt":"실크 크레이프 미디 원피스 소재 클로즈업","sort_order":2}],"product_variants":[{"id":"v_001","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"S","stock":5,"sku":"MA-OUT-001-차콜-S"},{"id":"v_002","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"M","stock":3,"sku":"MA-OUT-001-차콜-M"},{"id":"v_003","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"L","stock":2,"sku":"MA-OUT-001-차콜-L"},{"id":"v_004","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"XL","stock":1,"sku":"MA-OUT-001-차콜-XL"},{"id":"v_005","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"S","stock":4,"sku":"MA-OUT-001-카멜-S"},{"id":"v_006","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"M","stock":6,"sku":"MA-OUT-001-카멜-M"},{"id":"v_007","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"L","stock":3,"sku":"MA-OUT-001-카멜-L"},{"id":"v_008","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"XL","stock":0,"sku":"MA-OUT-001-카멜-XL"},{"id":"v_009","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-001-블랙-S"},{"id":"v_010","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":0,"sku":"MA-OUT-001-블랙-M"},{"id":"v_011","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-OUT-001-블랙-L"},{"id":"v_012","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-OUT-001-블랙-XL"},{"id":"v_013","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"S","stock":8,"sku":"MA-TOP-002-크림-S"},{"id":"v_014","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"M","stock":12,"sku":"MA-TOP-002-크림-M"},{"id":"v_015","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"L","stock":5,"sku":"MA-TOP-002-크림-L"},{"id":"v_016","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"S","stock":3,"sku":"MA-TOP-002-오트-S"},{"id":"v_017","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"M","stock":2,"sku":"MA-TOP-002-오트-M"},{"id":"v_018","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"L","stock":6,"sku":"MA-TOP-002-오트-L"},{"id":"v_019","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"S","stock":4,"sku":"MA-TOP-002-블랙-S"},{"id":"v_020","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"M","stock":1,"sku":"MA-TOP-002-블랙-M"},{"id":"v_021","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"L","stock":0,"sku":"MA-TOP-002-블랙-L"},{"id":"v_022","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":6,"sku":"MA-BTM-003-블랙-S"},{"id":"v_023","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":9,"sku":"MA-BTM-003-블랙-M"},{"id":"v_024","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-BTM-003-블랙-L"},{"id":"v_025","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-BTM-003-블랙-XL"},{"id":"v_026","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":2,"sku":"MA-BTM-003-차콜-S"},{"id":"v_027","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":5,"sku":"MA-BTM-003-차콜-M"},{"id":"v_028","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":7,"sku":"MA-BTM-003-차콜-L"},{"id":"v_029","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"XL","stock":1,"sku":"MA-BTM-003-차콜-XL"},{"id":"v_030","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":3,"sku":"MA-DRS-004-샴페-S"},{"id":"v_031","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":0,"sku":"MA-DRS-004-샴페-M"},{"id":"v_032","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":2,"sku":"MA-DRS-004-샴페-L"},{"id":"v_033","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-DRS-004-블랙-S"},{"id":"v_034","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":5,"sku":"MA-DRS-004-블랙-M"},{"id":"v_035","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-DRS-004-블랙-L"},{"id":"v_036","product_id":"p_005","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":6,"sku":"MA-ACC-005-블랙-FREE"},{"id":"v_037","product_id":"p_005","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":2,"sku":"MA-ACC-005-다크-FREE"},{"id":"v_038","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"M","stock":5,"sku":"MA-OUT-006-올리-M"},{"id":"v_039","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"L","stock":4,"sku":"MA-OUT-006-올리-L"},{"id":"v_040","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"XL","stock":2,"sku":"MA-OUT-006-올리-XL"},{"id":"v_041","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":3,"sku":"MA-OUT-006-블랙-M"},{"id":"v_042","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":0,"sku":"MA-OUT-006-블랙-L"},{"id":"v_043","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":5,"sku":"MA-OUT-006-블랙-XL"},{"id":"v_044","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"M","stock":2,"sku":"MA-OUT-006-샌드-M"},{"id":"v_045","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"L","stock":3,"sku":"MA-OUT-006-샌드-L"},{"id":"v_046","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"XL","stock":1,"sku":"MA-OUT-006-샌드-XL"},{"id":"v_047","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"S","stock":10,"sku":"MA-TOP-007-화이-S"},{"id":"v_048","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"M","stock":14,"sku":"MA-TOP-007-화이-M"},{"id":"v_049","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"L","stock":6,"sku":"MA-TOP-007-화이-L"},{"id":"v_050","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"S","stock":4,"sku":"MA-TOP-007-스카-S"},{"id":"v_051","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"M","stock":3,"sku":"MA-TOP-007-스카-M"},{"id":"v_052","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"L","stock":2,"sku":"MA-TOP-007-스카-L"},{"id":"v_053","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":5,"sku":"MA-BTM-008-차콜-S"},{"id":"v_054","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":3,"sku":"MA-BTM-008-차콜-M"},{"id":"v_055","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":2,"sku":"MA-BTM-008-차콜-L"},{"id":"v_056","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-BTM-008-블랙-S"},{"id":"v_057","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":6,"sku":"MA-BTM-008-블랙-M"},{"id":"v_058","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":1,"sku":"MA-BTM-008-블랙-L"},{"id":"v_059","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"S","stock":0,"sku":"MA-OUT-009-베이-S"},{"id":"v_060","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"M","stock":3,"sku":"MA-OUT-009-베이-M"},{"id":"v_061","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"L","stock":4,"sku":"MA-OUT-009-베이-L"},{"id":"v_062","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"XL","stock":2,"sku":"MA-OUT-009-베이-XL"},{"id":"v_063","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-009-블랙-S"},{"id":"v_064","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":4,"sku":"MA-OUT-009-블랙-M"},{"id":"v_065","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-OUT-009-블랙-L"},{"id":"v_066","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":1,"sku":"MA-OUT-009-블랙-XL"},{"id":"v_067","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"S","stock":4,"sku":"MA-TOP-010-그레-S"},{"id":"v_068","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"M","stock":5,"sku":"MA-TOP-010-그레-M"},{"id":"v_069","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"L","stock":3,"sku":"MA-TOP-010-그레-L"},{"id":"v_070","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"S","stock":2,"sku":"MA-TOP-010-아이-S"},{"id":"v_071","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"M","stock":2,"sku":"MA-TOP-010-아이-M"},{"id":"v_072","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"L","stock":4,"sku":"MA-TOP-010-아이-L"},{"id":"v_073","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"S","stock":6,"sku":"MA-BTM-011-미드-S"},{"id":"v_074","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"M","stock":8,"sku":"MA-BTM-011-미드-M"},{"id":"v_075","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"L","stock":5,"sku":"MA-BTM-011-미드-L"},{"id":"v_076","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"XL","stock":3,"sku":"MA-BTM-011-미드-XL"},{"id":"v_077","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"S","stock":3,"sku":"MA-BTM-011-워시-S"},{"id":"v_078","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"M","stock":4,"sku":"MA-BTM-011-워시-M"},{"id":"v_079","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"L","stock":2,"sku":"MA-BTM-011-워시-L"},{"id":"v_080","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"XL","stock":0,"sku":"MA-BTM-011-워시-XL"},{"id":"v_081","product_id":"p_012","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":0,"sku":"MA-ACC-012-블랙-FREE"},{"id":"v_082","product_id":"p_012","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":0,"sku":"MA-ACC-012-다크-FREE"},{"id":"v_083","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":2,"sku":"MA-DRS-013-샴페-S"},{"id":"v_084","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":2,"sku":"MA-DRS-013-샴페-M"},{"id":"v_085","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":1,"sku":"MA-DRS-013-샴페-L"},{"id":"v_086","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":3,"sku":"MA-DRS-013-블랙-S"},{"id":"v_087","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":2,"sku":"MA-DRS-013-블랙-M"},{"id":"v_088","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":2,"sku":"MA-DRS-013-블랙-L"}],"cart_items":[],"orders":[{"id":"o_001","order_no":"MA20261112-4821","user_id":"u_001","status":"delivered","total_amount":278000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-12T10:24:00+09:00"},{"id":"o_002","order_no":"MA20261124-3917","user_id":"u_001","status":"paid","total_amount":173000,"shipping_fee":0,"coupon_code":"MONO5000","discount_amount":5000,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-24T15:40:00+09:00"},{"id":"o_003","order_no":"MA20261125-6042","user_id":"u_001","status":"preparing","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"bank","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-25T09:12:00+09:00"},{"id":"o_004","order_no":"MA20261114-2288","user_id":"u_001","status":"delivered","total_amount":109000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-14T11:05:00+09:00"},{"id":"o_005","order_no":"MA20261116-7735","user_id":"u_001","status":"delivered","total_amount":139000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-16T14:30:00+09:00"}],"order_items":[{"id":"oi_001","order_id":"o_001","variant_id":"v_008","product_name":"캐시미어 리브 니트","color":"크림","size":"M","unit_price":129000,"quantity":1},{"id":"oi_002","order_id":"o_001","variant_id":"v_012","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1},{"id":"oi_003","order_id":"o_002","variant_id":"v_020","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":2},{"id":"oi_004","order_id":"o_003","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1},{"id":"oi_005","order_id":"o_004","variant_id":"v_074","product_name":"와이드 데님 팬츠","color":"미드블루","size":"M","unit_price":109000,"quantity":1},{"id":"oi_006","order_id":"o_005","variant_id":"v_054","product_name":"플리츠 미디 스커트","color":"차콜","size":"M","unit_price":139000,"quantity":1}],"order_claims":[{"id":"oc_20261119_1001","order_id":"o_004","user_id":"u_001","claim_type":"return","reason_category":"defect","reason_detail":"밑단 박음질이 풀려 있고 오른쪽 무릎 부분에 5cm 정도 올이 나 있습니다.","shipping_fee":0,"payment_status":"free","payment_key":null,"payment_mode":"free","exchange_option":null,"status":"requested","stock_restored":0,"created_at":"2026-11-19T09:20:00+09:00","updated_at":"2026-11-19T09:20:00+09:00"},{"id":"oc_20261121_1002","order_id":"o_005","user_id":"u_001","claim_type":"exchange","reason_category":"size_color","reason_detail":"허리가 조금 커서 S 사이즈로 교환하고 싶습니다.","shipping_fee":6000,"payment_status":"paid","payment_key":"test_claim_seed_6f1c","payment_mode":"test-client","exchange_option":"차콜 / S","status":"approved","stock_restored":0,"created_at":"2026-11-21T10:12:00+09:00","updated_at":"2026-11-22T09:00:00+09:00"}],"coupons":[{"id":"c_001","code":"WELCOME10","name":"신규 회원 10% 할인","discount_type":"percent","discount_value":10,"min_order_amount":30000,"expires_at":"2027-12-31T23:59:59+09:00","is_active":true,"target_user_ids":[],"created_at":"2026-11-01T10:00:00+09:00"},{"id":"c_002","code":"MONO5000","name":"5,000원 할인 쿠폰","discount_type":"fixed","discount_value":5000,"min_order_amount":50000,"expires_at":"2027-06-30T23:59:59+09:00","is_active":true,"target_user_ids":[],"created_at":"2026-11-05T10:00:00+09:00"},{"id":"c_003","code":"VIP15","name":"VIP 회원 전용 15% 할인","discount_type":"percent","discount_value":15,"min_order_amount":50000,"expires_at":"2027-03-31T23:59:59+09:00","is_active":true,"target_user_ids":["u_001"],"created_at":"2026-11-20T10:00:00+09:00"}]};
   var EMBEDDED = {};
-  var APP_VERSION = '1.4.0';
+  var APP_VERSION = '1.5.0';
 
   var LS_DB = 'mono_atelier_db_v1';
   var LS_SESSION = 'mono_atelier_session_v1';
   var LS_PENDING = 'mono_atelier_pending_checkout_v1';
+  var LS_PENDING_CLAIM = 'mono_atelier_pending_claim_v1';
   var LS_CUSTOMER_KEY = 'mono_atelier_payment_customer_key_v1';
   var FREE_SHIPPING = 100000;      // 스토어 기본 무료배송 기준
   var SHIPPING_FEE = 3000;         // 기본 배송비(한 주문당 1회)
@@ -1181,7 +1307,7 @@ table.data.coupons { min-width: 640px; }
   var UPLOAD_MAX_COUNT = 6;        // 상품당 업로드 이미지 수 상한
   var BADGE_PRESETS = ['BEST', 'NEW', 'SALE', 'LIMITED'];
   var BADGE_CUSTOM_MAX = 16;
-  var DB_TABLES = ['users', 'products', 'product_images', 'product_variants', 'cart_items', 'orders', 'order_items', 'coupons'];
+  var DB_TABLES = ['users', 'products', 'product_images', 'product_variants', 'cart_items', 'orders', 'order_items', 'order_claims', 'coupons'];
 
   /* --------------------------------------------------- 실제 가시 높이 보정
      모바일 브라우저(삼성 인터넷·사파리)는 100vh 를 주소창·하단 툴바를 뺀 실제 가시 높이보다
@@ -1240,6 +1366,29 @@ table.data.coupons { min-width: 640px; }
     cancelled: { label: '취소됨', cls: 'cancelled' }
   };
   var STATUS_FLOW = ['paid', 'preparing', 'shipping', 'delivered'];
+  /* ======================================================== 교환 / 반품 정책
+     · 판매자 귀책(제품 하자·파손 / 오배송)  : 배송비 0원          → payment_status 'free'
+     · 고객 귀책(단순 변심 / 사이즈·색상 변경): 반품 3,000원(편도), 교환 6,000원(왕복)
+       → 토스페이먼츠 SDK v2 로 배송비를 결제한 뒤 접수 → payment_status 'paid'
+     · 신청 가능 단계: 배송중('shipping') · 배송완료('delivered') — 배송 전에는 주문 취소로 처리
+     · 한 주문에는 교환/반품 1건만 접수 (order_claims.order_id UNIQUE) */
+  var CLAIM_FEE = { return: SHIPPING_FEE, exchange: SHIPPING_FEE * 2 };
+  var CLAIM_TYPES = { return: '반품', exchange: '교환' };
+  var CLAIM_REASONS = {
+    defect: { label: '제품 하자·파손', seller: true },
+    wrong_item: { label: '오배송', seller: true },
+    change_of_mind: { label: '단순 변심', seller: false },
+    size_color: { label: '사이즈·색상 변경', seller: false }
+  };
+  var CLAIM_STATUS = {
+    requested: { label: '접수됨', cls: 'requested' },
+    approved: { label: '수거중/승인', cls: 'approved' },
+    completed: { label: '완료', cls: 'completed' },
+    rejected: { label: '반려', cls: 'rejected' }
+  };
+  var CLAIM_ORDER_STATUSES = ['shipping', 'delivered'];
+  var SELLER_FAULT_BADGE = '판매자 귀책 · 반품/교환 배송비 0원 (무료)';
+  var CUSTOMER_FAULT_BADGE = '반품 3,000원 / 교환(왕복) 6,000원 배송비 결제 필요';
   var PAYMENTS = { card: '신용카드', easypay: '간편결제', bank: '무통장입금' };
   var ASSETS = ['coat.webp', 'knit.webp', 'pants.webp', 'dress.webp', 'bag.webp', 'jacket.webp', 'shirt.webp', 'skirt.webp', 'trench.webp', 'cardigan.webp', 'denim.webp', 'loafers.webp'];
   /* 갤러리용 디테일 크롭 — 대표 이미지별 2장 (assets/<stem>-detail|-fabric.webp) */
@@ -1514,6 +1663,162 @@ table.data.coupons { min-width: 640px; }
   }
   function orderById(id) { return db.orders.filter(function (o) { return o.id === id; })[0] || null; }
 
+  /* --------------------------------------------------------- 교환/반품 접수 */
+  function claimById(id) { return db.order_claims.filter(function (c) { return c.id === id; })[0] || null; }
+  function claimOfOrder(orderId) {
+    return db.order_claims.filter(function (c) { return c.order_id === orderId; })[0] || null;
+  }
+  function claimFeeOf(type, reason) {
+    var r = CLAIM_REASONS[reason];
+    if (!r || r.seller) return 0;                       // 판매자 귀책 = 무료
+    return type === 'exchange' ? CLAIM_FEE.exchange : CLAIM_FEE.return;
+  }
+  function claimReasonLabel(reason) {
+    return (CLAIM_REASONS[reason] || {}).label || reason || '-';
+  }
+  /* 접수 가능 여부: 본인 주문 · 배송중/배송완료 · 아직 접수 전 */
+  function claimBlockReason(o) {
+    if (!o) return '주문을 찾을 수 없습니다.';
+    var u = currentUser();
+    if (!u) return '로그인 후 이용할 수 있습니다.';
+    if (o.user_id !== u.id) return '본인 주문만 교환/반품을 신청할 수 있습니다.';
+    if (o.status === 'cancelled') return '취소된 주문은 교환/반품을 신청할 수 없습니다.';
+    if (CLAIM_ORDER_STATUSES.indexOf(o.status) < 0) {
+      return '배송이 시작된 주문(배송중·배송완료)만 교환/반품을 신청할 수 있습니다.';
+    }
+    if (claimOfOrder(o.id)) return '이미 교환/반품이 접수된 주문입니다.';
+    return '';
+  }
+  function canClaim(o) { return !!o && !claimBlockReason(o); }
+  function claimFeeLabel(c) {
+    if (!c) return '';
+    if (!c.shipping_fee) return '무료';
+    if ((c.payment_status || '') === 'paid') return won(c.shipping_fee) + ' 결제완료';
+    return won(c.shipping_fee) + ' 결제 대기';
+  }
+  function claimBadgeText(c) {
+    if (!c) return '';
+    var kind = CLAIM_TYPES[c.claim_type] || '교환/반품';
+    if (!c.shipping_fee) return kind + ' 접수됨 (무료)';
+    return kind + ' 접수됨 (배송비 ' + won(c.shipping_fee) + ((c.payment_status || '') === 'paid' ? ' 결제)' : ' 결제 전)');
+  }
+  function claimStateLabel(c) { return (CLAIM_STATUS[c && c.status] || { label: c && c.status }).label; }
+  function claimCreatedLabel(c) { return c ? fmtDate(c.created_at) : ''; }
+  function makeClaimId() {
+    var d = new Date();
+    var ymd = '' + d.getFullYear() + pad(d.getMonth() + 1, 2) + pad(d.getDate(), 2);
+    var id;
+    do {
+      id = 'oc_' + ymd + '_' + String(Math.floor(Math.random() * 9000) + 1000);
+    } while (claimById(id));
+    return id;
+  }
+  /* 화면 입력 → 접수 레코드 초기값 (아직 저장하지 않는다) */
+  function buildClaim(input) {
+    var o = orderById(input.oid);
+    if (!o) return { ok: false, message: '주문을 찾을 수 없습니다.' };
+    var u = currentUser();
+    if (!u) return { ok: false, message: '로그인이 필요합니다. 다시 로그인해 주세요.' };
+    if (o.user_id !== u.id) return { ok: false, message: '본인 주문만 교환/반품을 신청할 수 있습니다.' };
+    if (CLAIM_ORDER_STATUSES.indexOf(o.status) < 0) {
+      return { ok: false, message: '배송이 시작된 주문(배송중·배송완료)만 교환/반품을 신청할 수 있습니다.' };
+    }
+    if (claimOfOrder(o.id)) return { ok: false, message: '이미 교환/반품이 접수된 주문입니다.' };
+    var type = CLAIM_TYPES[input.claim_type] ? input.claim_type : 'return';
+    if (!CLAIM_REASONS[input.reason_category]) return { ok: false, message: '사유를 선택해 주세요.' };
+    var option = String(input.exchange_option == null ? '' : input.exchange_option).trim().slice(0, 60);
+    if (type === 'exchange' && !option) {
+      return { ok: false, message: '교환할 옵션(컬러·사이즈)을 입력해 주세요. 예: 카멜 / L' };
+    }
+    var fee = claimFeeOf(type, input.reason_category);
+    return {
+      ok: true,
+      claim: {
+        id: makeClaimId(),
+        order_id: o.id,
+        user_id: u.id,
+        claim_type: type,
+        reason_category: input.reason_category,
+        reason_detail: String(input.reason_detail == null ? '' : input.reason_detail).trim().slice(0, 300),
+        shipping_fee: fee,
+        payment_status: fee > 0 ? 'pending' : 'free',
+        payment_key: null,
+        payment_mode: fee > 0 ? 'pending' : 'free',
+        exchange_option: type === 'exchange' ? option : null,
+        status: 'requested',
+        stock_restored: 0,
+        created_at: nowISO(),
+        updated_at: nowISO()
+      }
+    };
+  }
+  /* 접수 확정 — 무료는 즉시, 유료는 토스 결제 복귀 후 payment_key 와 함께 호출 */
+  function finalizeClaim(claim, payInfo) {
+    if (!claim) return { ok: false, message: '교환/반품 신청 정보가 없습니다.' };
+    var dup = claimById(claim.id) || claimOfOrder(claim.order_id);
+    if (dup) return { ok: true, claim: dup, duplicate: true };
+    var o = orderById(claim.order_id);
+    if (!o) return { ok: false, message: '주문을 찾을 수 없습니다.' };
+    if (CLAIM_ORDER_STATUSES.indexOf(o.status) < 0) {
+      return { ok: false, message: '배송이 시작된 주문(배송중·배송완료)만 교환/반품을 신청할 수 있습니다.' };
+    }
+    var fee = Number(claim.shipping_fee) || 0;
+    var paid = fee > 0;
+    var saved = {
+      id: claim.id,
+      order_id: o.id,
+      user_id: claim.user_id,
+      claim_type: claim.claim_type,
+      reason_category: claim.reason_category,
+      reason_detail: claim.reason_detail || '',
+      shipping_fee: fee,
+      payment_status: paid ? 'paid' : 'free',
+      payment_key: paid ? ((payInfo && payInfo.payment_key) || null) : null,
+      payment_mode: paid ? ((payInfo && payInfo.mode) || 'demo-fallback') : 'free',
+      exchange_option: claim.exchange_option || null,
+      status: 'requested',
+      stock_restored: 0,
+      created_at: nowISOEmbedded(claim.created_at),
+      updated_at: nowISO()
+    };
+    db.order_claims.push(saved);
+    save();
+    clearPendingClaim();
+    return { ok: true, claim: saved };
+  }
+  function nowISOEmbedded(v) { return v && !isNaN(new Date(v)) ? v : nowISO(); }
+  /* 관리자 — 접수 상태 변경. 반품 '완료' 시 재고를 한 번만 복구한다. */
+  function updateClaimStatus(claimId, status) {
+    var c = claimById(claimId);
+    if (!c) return { ok: false, message: '교환/반품 신청을 찾을 수 없습니다.' };
+    if (!CLAIM_STATUS[status]) return { ok: false, message: '알 수 없는 상태입니다.' };
+    if (c.status === status) return { ok: true, claim: c, unchanged: true };
+    var restored = 0;
+    if (status === 'completed' && c.claim_type === 'return' && !c.stock_restored) {
+      orderItemsOf(c.order_id).forEach(function (oi) {
+        var v = variantById(oi.variant_id);
+        if (v) { v.stock += oi.quantity; restored += oi.quantity; }
+      });
+      c.stock_restored = 1;
+    }
+    c.status = status;
+    c.updated_at = nowISO();
+    save();
+    return { ok: true, claim: c, restored: restored };
+  }
+  function savePendingClaim(p) {
+    try { localStorage.setItem(LS_PENDING_CLAIM, JSON.stringify(p)); } catch (e) { storageOk = false; }
+  }
+  function loadPendingClaim() {
+    try {
+      var raw = localStorage.getItem(LS_PENDING_CLAIM);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function clearPendingClaim() {
+    try { localStorage.removeItem(LS_PENDING_CLAIM); } catch (e) {}
+  }
+
   /* --------------------------------------------------------------- coupons */
   function couponByCode(code) {
     var c = String(code || '').trim().toUpperCase();
@@ -1719,7 +2024,7 @@ table.data.coupons { min-width: 640px; }
   var routeApplying = false;
   var routeBackTarget = null;
   var routeBackTries = 0;
-  var TRACKED_LAYERS = { product: 1, auth: 1, order: 1, receipt: 1 };
+  var TRACKED_LAYERS = { product: 1, auth: 1, order: 1, receipt: 1, claim: 1 };
   function routeOf() {
     var m = ui.modal;
     var tracked = m && TRACKED_LAYERS[m.type] ? m.type : null;
@@ -1728,7 +2033,7 @@ table.data.coupons { min-width: 640px; }
       view: ui.view,
       layer: tracked,
       pid: tracked === 'product' ? m.pid : null,
-      oid: (tracked === 'order' || tracked === 'receipt') ? m.oid : null,
+      oid: (tracked === 'order' || tracked === 'receipt' || tracked === 'claim') ? m.oid : null,
       img: tracked === 'product' ? (m.img || 0) : 0,
       cart: !!ui.cartOpen
     };
@@ -1803,6 +2108,11 @@ table.data.coupons { min-width: 640px; }
       if (!ui.auth.tab) ui.auth.tab = 'login';
     } else if (s.layer === 'order' && s.oid && orderById(s.oid)) {
       ui.modal = { type: 'order', oid: s.oid };
+    } else if (s.layer === 'claim' && s.oid && orderById(s.oid)) {
+      ui.modal = {
+        type: 'claim', oid: s.oid, claim_type: 'return', reason_category: 'change_of_mind',
+        reason_detail: '', exchange_option: '', error: ''
+      };
     } else if (s.layer === 'receipt' && s.oid && orderById(s.oid)) {
       ui.modal = { type: 'receipt', oid: s.oid };
     } else {
@@ -2078,9 +2388,47 @@ table.data.coupons { min-width: 640px; }
     if (res.ok) showReceipt(res.order);
     else toast(res.message || '주문을 확정하지 못했습니다.', 'warn');
   }
-  /* 결제창형(구 결제위젯) 흐름:
+  /* 결제창형(구 결제위젯) 흐름 — 주문 결제와 교환/반품 배송비 결제가 같은 위젯 세션을 쓴다.
      widgets → setAmount → renderPaymentWindow → (구매자가 결제하기) → paymentRequest 이벤트
      → widgets.requestPayment({ orderId, orderName, successUrl, failUrl }) → 토스 리다이렉트 */
+  function tossWidgets() {
+    if (!tossSession.widgets) {
+      var toss = window.TossPayments(PAYMENT_CONFIG.clientKey);
+      tossSession.widgets = toss.widgets({ customerKey: customerKey() });
+    }
+    return tossSession.widgets;
+  }
+  /* amount·orderName·params(성공/실패 URL·구매자)를 받아 결제창을 열고, 결제 요청 시 현재 params 로 리다이렉트한다.
+     onUnavailable: SDK 가 결제창을 주지 못했을 때(구버전 브라우저 등) 데모로 이어가는 처리 */
+  function openTossWindow(opts) {
+    var widgets = opts.widgets;
+    tossSession.params = opts.params;
+    opts.params.onError = opts.onError;
+    return widgets.setAmount({ currency: PAYMENT_CONFIG.currency || 'KRW', value: opts.amount }).then(function () {
+      if (tossSession.window) return null; // 이미 열려 있으면 금액만 갱신하고 재사용
+      return widgets.renderPaymentWindow({ orderName: opts.orderName }).then(function (win) {
+        tossSession.window = win || null;
+        if (!win || !win.on) {
+          tossSession.window = null;
+          if (opts.onUnavailable) opts.onUnavailable();
+          return null;
+        }
+        win.on('paymentRequest', function () {
+          var live = tossSession.params;
+          if (!live) return;
+          try {
+            var ret = widgets.requestPayment({
+              orderId: live.orderId, orderName: live.orderName,
+              successUrl: live.successUrl, failUrl: live.failUrl,
+              customerName: live.customerName, customerEmail: live.customerEmail
+            });
+            if (ret && typeof ret.then === 'function') ret['catch'](live.onError || function () {});
+          } catch (err) { if (live.onError) live.onError(err); }
+        });
+        return win;
+      });
+    })['catch'](opts.onError);
+  }
   function requestTossPayment(pending, user) {
     var orderName = orderNameOf(pending.items);
     var params = {
@@ -2091,7 +2439,6 @@ table.data.coupons { min-width: 640px; }
       customerName: user.name,
       customerEmail: user.email
     };
-    tossSession.params = params;
     tossSession.pending = pending;
     var onTossError = function (err) {
       if (isTossCancel(err)) {
@@ -2102,36 +2449,68 @@ table.data.coupons { min-width: 640px; }
       tossFallback(tossSession.pending || pending, tossErrorCode(err));
     };
     try {
-      if (!tossSession.widgets) {
-        var toss = window.TossPayments(PAYMENT_CONFIG.clientKey);
-        tossSession.widgets = toss.widgets({ customerKey: customerKey() });
-      }
-      var widgets = tossSession.widgets;
-      widgets.setAmount({ currency: PAYMENT_CONFIG.currency || 'KRW', value: pending.amount }).then(function () {
-        if (tossSession.window) return null; // 이미 열려 있으면 금액만 갱신하고 재사용
-        return widgets.renderPaymentWindow({ orderName: orderName }).then(function (win) {
-          tossSession.window = win || null;
-          if (!win || !win.on) {
-            tossSession.window = null;
-            tossFallback(pending, 'PAYMENT_WINDOW');
-            return;
-          }
-          win.on('paymentRequest', function () {
-            var live = tossSession.params || params;
-            try {
-              var ret = widgets.requestPayment({
-                orderId: live.orderId, orderName: live.orderName,
-                successUrl: live.successUrl, failUrl: live.failUrl,
-                customerName: live.customerName, customerEmail: live.customerEmail
-              });
-              if (ret && typeof ret.then === 'function') ret['catch'](onTossError);
-            } catch (err) { onTossError(err); }
-          });
-        });
-      })['catch'](onTossError);
+      openTossWindow({
+        widgets: tossWidgets(), amount: pending.amount, orderName: orderName, params: params,
+        onError: onTossError,
+        onUnavailable: function () { tossFallback(pending, 'PAYMENT_WINDOW'); }
+      });
     } catch (err) {
       onTossError(err);
     }
+  }
+
+  /* ------------------------------------------ 교환/반품 배송비 결제 (토스페이먼츠)
+     · 유료(3,000원/6,000원) 신청만 결제창을 열고, 무료는 결제 없이 바로 접수한다.
+     · 결제창 복귀(?tossClaim=success) 시 신청번호·금액을 검증한 뒤 order_claims 를 만든다.
+     · file://·오프라인·SDK 로드 실패 → 데모 결제로 접수(fallback) */
+  function tossClaimReturnUrl(kind) {
+    return location.origin + location.pathname + '?tossClaim=' + kind;
+  }
+  function claimTossFallback(pending, why) {
+    toast('토스페이먼츠 결제창을 열 수 없어 데모 결제로 접수합니다.' + (why ? ' (' + why + ')' : ''), 'warn');
+    var res = finalizeClaim(pending, { mode: 'demo-fallback', payment_key: null });
+    if (!res.ok) { toast(res.message || '교환/반품을 접수하지 못했습니다.', 'warn'); return; }
+    ui.modal = null;
+    showClaimDone(res.claim, '배송비 ' + won(res.claim.shipping_fee) + ' 데모 결제로 접수했습니다.');
+  }
+  function requestTossClaimPayment(pending, user) {
+    var orderName = ('MONO ATELIER ' + (CLAIM_TYPES[pending.claim_type] || '교환/반품') + ' 배송비').slice(0, PAYMENT_CONFIG.orderNameMax || 100);
+    var params = {
+      orderId: pending.id,
+      orderName: orderName,
+      successUrl: tossClaimReturnUrl('success'),
+      failUrl: tossClaimReturnUrl('fail'),
+      customerName: user.name,
+      customerEmail: user.email
+    };
+    var onTossError = function (err) {
+      if (isTossCancel(err)) {
+        toast('배송비 결제를 취소했습니다.', 'warn');
+        clearPendingClaim();
+        return;
+      }
+      claimTossFallback(pending, tossErrorCode(err));
+    };
+    try {
+      openTossWindow({
+        widgets: tossWidgets(), amount: pending.shipping_fee, orderName: orderName, params: params,
+        onError: onTossError,
+        onUnavailable: function () { claimTossFallback(pending, 'PAYMENT_WINDOW'); }
+      });
+    } catch (err) {
+      onTossError(err);
+    }
+  }
+  /* 접수 완료 → 마이페이지 주문 내역(접수 배지)으로 이동 */
+  function showClaimDone(claim, message) {
+    ui.modal = null;
+    ui.view = 'mypage';
+    ui.myTab = 'orders';
+    ui.checkoutIds = [];
+    renderAll();
+    try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) { window.scrollTo(0, 0); }
+    if (message) toast(message);
+    return claim;
   }
   /* 결제하기 → 대기 주문 저장 → 토스 결제창(또는 데모 결제) */
   function startPayment(payload) {
@@ -2222,6 +2601,54 @@ table.data.coupons { min-width: 640px; }
       return true;
     }
     confirmPayment(pending, { paymentKey: paymentKey, orderId: orderId, amount: amount });
+    return true;
+  }
+
+  /* ?tossClaim=success|fail 복귀 → 신청번호·금액 검증 → 교환/반품 접수 확정 */
+  function handleClaimReturn() {
+    var params;
+    try { params = new URLSearchParams(location.search); } catch (e) { return false; }
+    var result = params.get('tossClaim');
+    if (!result) return false;
+    var paymentKey = params.get('paymentKey');
+    var claimId = params.get('orderId');
+    var amount = parseInt(params.get('amount'), 10);
+    var code = params.get('code');
+    var msg = params.get('message');
+    stripPaymentQuery();
+    var pending = loadPendingClaim();
+    if (result === 'fail') {
+      clearPendingClaim();
+      toast('배송비 결제가 취소되었거나 실패했습니다.' + (msg ? ' (' + msg + ')' : code ? ' (' + code + ')' : ''), 'warn');
+      return true;
+    }
+    if (!pending) {
+      toast('교환/반품 신청 정보(대기)를 찾을 수 없습니다. 다시 신청해 주세요.', 'warn');
+      return true;
+    }
+    if (!paymentKey || !claimId || !amount) {
+      toast('결제 응답이 올바르지 않습니다.', 'warn');
+      return true;
+    }
+    if (claimId !== pending.id) {
+      toast('결제한 신청번호가 대기 신청과 일치하지 않아 접수하지 않았습니다.', 'warn');
+      return true;
+    }
+    if (amount !== pending.shipping_fee) {
+      toast('결제 금액이 배송비와 다릅니다(' + won(amount) + ' / ' + won(pending.shipping_fee) + '). 접수하지 않았습니다.', 'warn');
+      return true;
+    }
+    // 정적 데모: 서버 승인 없이 테스트 승인으로 접수 (실서비스는 시크릿 키를 가진 서버가 승인해야 한다)
+    toast('토스페이먼츠 테스트 결제가 승인되었습니다. (서버 승인 없음)');
+    setTimeout(function () {
+      var res = finalizeClaim(pending, {
+        mode: PAYMENT_CONFIG.confirmApiUrl ? 'server' : 'test-client',
+        payment_key: paymentKey
+      });
+      if (!res.ok) { toast(res.message || '교환/반품을 접수하지 못했습니다.', 'warn'); renderAll(); return; }
+      toast(res.duplicate ? '이미 접수된 교환/반품 신청입니다.' : '교환/반품 신청이 접수되었습니다.');
+      showClaimDone(res.claim);
+    }, 120);
     return true;
   }
 
@@ -2385,7 +2812,7 @@ table.data.coupons { min-width: 640px; }
   function exportPayload() {
     return {
       meta: {
-        app: 'MONO ATELIER', schema_version: 3, app_version: APP_VERSION,
+        app: 'MONO ATELIER', schema_version: 4, app_version: APP_VERSION,
         exported_at: nowISO(), storage: 'localStorage'
       },
       users: db.users,
@@ -2395,6 +2822,7 @@ table.data.coupons { min-width: 640px; }
       cart_items: db.cart_items,
       orders: db.orders,
       order_items: db.order_items,
+      order_claims: db.order_claims,
       coupons: db.coupons
     };
   }
@@ -2432,7 +2860,7 @@ table.data.coupons { min-width: 640px; }
     var warn = function (t) { out.push({ level: 'warn', text: t }); };
     var bad = function (t) { out.push({ level: 'bad', text: t }); };
 
-    ['users', 'products', 'product_images', 'product_variants', 'cart_items', 'orders', 'order_items', 'coupons'].forEach(function (t) {
+    ['users', 'products', 'product_images', 'product_variants', 'cart_items', 'orders', 'order_items', 'order_claims', 'coupons'].forEach(function (t) {
       var ids = {}, dup = 0;
       db[t].forEach(function (r) { if (ids[r.id]) dup++; ids[r.id] = 1; });
       if (dup) bad(t + ': 기본키(id) 중복 ' + dup + '건'); else ok(t + ': 기본키 고유 (' + db[t].length + '행)');
@@ -2515,6 +2943,23 @@ table.data.coupons { min-width: 640px; }
     });
     if (overQty.length) warn('재고보다 많이 담긴 장바구니 항목 ' + overQty.length + '건 (결제 시 차단됩니다)');
     else if (db.cart_items.length) ok('장바구니 수량 ≤ 재고');
+
+    /* ---- 교환/반품 접수 정합성 */
+    var cDangling = 0, cBadEnum = 0, cBadFee = 0, cDupOrder = 0;
+    var seenOrder = {};
+    db.order_claims.forEach(function (c) {
+      if (!orderById(c.order_id) || !currentUserById(c.user_id)) cDangling++;
+      if (!CLAIM_TYPES[c.claim_type] || !CLAIM_REASONS[c.reason_category] ||
+          !CLAIM_STATUS[c.status] || ['free', 'paid', 'pending'].indexOf(c.payment_status) < 0) cBadEnum++;
+      if (c.shipping_fee !== claimFeeOf(c.claim_type, c.reason_category)) cBadFee++;
+      if (seenOrder[c.order_id]) cDupOrder++; else seenOrder[c.order_id] = 1;
+    });
+    if (cDangling) bad('order_claims → orders/users 참조 오류 ' + cDangling + '건');
+    else ok('order_claims → orders/users 외래키 정상 (' + db.order_claims.length + '건)');
+    if (cBadEnum) bad('교환/반품 유형·사유·상태 enum 오류 ' + cBadEnum + '건'); else ok('교환/반품 유형·사유·상태 enum 정상');
+    if (cBadFee) bad('사유·유형과 배송비가 맞지 않는 접수 ' + cBadFee + '건');
+    else ok('배송비 정책 일치 (판매자 귀책 0원 / 반품 3,000원 / 교환 6,000원)');
+    if (cDupOrder) bad('한 주문에 교환/반품 접수 중복 ' + cDupOrder + '건'); else ok('한 주문당 교환/반품 1건');
     return out;
   }
   function currentUserById(id) { return db.users.filter(function (u) { return u.id === id; })[0] || null; }
@@ -3318,10 +3763,29 @@ table.data.coupons { min-width: 640px; }
         : '<div class="empty-state" style="padding:50px 0"><h3>주문 내역이 없습니다</h3><p>첫 주문을 시작해 보세요.</p><div style="margin-top:18px"><button class="btn ghost small" data-action="scroll-shop">상품 보러 가기</button></div></div>') +
     '</div>';
   }
+  /* 주문 카드/상세에 보이는 교환·반품 접수 배지 — 예: 반품 접수됨 (무료) · 수거중/승인 */
+  function claimStripHTML(c) {
+    if (!c) return '';
+    var kind = CLAIM_TYPES[c.claim_type] || '교환/반품';
+    var state = CLAIM_STATUS[c.status] || { label: c.status, cls: '' };
+    return '<div class="claim-strip" data-claim-strip="' + esc(c.id) + '">' +
+      '<span class="claim-chip ' + esc(c.claim_type) + '">' + esc(claimBadgeText(c)) + '</span>' +
+      '<span class="claim-state ' + esc(state.cls) + '">' + esc(state.label) + '</span>' +
+      '<span class="claim-when">' + claimCreatedLabel(c) + ' 접수 · ' + esc(claimReasonLabel(c.reason_category)) + '</span>' +
+      (c.exchange_option ? '<span class="claim-opt">희망 옵션 ' + esc(c.exchange_option) + '</span>' : '') +
+      (c.status === 'rejected' ? '<span class="claim-when">반려된 신청입니다. 자세한 내용은 고객센터로 문의해 주세요.</span>' : '') +
+      '</div>';
+  }
+  function claimActionHTML(o) {
+    if (!canClaim(o)) return '';
+    return '<button class="btn ghost small claim-open" data-action="open-claim" data-oid="' + o.id + '">교환/반품 신청</button>';
+  }
+
   function orderCardHTML(o) {
     var items = orderItemsOf(o.id);
     var st = STATUS[o.status] || { label: o.status, cls: '' };
     var cancellable = o.status === 'paid' || o.status === 'preparing';
+    var claim = claimOfOrder(o.id);
     return '<div class="order-card">' +
       '<div class="order-top">' +
         '<div class="meta"><b>' + esc(o.order_no) + '</b> · ' + fmtDateTime(o.created_at) + '</div>' +
@@ -3336,9 +3800,11 @@ table.data.coupons { min-width: 640px; }
           '<div><div class="price">' + won(oi.unit_price * oi.quantity) + '</div><div class="qty">수량 ' + oi.quantity + '</div></div>' +
         '</div>';
       }).join('') +
+      claimStripHTML(claim) +
       '<div class="order-bottom">' +
         '<div class="total">결제금액<b>' + won(o.total_amount) + '</b></div>' +
         '<div class="actions">' +
+          claimActionHTML(o) +
           (cancellable ? '<button class="btn ghost small" data-action="ask-cancel-order" data-oid="' + o.id + '">주문 취소</button>' : '') +
           '<button class="btn small" data-action="order-detail" data-oid="' + o.id + '">주문 상세</button>' +
         '</div>' +
@@ -3357,6 +3823,16 @@ table.data.coupons { min-width: 640px; }
     }).join('');
     var subtotal = items.reduce(function (s, oi) { return s + oi.unit_price * oi.quantity; }, 0);
     var cancellable = o.status === 'paid' || o.status === 'preparing';
+    var claim = claimOfOrder(o.id);
+    var claimNote = claim
+      ? '<div class="claim-detail-box">' + claimStripHTML(claim) +
+          (claim.reason_detail ? '<div class="claim-detail-text">' + esc(claim.reason_detail) + '</div>' : '') +
+          '<div class="claim-detail-meta">배송비 ' + esc(claimFeeLabel(claim)) +
+            (claim.payment_key ? ' · 결제키 ' + esc(String(claim.payment_key).slice(0, 14)) + '…' : '') + '</div>' +
+        '</div>'
+      : (CLAIM_ORDER_STATUSES.indexOf(o.status) >= 0
+          ? '<div class="claim-help">교환·반품은 구매하신 상품에 결함이 있거나, 단순 변심·사이즈 변경 시 신청할 수 있습니다. 판매자 귀책은 무료, 단순 변심은 배송비가 부과됩니다.</div>'
+          : '');
     return '<div class="modal" role="dialog" aria-modal="true" aria-label="주문 상세" style="width:min(640px,100%)">' +
       '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
       '<div class="modal-head"><div class="eyebrow">ORDER DETAIL</div><h2>' + esc(o.order_no) + '</h2></div>' +
@@ -3386,10 +3862,12 @@ table.data.coupons { min-width: 640px; }
           '<div style="display:flex;gap:12px"><span style="width:76px;color:var(--muted)">배송지</span><span>' + esc(o.shipping_address) + '</span></div>' +
           '<div style="display:flex;gap:12px"><span style="width:76px;color:var(--muted)">결제수단</span><span>' + esc(PAYMENTS[o.payment_method] || o.payment_method) + '</span></div>' +
         '</div>' +
+        claimNote +
         '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:24px">' +
+          claimActionHTML(o) +
           (cancellable ? '<button class="btn ghost small" data-action="ask-cancel-order" data-oid="' + o.id + '">주문 취소</button>' : '') +
           '<button class="btn small" data-action="close-modal">닫기</button>' +
-        '</div>' +
+        '</div>' + +
       '</div>' +
     '</div>';
   }
@@ -3400,6 +3878,7 @@ table.data.coupons { min-width: 640px; }
       users: db.users.length, products: db.products.length, product_images: db.product_images.length,
       product_variants: db.product_variants.length,
       cart_items: db.cart_items.length, orders: db.orders.length, order_items: db.order_items.length,
+      order_claims: db.order_claims.length,
       coupons: db.coupons.length,
       coupon_targets: db.coupons.reduce(function (n, c) { return n + couponTargets(c).length; }, 0)
     };
@@ -3412,7 +3891,7 @@ table.data.coupons { min-width: 640px; }
       '<div class="data-grid">' +
         '<div class="data-card">' +
           '<h3>JSON 내보내기</h3>' +
-          '<p>현재 localStorage의 정규화 테이블 8종을 그대로 JSON으로 내려받습니다. SQLite 이식 시 그대로 <code>INSERT</code> 할 수 있는 구조입니다.</p>' +
+          '<p>현재 localStorage의 정규화 테이블 9종을 그대로 JSON으로 내려받습니다. SQLite 이식 시 그대로 <code>INSERT</code> 할 수 있는 구조입니다.</p>' +
           '<div class="row"><button class="btn small" data-action="export-json">JSON 다운로드</button>' +
           '<button class="btn ghost small" data-action="copy-json">JSON 복사</button></div>' +
         '</div>' +
@@ -3436,7 +3915,7 @@ table.data.coupons { min-width: 640px; }
       '</div>' +
       '<div class="data-card" style="margin-top:16px">' +
         '<h3>현재 JSON 구조 (미리보기)</h3>' +
-        '<p>products · product_images · product_variants · cart_items · orders · order_items · coupons · users</p>' +
+        '<p>products · product_images · product_variants · cart_items · orders · order_items · order_claims · coupons · users</p>' +
         '<pre class="json-preview">' + esc(JSON.stringify(db, null, 2)) + '</pre>' +
       '</div>' +
       (inAdmin ? paymentSettingsHTML() : '') +
@@ -3619,9 +4098,57 @@ table.data.coupons { min-width: 640px; }
     return { ok: true, coupon: c };
   }
 
+  /* 관리자 — 교환/반품 접수 목록: 사유·배송비 결제·상태 변경 */
+  function adminClaimsHTML() {
+    var rows = db.order_claims.slice().sort(function (a, b) {
+      return String(b.created_at).localeCompare(String(a.created_at));
+    });
+    var waiting = rows.filter(function (c) { return c.status === 'requested' || c.status === 'approved'; }).length;
+    var body = rows.length
+      ? rows.map(function (c) {
+          var o = orderById(c.order_id);
+          var u = currentUserById(c.user_id);
+          var items = orderItemsOf(c.order_id);
+          var first = items[0];
+          var itemLine = first ? first.product_name + (items.length > 1 ? ' 외 ' + (items.length - 1) + '건' : '') : '-';
+          var state = CLAIM_STATUS[c.status] || { label: c.status };
+          var feeCls = c.shipping_fee ? 'paid' : 'free';
+          return '<tr data-claim="' + esc(c.id) + '" data-claim-state="' + esc(c.status) + '">' +
+            '<td><div class="claim-cell"><b class="claim-kind ' + esc(c.claim_type) + '">' + esc(CLAIM_TYPES[c.claim_type] || '') + '</b>' +
+              '<div class="m">' + esc(c.id) + '</div></div></td>' +
+            '<td><b>' + esc(o ? o.order_no : '-') + '</b><div class="m">' + esc(itemLine) + (u ? ' · ' + esc(u.name) : '') + '</div></td>' +
+            '<td>' + esc(claimReasonLabel(c.reason_category)) +
+              '<div class="m" style="font-size:10px;color:var(--muted);margin-top:3px">' + esc(String(c.claim_type === 'exchange' ? '교환 옵션 ' + (c.exchange_option || '-') : (c.reason_detail || '상세 사유 없음')).slice(0, 40)) + '</div></td>' +
+            '<td><span class="fee-pill ' + feeCls + '">' + esc(claimFeeLabel(c)) + '</span>' +
+              '<div class="m" style="font-size:10px;color:var(--muted);margin-top:3px">' + (c.shipping_fee ? (c.payment_status === 'paid' ? '결제완료' : '결제 대기') : '판매자 귀책') + '</div></td>' +
+            '<td style="white-space:nowrap;font-size:11px;color:var(--muted)">' + fmtDateTime(c.created_at) + '</td>' +
+            '<td><select class="mini-select" data-action="admin-claim-status" data-cid="' + c.id + '" aria-label="교환/반품 상태 변경">' +
+              Object.keys(CLAIM_STATUS).map(function (s) {
+                return '<option value="' + s + '"' + (c.status === s ? ' selected' : '') + '>' + CLAIM_STATUS[s].label + '</option>';
+              }).join('') +
+            '</select><div class="m" style="font-size:10px;color:var(--muted);margin-top:3px">' + esc(state.label) +
+              (c.stock_restored ? ' · 재고 복구됨' : '') + '</div></td>' +
+          '</tr>';
+        }).join('')
+      : '<tr><td colspan="6" class="empty-cell">접수된 교환/반품이 없습니다.</td></tr>';
+    return '<div class="data-card claim-admin" data-claim-admin="1">' +
+      '<h3>교환·반품 접수</h3>' +
+      '<p>접수된 교환/반품과 배송비 결제 여부입니다. 상태를 <b>접수됨 → 수거중/승인 → 완료</b>(또는 반려)로 바꿀 수 있고, ' +
+        '반품을 <b>완료</b>로 바꾸면 해당 주문 상품의 재고가 <b>한 번만</b> 복구됩니다.</p>' +
+      '<div class="coupon-stat">처리 중 <b>' + waiting + '</b>건 · 전체 ' + rows.length + '건</div>' +
+      '<div class="table-wrap"><table class="data claims">' +
+        '<thead><tr><th>신청</th><th>주문 / 상품</th><th>사유</th><th>배송비</th><th>접수일시</th><th>상태 변경</th></tr></thead>' +
+        '<tbody>' + body + '</tbody>' +
+      '</table></div>' +
+    '</div>';
+  }
+
   function adminOrdersHTML(orders) {
-    if (!orders.length) return '<div class="empty-state" style="border:1px solid var(--line-soft);background:#fff"><h3>주문이 없습니다</h3><p>고객 주문이 들어오면 여기에서 상태를 관리할 수 있습니다.</p></div>';
-    return '<div class="table-wrap"><table class="data">' +
+    var claims = adminClaimsHTML();
+    if (!orders.length) {
+      return claims + '<div class="empty-state" style="border:1px solid var(--line-soft);background:#fff"><h3>주문이 없습니다</h3><p>고객 주문이 들어오면 여기에서 상태를 관리할 수 있습니다.</p></div>';
+    }
+    return claims + '<div class="table-wrap"><table class="data">' +
       '<thead><tr><th>주문번호</th><th>주문자</th><th>상품</th><th>결제금액</th><th>일시</th><th>상태 변경</th></tr></thead><tbody>' +
       orders.map(function (o) {
         var items = orderItemsOf(o.id);
@@ -3971,6 +4498,116 @@ table.data.coupons { min-width: 640px; }
       '</div>' +
     '</div>';
   }
+  /* ---------------------------------------------------- 교환/반품 신청 모달 */
+  function claimReasonBadgeHTML(type, reason) {
+    var r = CLAIM_REASONS[reason] || {};
+    var seller = !!r.seller;
+    var now = claimFeeOf(type, reason);
+    return '<span class="claim-badge ' + (seller ? 'free' : 'paid') + '" data-claim-badge="' + (seller ? 'free' : 'paid') + '">' +
+        esc(seller ? SELLER_FAULT_BADGE : CUSTOMER_FAULT_BADGE) + '</span>' +
+      '<span class="claim-badge-now">선택: ' + esc(CLAIM_TYPES[type] || '') + ' · ' + (now ? won(now) + ' 결제 필요' : '0원 (무료)') + '</span>';
+  }
+  function claimFeeHTML(type, reason) {
+    var fee = claimFeeOf(type, reason);
+    var seller = !!(CLAIM_REASONS[reason] || {}).seller;
+    var note = seller
+      ? '판매자 귀책(제품 하자·오배송)으로 배송비가 청구되지 않습니다.'
+      : (type === 'exchange'
+          ? '교환은 왕복 배송비 ' + won(CLAIM_FEE.exchange) + ' 이 부과됩니다. (보내는 편도 + 받는 편도)'
+          : '반품은 편도 배송비 ' + won(CLAIM_FEE.return) + ' 이 부과됩니다.');
+    return '<div class="claim-fee-row"><span>배송비</span><b data-hook="claim-fee-value">' + (fee ? won(fee) : '0원') + '</b></div>' +
+      '<div class="claim-fee-note">' + esc(note) + '</div>' +
+      (fee ? '<div class="claim-fee-pay">제출 시 토스페이먼츠 결제창에서 배송비를 결제한 뒤 접수됩니다.</div>' : '');
+  }
+  function claimSubmitLabel(type, reason) {
+    var fee = claimFeeOf(type, reason);
+    if (!fee) return '무료 교환/반품 접수';
+    return '배송비 ' + won(fee) + ' 결제 후 접수';
+  }
+  function claimModalHTML() {
+    var m = ui.modal;
+    var o = orderById(m.oid);
+    if (!o) return '';
+    var type = m.claim_type || 'return';
+    var reason = m.reason_category || 'change_of_mind';
+    var items = orderItemsOf(o.id);
+    var itemLine = items.map(function (oi) { return oi.product_name + ' / ' + oi.color + ' ' + oi.size; }).join(', ');
+    return '<div class="modal claim-modal" role="dialog" aria-modal="true" aria-label="교환·반품 신청" data-claim-modal="' + esc(o.id) + '">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head">' +
+        '<div class="eyebrow">EXCHANGE / RETURN</div>' +
+        '<h2>교환·반품 신청</h2>' +
+        '<p class="claim-order-line">' + esc(o.order_no) + ' · ' + esc(itemLine) + '</p>' +
+      '</div>' +
+      '<div class="claim-body">' +
+        (m.error ? '<div class="form-error" data-hook="claim-error">' + esc(m.error) + '</div>' : '') +
+        '<div class="claim-step">' +
+          '<div class="claim-step-label">1. 유형 선택</div>' +
+          '<div class="claim-types" role="group" aria-label="교환 또는 반품">' +
+            ['return', 'exchange'].map(function (t) {
+              return '<button type="button" class="claim-type' + (type === t ? ' active' : '') + '" data-action="claim-type" data-claim-type="' + t + '" aria-pressed="' + (type === t ? 'true' : 'false') + '">' +
+                '<b>' + CLAIM_TYPES[t] + '</b><small>' + (t === 'return' ? '상품을 돌려보내고 환불' : '다른 옵션으로 교환') + '</small></button>';
+            }).join('') +
+          '</div>' +
+        '</div>' +
+        '<div class="claim-step">' +
+          '<div class="claim-step-label">2. 사유 선택</div>' +
+          '<div class="claim-reasons" role="group" aria-label="교환·반품 사유">' +
+            Object.keys(CLAIM_REASONS).map(function (k) {
+              var r = CLAIM_REASONS[k];
+              return '<button type="button" class="claim-reason' + (reason === k ? ' active' : '') + (r.seller ? ' seller' : '') + '" data-action="claim-reason" data-reason="' + k + '" aria-pressed="' + (reason === k ? 'true' : 'false') + '">' +
+                '<span class="cr-name">' + esc(r.label) + '</span>' +
+                '<span class="cr-fee">' + (r.seller ? '무료' : '반품 ' + won(CLAIM_FEE.return) + ' / 교환 ' + won(CLAIM_FEE.exchange)) + '</span>' +
+              '</button>';
+            }).join('') +
+          '</div>' +
+          '<div class="claim-badge-row" data-hook="claim-badge">' + claimReasonBadgeHTML(type, reason) + '</div>' +
+        '</div>' +
+        '<div class="claim-exchange" data-hook="claim-exchange"' + (type === 'exchange' ? '' : ' hidden') + '>' +
+          '<label class="claim-field-label" for="claim-exchange-option">교환 희망 옵션</label>' +
+          '<input id="claim-exchange-option" data-hook="claim-exchange-input" type="text" maxlength="60" placeholder="예: 카멜 / L" value="' + esc(m.exchange_option || '') + '">' +
+          '<div class="claim-hint">교환할 컬러·사이즈를 적어 주세요. 재고 상황에 따라 안내드립니다.</div>' +
+        '</div>' +
+        '<div class="claim-step">' +
+          '<label class="claim-field-label" for="claim-detail">상세 사유 <span class="opt">(선택)</span></label>' +
+          '<textarea id="claim-detail" data-hook="claim-detail" maxlength="300" placeholder="예: 밑단 박음질이 풀려 있습니다 / 허리가 커서 교환하고 싶습니다">' + esc(m.reason_detail || '') + '</textarea>' +
+        '</div>' +
+        '<div class="claim-fee" data-hook="claim-fee">' + claimFeeHTML(type, reason) + '</div>' +
+      '</div>' +
+      '<div class="claim-foot">' +
+        '<button class="btn ghost" data-action="close-modal">취소</button>' +
+        '<button class="btn" data-action="submit-claim" data-hook="claim-submit">' + esc(claimSubmitLabel(type, reason)) + '</button>' +
+      '</div>' +
+    '</div>';
+  }
+  /* 선택 변경 — 모달 전체를 다시 그리지 않고 배지·배송비·버튼만 갱신(입력한 사유 유지) */
+  function syncClaimModal() {
+    var m = ui.modal;
+    if (!m || m.type !== 'claim') return;
+    var root = $('#modal-layer .claim-modal');
+    if (!root) return;
+    var type = m.claim_type || 'return';
+    var reason = m.reason_category || 'change_of_mind';
+    $$('.claim-type', root).forEach(function (b) {
+      var on = b.dataset.claimType === type;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    $$('.claim-reason', root).forEach(function (b) {
+      var on = b.dataset.reason === reason;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    var badge = $('[data-hook=claim-badge]', root);
+    if (badge) badge.innerHTML = claimReasonBadgeHTML(type, reason);
+    var fee = $('[data-hook=claim-fee]', root);
+    if (fee) fee.innerHTML = claimFeeHTML(type, reason);
+    var submit = $('[data-hook=claim-submit]', root);
+    if (submit) submit.textContent = claimSubmitLabel(type, reason);
+    var ex = $('[data-hook=claim-exchange]', root);
+    if (ex) ex.hidden = type !== 'exchange';
+  }
+
   function renderModal() {
     var layer = $('#modal-layer');
     if (!layer) return;
@@ -3981,6 +4618,7 @@ table.data.coupons { min-width: 640px; }
     if (m.type === 'product') inner += productModalHTML();
     else if (m.type === 'auth') inner += authHTML();
     else if (m.type === 'order') inner += orderDetailHTML(m.oid);
+    else if (m.type === 'claim') inner += claimModalHTML();
     else if (m.type === 'receipt') inner += receiptHTML(orderById(m.oid) || m.order);
     else if (m.type === 'edit') inner += productEditorHTML();
     else if (m.type === 'confirm') inner += confirmHTML();
@@ -4311,6 +4949,74 @@ table.data.coupons { min-width: 640px; }
         break;
       }
       case 'order-detail': ui.modal = { type: 'order', oid: el.dataset.oid }; renderModal(); syncLock(); break;
+      case 'open-claim': {
+        var co = orderById(el.dataset.oid);
+        if (!co) break;
+        if (requiresLogin()) break;
+        var blockWhy = claimBlockReason(co);
+        if (blockWhy) { toast(blockWhy, 'warn'); break; }
+        ui.modal = {
+          type: 'claim', oid: co.id, claim_type: 'return', reason_category: 'change_of_mind',
+          reason_detail: '', exchange_option: '', error: ''
+        };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'claim-type':
+        if (ui.modal && ui.modal.type === 'claim') {
+          var liveDetail = $('[data-hook=claim-detail]');
+          var liveOption = $('[data-hook=claim-exchange-input]');
+          if (liveDetail) ui.modal.reason_detail = liveDetail.value;
+          if (liveOption) ui.modal.exchange_option = liveOption.value;
+          ui.modal.claim_type = el.dataset.claimType === 'exchange' ? 'exchange' : 'return';
+          ui.modal.error = '';
+          syncClaimModal();
+        }
+        break;
+      case 'claim-reason':
+        if (ui.modal && ui.modal.type === 'claim') {
+          var liveDetail2 = $('[data-hook=claim-detail]');
+          var liveOption2 = $('[data-hook=claim-exchange-input]');
+          if (liveDetail2) ui.modal.reason_detail = liveDetail2.value;
+          if (liveOption2) ui.modal.exchange_option = liveOption2.value;
+          if (CLAIM_REASONS[el.dataset.reason]) ui.modal.reason_category = el.dataset.reason;
+          ui.modal.error = '';
+          syncClaimModal();
+        }
+        break;
+      case 'submit-claim': {
+        var cm = ui.modal;
+        if (!cm || cm.type !== 'claim') break;
+        var dEl = $('[data-hook=claim-detail]');
+        var oEl = $('[data-hook=claim-exchange-input]');
+        cm.reason_detail = dEl ? dEl.value : (cm.reason_detail || '');
+        cm.exchange_option = oEl ? oEl.value : (cm.exchange_option || '');
+        var built = buildClaim({
+          oid: cm.oid, claim_type: cm.claim_type, reason_category: cm.reason_category,
+          reason_detail: cm.reason_detail, exchange_option: cm.exchange_option
+        });
+        if (!built.ok) { cm.error = built.message; renderModal(); break; }
+        cm.error = '';
+        var fresh = built.claim;
+        if (!fresh.shipping_fee) {
+          var freeRes = finalizeClaim(fresh, { mode: 'free', payment_key: null });
+          ui.modal = null;
+          if (!freeRes.ok) { toast(freeRes.message || '접수하지 못했습니다.', 'warn'); renderAll(); break; }
+          showClaimDone(freeRes.claim, (CLAIM_TYPES[freeRes.claim.claim_type] || '교환/반품') + ' 신청이 접수되었습니다. (배송비 무료)');
+          break;
+        }
+        savePendingClaim(fresh);
+        if (!tossAvailable()) {
+          var demoRes = finalizeClaim(fresh, { mode: 'demo-fallback', payment_key: null });
+          ui.modal = null;
+          if (!demoRes.ok) { toast(demoRes.message || '접수하지 못했습니다.', 'warn'); renderAll(); break; }
+          showClaimDone(demoRes.claim, '배송비 ' + won(demoRes.claim.shipping_fee) + ' 데모 결제로 접수했습니다.');
+          break;
+        }
+        requestTossClaimPayment(fresh, user);
+        toast('배송비 ' + won(fresh.shipping_fee) + ' 결제창을 여는 중입니다…');
+        break;
+      }
       case 'go-admin':
         if (!isAdmin()) { openAuth('login', '관리자 계정으로 로그인해 주세요.'); break; }
         ui.adminTab = 'products'; go('admin'); break;
@@ -4546,6 +5252,15 @@ table.data.coupons { min-width: 640px; }
       var thumb = box ? box.querySelector('.extra-thumb') : null;
       if (thumb) thumb.src = imgSrc(t.value);
     }
+    if (t.dataset && t.dataset.action === 'admin-claim-status') {
+      if (!isAdmin()) return;
+      var cr = updateClaimStatus(t.dataset.cid, t.value);
+      if (!cr.ok) { toast(cr.message, 'warn'); renderAll(); return; }
+      var stateLabel = (CLAIM_STATUS[t.value] || {}).label || t.value;
+      toast('교환/반품 상태를 ' + stateLabel + '(으)로 변경했습니다.' + (cr.restored ? ' 재고 ' + cr.restored + '개를 복구했습니다.' : ''));
+      renderAll();
+      return;
+    }
     if (t.dataset && t.dataset.action === 'admin-order-status') {
       if (!isAdmin()) return;
       var r = updateOrderStatus(t.dataset.oid, t.value);
@@ -4604,6 +5319,7 @@ table.data.coupons { min-width: 640px; }
     renderAll();
     try { history.replaceState(routeOf(), ''); } catch (e) {}
     handlePaymentReturn(); // 토스페이먼츠 successUrl/failUrl 복귀 처리
+    handleClaimReturn();    // 교환/반품 배송비 결제 복귀 처리(?tossClaim=…)
     syncRoute();
   }
 
@@ -4647,6 +5363,24 @@ table.data.coupons { min-width: 640px; }
     clearPending: function () { clearPending(); },
     customerKey: function () { return customerKey(); },
     handlePaymentReturn: function () { return handlePaymentReturn(); },
+    /* --- 교환/반품 접수 (테스트·검수용) --- */
+    claims: function () { return clone(db.order_claims); },
+    claimOf: function (oid) { return clone(claimOfOrder(oid)); },
+    claimById: function (cid) { return clone(claimById(cid)); },
+    claimFee: function (type, reason) { return claimFeeOf(type, reason); },
+    claimEligible: function (oid) { var o = orderById(oid); return !claimBlockReason(o); },
+    openClaim: function (oid) {
+      var o = orderById(oid);
+      if (!o) return null;
+      ui.modal = { type: 'claim', oid: oid, claim_type: 'return', reason_category: 'change_of_mind', reason_detail: '', exchange_option: '', error: '' };
+      renderModal(); syncLock(); syncRoute();
+      return clone(ui.modal);
+    },
+    claimDetail: function (cid) { return clone(claimById(cid)); },
+    updateClaimStatus: function (cid, status) { return clone(updateClaimStatus(cid, status)); },
+    pendingClaim: function () { return clone(loadPendingClaim()); },
+    clearPendingClaim: function () { clearPendingClaim(); },
+    handleClaimReturn: function () { return handleClaimReturn(); },
     confirmPayment: function (payKey, orderNo, amount) {
       var pending = loadPending();
       if (!pending) return { ok: false, message: '대기 주문 없음' };

@@ -1,9 +1,13 @@
 # MONO ATELIER — 의류 쇼핑몰 프로토타입
 
 프론트엔드만으로 완결되는 모던 컨템포러리 의류 쇼핑몰입니다.
-모든 데이터는 **정규화된 8개 테이블(JSON)** 로 관리되고 브라우저 `localStorage`에 저장되며,
-`data/schema.sql`(SQLite 9개 테이블 — `coupon_targets` 정규화 포함)로 **1:1 이식**할 수 있게 설계했습니다.
+모든 데이터는 **정규화된 9개 테이블(JSON)** 로 관리되고 브라우저 `localStorage`에 저장되며,
+`data/schema.sql`(SQLite 10개 테이블 — `coupon_targets`·`order_claims` 포함)로 **1:1 이식**할 수 있게 설계했습니다.
 
+> **v1.5 (2026-11-26 교환/반품 요청)** — 마이페이지 주문 내역에서 **교환/반품 신청**을 할 수 있습니다.
+> **제품 하자·파손 / 오배송은 판매자 귀책으로 배송비 0원(무료) 즉시 접수**, **단순 변심 / 사이즈·색상 변경은 반품 3,000원 · 교환(왕복) 6,000원을 토스페이먼츠 SDK v2 결제창으로 결제한 뒤 접수**합니다(`?tossClaim=success` 복귀 시 신청번호·금액 검증, `file://`·오프라인은 데모 결제 fallback).
+> 접수된 주문에는 `반품 접수됨 (무료)` · `교환 접수됨 (배송비 6,000원 결제)` 배지가 붙고 중복 신청이 차단되며, 관리자 콘솔 **주문 관리 → 교환·반품 접수**에서 사유·배송비 결제 여부를 확인하고 `접수됨 → 수거중/승인 → 완료`(또는 반려)로 처리합니다. **반품을 완료하면 상품 재고가 한 번만 복구**됩니다.
+>
 > **v1.4 (2026-11-26 3차 실기기 QA 반영)** — 삼성 인터넷 주소창·하단 툴바 때문에 `94vh` 가 실제 가시 영역보다 커져 상세 모달 상단(닫기·`1 / 3` 배지·대표 이미지)이 화면 위로 잘리던 문제를 고쳤습니다. 모바일 모달 레이어 높이를 `--app-height`(=`window.innerHeight`) / `100dvh` 로 잡고 상세 모달을 가시 영역에 꽉 채워 `top = 0` 을 고정했습니다. 함께 강제 다크모드 색반전에서도 선택 옵션이 보이도록 `color-scheme: light only` + 선택 칩/사이즈 `2px` 테두리·채움·`✓`, 라벨 배지, 구매 버튼 위 `선택: 컬러 / 사이즈 · 수량` 요약을 넣었습니다.
 >
 > **v1.3 (2026-11-26 2차 실기기 QA 반영)** — 상품 상세 모바일 잘림 완전 제거(이미지 고정 + 정보만 스크롤)·
@@ -59,14 +63,14 @@ fashion-shop/
 ├─ assets/                     # AI 생성 스튜디오 컷 13종 + 갤러리 디테일 크롭 24종 (webp, 1.8MB)
 ├─ make_gallery_assets.py      # 대표 컷에서 디테일 크롭(-detail/-fabric) 생성
 ├─ data/
-│  ├─ schema-seed.json         # 정규화 시드 데이터 (8 tables + meta)
+│  ├─ schema-seed.json         # 정규화 시드 데이터 (9 tables + meta)
 │  ├─ schema.sql               # SQLite DDL (FK·CHECK·INDEX·VIEW)
 │  ├─ build_sqlite.py          # 시드 → SQLite 변환·검증 스크립트
 │  ├─ payment_confirm_example.py # 토스페이먼츠 결제 승인(서버) 예제 — 시크릿 키는 환경변수
-│  └─ mono-atelier.db          # 위 스크립트로 만든 샘플 SQLite DB (144KB)
+│  └─ mono-atelier.db          # 위 스크립트로 만든 샘플 SQLite DB (192KB)
 └─ tests/
-   ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (328 checks)
-   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360 / 모바일 가시 높이 720 / 토스 결제 / file:// 프리뷰, 326 checks)
+   ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (396 checks)
+   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / file:// 프리뷰, 405 checks)
    ├─ make_screenshots.py      # 대표 스크린샷 생성
    ├─ verify_deploy.py         # 배포본 검수 (HTTP 200·콘솔 에러 0·이미지 깨짐 0·개인정보 0)
    └─ smoke.py                 # 단일 페이지 스모크(콘솔 에러 확인)
@@ -80,9 +84,10 @@ fashion-shop/
 ## 3. 데이터 구조 (SQLite 이식 대비)
 
 ```
-users ─┬─< orders ─< order_items >─ product_variants >─ products ─┬─< product_images
-       └─< cart_items >──────────────┘                          └── free_shipping_threshold
-orders.coupon_code ───────────────< coupons (code UNIQUE)
+users ─┬─< orders ─┬─< order_items >─ product_variants >─ products ─┬─< product_images
+       │           └─< order_claims (order_id UNIQUE)              └── free_shipping_threshold
+       └─< cart_items >────────────────┘
+orders.coupon_code ───────────────< coupons (code UNIQUE) ─< coupon_targets >─ users
 ```
 
 | 테이블 | 컬럼 | 비고 |
@@ -94,6 +99,7 @@ orders.coupon_code ───────────────< coupons (code 
 | `cart_items` | id, user_id, variant_id, quantity, added_at | (user,variant) UNIQUE |
 | `orders` | id, order_no, user_id, status, total_amount, shipping_fee, **coupon_code**, **discount_amount**, recipient_name, recipient_phone, shipping_address, payment_method, payment_provider, payment_key, payment_mode, created_at | status: paid/preparing/shipping/delivered/cancelled · payment_provider: demo/tosspayments · payment_mode: demo/demo-fallback/test-client/server |
 | `order_items` | id, order_id, variant_id, product_name, color, size, unit_price, quantity | 상품명·컬러·사이즈·가격은 **주문 시점 스냅샷** |
+| `order_claims` | id, order_id, user_id, claim_type, reason_category, reason_detail, shipping_fee, payment_status, payment_key, payment_mode, exchange_option, status, stock_restored, created_at, updated_at | 교환/반품 접수 — claim_type: return/exchange · reason_category: defect/wrong_item/change_of_mind/size_color · payment_status: free/paid/pending · status: requested/approved/completed/rejected · 한 주문당 1건(order_id UNIQUE) |
 | `coupons` | id, code, name, discount_type, discount_value, min_order_amount, expires_at, is_active, **target_user_ids**, created_at | discount_type: percent(%)/fixed(원) · expires_at NULL = 무기한 · `target_user_ids` = 발급 대상(빈 배열 = 전체 공용) |
 | `coupon_targets` | id, coupon_id, user_id, created_at | 전용 쿠폰 발급 대상 정규화 테이블(SQLite) · (coupon,user) UNIQUE |
 
@@ -101,16 +107,19 @@ orders.coupon_code ───────────────< coupons (code 
 * `free_shipping_threshold`: `NULL` = 스토어 기본 100,000원, `0` = 무조건 무료배송, `N` = 해당 상품 합계 N원 이상 무료배송.
 * `products.badge`: 프리셋(`BEST`/`NEW`/`SALE`/`LIMITED`) 또는 관리자가 입력한 16자 이내 문구. `NULL` = 뱃지 없음.
 * `coupons.target_user_ids`: `[]` = 전체 공용. 값이 있으면 그 회원만 목록 노출·코드 적용이 가능하고 다른 계정은 `이 계정에 발급된 쿠폰이 아닙니다.`로 거부됩니다. SQLite에서는 `coupon_targets` 행으로 전개됩니다.
-* 시드 규모: users 2 · products 13(판매중 12, 숨김 1) · product_images 39 · product_variants 88 · orders 3 · order_items 4 · coupons 3(공용 2 + 전용 1) · coupon_targets 1.
+* 시드 규모: users 2 · products 13(판매중 12, 숨김 1) · product_images 39 · product_variants 88 · orders 5(배송완료 3 포함) · order_items 6 · order_claims 2(무료 1 + 유료 1) · coupons 3(공용 2 + 전용 1) · coupon_targets 1.
+* `order_claims.shipping_fee`: `defect`·`wrong_item` = **0원**, `change_of_mind`·`size_color` = 반품 **3,000원** / 교환 **6,000원**(왕복). 무료 접수는 `payment_status='free'`, 유료 접수는 토스 결제 후 `'paid'` + `payment_key`.
+* `order_claims.stock_restored`: 반품을 `완료`로 바꿀 때 재고 복구를 **한 번만** 하기 위한 플래그(0/1).
+* 교환/반품 신청 가능 단계는 **배송중(`shipping`)·배송완료(`delivered`)** 이고, 배송 전 주문은 `주문 취소`로 처리합니다. 시드의 `o_001`(배송완료·접수 이력 없음)에 데모 계정으로 로그인하면 바로 신청 버튼을 눌러볼 수 있습니다.
 * 비밀번호는 데모용 `sha256('mono-atelier$' + password)` 해시로 저장합니다(앱 내 동기 SHA-256 구현, 시드와 동일 값 검증 완료).
 
 ### SQLite로 옮길 때
 
-1. `data/schema.sql` 실행 (`PRAGMA foreign_keys = ON` 포함, FK·CHECK·SKU UNIQUE·뷰 3종).
+1. `data/schema.sql` 실행 (`PRAGMA foreign_keys = ON` 포함, FK·CHECK·SKU UNIQUE·뷰 4종).
 2. `data/schema-seed.json`(또는 앱의 **JSON 다운로드**)을 테이블별로 `INSERT`.
    금액은 정수, 시각은 ISO-8601 TEXT, `is_active`는 0/1로 변환하면 그대로 들어갑니다.
    `coupons.target_user_ids`(배열)는 `coupon_targets` 테이블의 행으로 전개합니다.
-3. `v_product_stock`, `v_order_summary`, `v_coupon_targets` 뷰로 상품별 재고·주문 합계·전용 쿠폰 발급 대상을 바로 검수할 수 있습니다.
+3. `v_product_stock`, `v_order_summary`, `v_coupon_targets`, `v_order_claims` 뷰로 상품별 재고·주문 합계·전용 쿠폰 발급 대상·교환/반품 접수 현황을 바로 검수할 수 있습니다.
 
 자동 변환도 가능합니다:
 
@@ -119,8 +128,9 @@ python3 fashion-shop/data/build_sqlite.py      # → data/mono-atelier.db 재생
 ```
 
 ```
-users 2 · products 13 · product_images 39 · product_variants 88 · orders 3 · order_items 4 · coupons 2
-foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0
+users 2 · products 13 · product_images 39 · product_variants 88 · orders 5 · order_items 6 · order_claims 2 · coupons 3
+foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 · 한 주문당 클레임 1건: OK
+  교환/반품 접수: return defect 무료 (requested), exchange size_color 6000원 결제 (approved)
 ```
 
 ---
@@ -138,6 +148,14 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0
 - 회원가입(이메일·비밀번호·이름·연락처·주소), 로그인, 로그아웃, 데모 원클릭 로그인
 - 마이페이지: 회원 정보 수정(이메일 중복 검사), 주문 내역·상태 타임라인·주문 상세, 주문 취소(재고 자동 복구), 누적 결제액, **헤더 우측 로그아웃 버튼**(모바일·데스크톱 공통)
 - **데이터 관리(JSON 내보내기·시드 초기화)는 관리자 콘솔 전용** — 마이페이지에는 일반 회원·관리자 모두 탭이 없습니다
+
+**교환 / 반품 신청 (v1.5)**
+- 마이페이지 주문 내역(배송중·배송완료)에서 **「교환/반품 신청」** → 모달에서 ① 유형(반품/교환) ② 사유 ③ 교환 희망 옵션·상세 사유 입력
+- 사유별 **배송비 안내 배지**: `제품 하자·파손`·`오배송` = **판매자 귀책 · 반품/교환 배송비 0원 (무료)** / `단순 변심`·`사이즈·색상 변경` = **반품 3,000원 / 교환(왕복) 6,000원 배송비 결제 필요**
+- **무료 접수**: 버튼「무료 교환/반품 접수」→ 즉시 `order_claims` 생성(`shipping_fee=0`, `payment_status='free'`, `status='requested'`) + 토스트
+- **유료 접수**: 버튼「배송비 3,000원(6,000원) 결제 후 접수」→ **토스페이먼츠 SDK v2 결제창** (`pending_claim` 을 localStorage 에 저장 → `?tossClaim=success` 복귀 시 신청번호·금액 검증 → 접수, 실패/금액 변조 시 미접수). `file://`·오프라인은 데모 결제로 접수
+- 접수된 주문은 `반품 접수됨 (무료)` · `교환 접수됨 (배송비 6,000원 결제)` 배지와 진행 상태(`접수됨`/`수거중/승인`/`완료`/`반려`)를 보여주고 **중복 신청을 차단**합니다
+- 사유·유형을 바꿔도 입력한 상세 사유·희망 옵션이 유지됩니다(모달 전체 재렌더 없이 배지·배송비·버튼만 갱신)
 
 **장바구니 / 결제**
 - 옵션 단위 담기, 수량 ±(재고 상한), 개별/전체 선택, **상품별 무료배송 기준 자동 계산**, 무료배송까지 남은 금액 게이지
@@ -169,7 +187,7 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0
 - 대시보드(판매 중 상품·전체 주문·처리 대기·누적 매출)
 - 상품 관리: 등록/수정(옵션별 컬러·컬러코드·사이즈·재고), **대표 + 갤러리 추가 이미지(최대 6장) — 기존 컷 선택 또는 사진 파일 업로드**, **무료배송 기준 금액**, **상품 뱃지(프리셋/직접 입력)**, 전체 품절, 숨김/판매재개
 - **쿠폰 관리**: 쿠폰 코드·이름·정률/정액·할인값·최소 주문금액·만료일 + **발급 대상(전체 공용 / 회원 지정)** 으로 발행, 목록에서 발급 대상·사용 건수·중지/재개
-- 주문 관리: 상태 변경(결제완료 → 배송준비 → 배송중 → 배송완료 / 취소)
+- 주문 관리: 상태 변경(결제완료 → 배송준비 → 배송중 → 배송완료 / 취소) + **교환·반품 접수 목록**(신청 유형·주문/상품·사유·교환 희망 옵션·배송비 결제 여부 `무료`/`3,000원 결제완료`/`6,000원 결제완료`·접수일시)과 **상태 변경**(`접수됨 → 수거중/승인 → 완료`, 또는 `반려`). **반품을 완료하면 해당 주문 상품 재고가 한 번만 복구**됩니다(교환은 재고 변동 없음)
 - 데이터: **JSON 다운로드·클립보드 복사·시드 초기화·무결성 검사·테이블 현황·현재 JSON 미리보기** + **결제 설정 카드**(현재 결제 모드·클라이언트 키 마스킹·승인 서버 유무·키 교체 방법)
 - **모바일(≤980px) 진입 경로**: 헤더 `관리자` 버튼 / 마이페이지 헤더 `관리자 콘솔` 버튼 / 마이페이지 상단 관리자 배너. 412px에서도 탭 4종(상품 관리·주문 관리·쿠폰 관리·데이터 관리)과 `+ 상품 등록` 이 잘리지 않습니다.
 
@@ -196,9 +214,11 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0
   참고 구현: `data/payment_confirm_example.py` (금액 서버 검증 · `paymentKey` UNIQUE 멱등 처리 · SQLite 기록).
 * 결제창은 구매자가 결제수단을 고르면 `paymentRequest` 이벤트가 발생하고, 그때 `widgets.requestPayment()` 로
   `successUrl`/`failUrl`(= 현재 URL + `?tossResult=success|fail`)로 리다이렉트합니다. 복귀 후 쿼리는 `history.replaceState` 로 정리합니다.
+* **교환/반품 배송비 결제도 같은 결제창 세션을 재사용**합니다. `?tossClaim=success` 복귀 시 `orderId`(신청번호)·`amount`(배송비)를 대기 신청과 대조하고, 통과하면 `order_claims` 를 `payment_status='paid'` 로 생성합니다. 승인 서버(`confirmApiUrl`)는 주문 승인 엔드포인트이므로, 실서비스에서는 배송비 승인용 분기(예: `/api/claims/confirm`)를 추가해야 합니다.
 
 **정책**
 - 재고 차감·복구는 변이 시점에 즉시 반영되며, 취소는 `paid`/`preparing`에서만 가능(배송 시작 후 차단).
+- 교환/반품은 **배송중·배송완료** 주문만 신청할 수 있고 **한 주문당 1건**(`order_claims.order_id UNIQUE`)만 접수됩니다. 반품을 `완료`로 바꿀 때만 재고가 복구되고 중복 복구되지 않습니다(교환은 재고 변동 없음).
 - 관리자가 옵션을 삭제해도 과거 주문이 참조하는 옵션은 재고 0으로 보존(주문 스냅샷 무결성 유지).
 - 쿠폰은 활성 상태·만료일·최소 주문금액을 **계산 시점마다** 검사하고, 결제 시 주문에 `coupon_code`/`discount_amount` 스냅샷을 남깁니다(이후 쿠폰을 중지해도 과거 주문 금액은 그대로).
 - 배송비는 **선택된 상품군 합계**로 판정하며 한 주문에 3,000원 1회만 부과합니다.
@@ -210,8 +230,8 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0
 ## 5. 검증 결과
 
 ```
-static_check.py        317 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·v1.2/v1.3 기능 가드)
-e2e_fashion_shop.py    288 checks passed (데스크톱 1280 / 모바일 412·360 / v1.2·v1.3 기능 / 토스 결제 스텁 / 단일 프리뷰)
+static_check.py        396 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·v1.2~v1.5 기능 가드)
+e2e_fashion_shop.py    405 checks passed (데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.5 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
 콘솔 에러              0건
 ```
 
@@ -229,6 +249,14 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 ```
 
 > 테스트는 `LD_LIBRARY_PATH`를 워크스페이스의 `.cache/browserlibs`로 지정해 headless Chromium을 실행합니다(스크립트에 포함).
+
+**v1.5 신규 검증 (E2E `run_v15`)**
+- 마이페이지 주문 내역: 시드 접수 2건 배지(`반품 접수됨 (무료)`, `교환 접수됨 (배송비 6,000원 결제)`), 배송완료 주문(`o_001`)에만 「교환/반품 신청」 버튼, 이미 접수된 주문·결제완료/배송준비 주문에는 버튼 없음
+- 모달: 기본 반품/단순 변심 = `3,000원` + 「배송비 3,000원 결제 후 접수」, 하자·오배송 = `0원` + 판매자 귀책 배지 + 「무료 교환/반품 접수」, 교환+사이즈 변경 = `6,000원` + 희망 옵션 입력 노출
+- 사유를 바꿔도 상세 사유·희망 옵션 입력이 유지(부분 갱신), 교환인데 희망 옵션이 없으면 접수 거부, 무료 접수는 토스 결제창 호출 0회 + `shipping_fee 0 / free / requested` 생성 + 카드 배지·중복 신청 차단
+- 유료 접수: 관리자가 주문을 `배송완료`로 바꾼 뒤 교환 신청 → 스텁 결제창 `setAmount 6,000` · `orderId = 신청번호` · `?tossClaim=success` · `?tossClaim=fail` → 복귀 시 금액·신청번호 검증 후 `paid` + `payment_key` 접수, 재접수(중복) 방지, 금액 변조·결제 취소 시 미접수 + 대기 신청 정리
+- 관리자: 교환·반품 접수 목록에 무료/`6,000원 결제완료`·교환 희망 옵션 표시, `접수됨 → 수거중/승인 → 완료`·`반려` 변경, **반품 완료 시 재고 +1·재복구 없음**, 교환 완료는 재고 변동 없음
+- 모바일 412×720: 모달 상단 잘림 0·`bottom ≤ 720`·제출 버튼 가시·가로 넘침 0px·가로 스크롤 0, 하자 선택 시 0원/무료 버튼 → 접수 후 배지 표시
 
 **v1.2 신규 검증 (E2E `run_v12`)**
 - 412px 헤더 `관리자` → 콘솔 진입, 탭 4종이 화면 안에 4열로 들어가고 `+ 상품 등록` 이 보임
@@ -261,6 +289,7 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 `fashion-shop-mobile-admin-entry.png`, `fashion-shop-mobile-coupons.png`, `fashion-shop-mobile-gallery.png`, `fashion-shop-mobile-*.png`
 (v1.3 추가: `fashion-shop-mobile-product-form.png`, `fashion-shop-mobile-product-upload.png`, `fashion-shop-mobile-mycoupons.png`)
 (v1.4 추가: `fashion-shop-mobile-detail-fixed.png`, `fashion-shop-mobile-detail-fixed-options.png`)
+(v1.5 추가: `fashion-shop-claim-modal.png`(교환 6,000원), `fashion-shop-claim-free.png`(판매자 귀책 0원), `fashion-shop-admin-claims.png`, `fashion-shop-mobile-claim.png`, `fashion-shop-mobile-claim-change.png`)
 
 ---
 
