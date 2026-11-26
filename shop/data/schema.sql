@@ -27,6 +27,7 @@ CREATE TABLE products (
                  -- 프리셋(BEST/NEW/SALE/LIMITED) 또는 관리자가 입력한 짧은 문구
   description    TEXT NOT NULL DEFAULT '',
   image          TEXT NOT NULL,                              -- 대표 이미지
+  model_info     TEXT,                                       -- 모델 착용 정보 (예: '모델 174cm · 54kg · M 사이즈 착용'), NULL = 표시 안 함
   free_shipping_threshold INTEGER
                  CHECK (free_shipping_threshold IS NULL OR free_shipping_threshold >= 0),
                  -- NULL = 스토어 기본(100,000원), 0 = 무조건 무료배송, N = 해당 상품 합계 N원 이상 무료

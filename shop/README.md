@@ -4,6 +4,8 @@
 모든 데이터는 **정규화된 9개 테이블(JSON)** 로 관리되고 브라우저 `localStorage`에 저장되며,
 `data/schema.sql`(SQLite 10개 테이블 — `coupon_targets`·`order_claims` 포함)로 **1:1 이식**할 수 있게 설계했습니다.
 
+> **v1.6 (2026-11-26 상세 이미지·모델 정보)** — 상품 상세 대표 이미지를 **탭하거나 「확대」 버튼**을 누르면 **전체 화면 이미지 뷰어(라이트박스)**가 열립니다. 원본 비율로 화면을 채우고 **1x ↔ 2x(최대 3x) 확대·축소, 드래그 이동, 두 손가락 핀치 줌, ‹ › 컷 전환, ✕·Esc·브라우저 뒤로가기로 뷰어만 닫기**(상세 모달 유지)를 지원합니다. 상품에 **`model_info`(모델 착용 정보)** 를 추가해 상세 정보 표에 「모델 정보」로 노출하고(예: `모델 174cm · 54kg · M 사이즈 착용`), 관리자 상품 등록/수정에서 「모델 정보 (선택)」으로 입력·수정할 수 있습니다(비우면 숨김).
+>
 > **v1.5 (2026-11-26 교환/반품 요청)** — 마이페이지 주문 내역에서 **교환/반품 신청**을 할 수 있습니다.
 > **제품 하자·파손 / 오배송은 판매자 귀책으로 배송비 0원(무료) 즉시 접수**, **단순 변심 / 사이즈·색상 변경은 반품 3,000원 · 교환(왕복) 6,000원을 토스페이먼츠 SDK v2 결제창으로 결제한 뒤 접수**합니다(`?tossClaim=success` 복귀 시 신청번호·금액 검증, `file://`·오프라인은 데모 결제 fallback).
 > 접수된 주문에는 `반품 접수됨 (무료)` · `교환 접수됨 (배송비 6,000원 결제)` 배지가 붙고 중복 신청이 차단되며, 관리자 콘솔 **주문 관리 → 교환·반품 접수**에서 사유·배송비 결제 여부를 확인하고 `접수됨 → 수거중/승인 → 완료`(또는 반려)로 처리합니다. **반품을 완료하면 상품 재고가 한 번만 복구**됩니다.
@@ -69,8 +71,8 @@ fashion-shop/
 │  ├─ payment_confirm_example.py # 토스페이먼츠 결제 승인(서버) 예제 — 시크릿 키는 환경변수
 │  └─ mono-atelier.db          # 위 스크립트로 만든 샘플 SQLite DB (192KB)
 └─ tests/
-   ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (396 checks)
-   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / file:// 프리뷰, 405 checks)
+   ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (429 checks)
+   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / 라이트박스 / file:// 프리뷰, 452 checks)
    ├─ make_screenshots.py      # 대표 스크린샷 생성
    ├─ verify_deploy.py         # 배포본 검수 (HTTP 200·콘솔 에러 0·이미지 깨짐 0·개인정보 0)
    └─ smoke.py                 # 단일 페이지 스모크(콘솔 에러 확인)
@@ -93,7 +95,7 @@ orders.coupon_code ───────────────< coupons (code 
 | 테이블 | 컬럼 | 비고 |
 | --- | --- | --- |
 | `users` | id, email, password_hash, name, phone, address, role, created_at | role: customer/admin |
-| `products` | id, name, brand, category, price, original_price, badge, description, image, **images**, **free_shipping_threshold**, created_at, is_active | `images` = 갤러리 배열(JSON) · category: outer/top/bottom/dress/acc |
+| `products` | id, name, brand, category, price, original_price, badge, description, image, **images**, **model_info**, **free_shipping_threshold**, created_at, is_active | `images` = 갤러리 배열(JSON) · `model_info` = 모델 착용 정보(예: `모델 174cm · 54kg · M 사이즈 착용`, NULL = 숨김) · category: outer/top/bottom/dress/acc |
 | `product_images` | id, product_id, image, alt, sort_order | 갤러리 정규화 테이블(SQLite) · (product,image) UNIQUE |
 | `product_variants` | id, product_id, color, color_hex, size, stock, sku | size: S/M/L/XL/FREE, (product,color,size) UNIQUE |
 | `cart_items` | id, user_id, variant_id, quantity, added_at | (user,variant) UNIQUE |
@@ -106,6 +108,7 @@ orders.coupon_code ───────────────< coupons (code 
 * `total_amount` = 상품금액 합계 + `shipping_fee` − `discount_amount` (전 건 검증됨).
 * `free_shipping_threshold`: `NULL` = 스토어 기본 100,000원, `0` = 무조건 무료배송, `N` = 해당 상품 합계 N원 이상 무료배송.
 * `products.badge`: 프리셋(`BEST`/`NEW`/`SALE`/`LIMITED`) 또는 관리자가 입력한 16자 이내 문구. `NULL` = 뱃지 없음.
+* `products.model_info`: 모델 키·체중·착용 사이즈 문구(60자 이내). `NULL`/빈 값이면 상세에서 「모델 정보」 항목을 그리지 않습니다. 시드 13개 상품 모두 값이 있습니다(잡화는 `모델 172cm 착용 컷`).
 * `coupons.target_user_ids`: `[]` = 전체 공용. 값이 있으면 그 회원만 목록 노출·코드 적용이 가능하고 다른 계정은 `이 계정에 발급된 쿠폰이 아닙니다.`로 거부됩니다. SQLite에서는 `coupon_targets` 행으로 전개됩니다.
 * 시드 규모: users 2 · products 13(판매중 12, 숨김 1) · product_images 39 · product_variants 88 · orders 5(배송완료 3 포함) · order_items 6 · order_claims 2(무료 1 + 유료 1) · coupons 3(공용 2 + 전용 1) · coupon_targets 1.
 * `order_claims.shipping_fee`: `defect`·`wrong_item` = **0원**, `change_of_mind`·`size_color` = 반품 **3,000원** / 교환 **6,000원**(왕복). 무료 접수는 `payment_status='free'`, 유료 접수는 토스 결제 후 `'paid'` + `payment_key`.
@@ -163,11 +166,18 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 - **토스페이먼츠 SDK v2 결제창(테스트)** — 결제하기 → 대기 주문 저장 → 결제창 → `?tossResult=success` 복귀 시 `paymentKey`·`orderId`·`amount` 검증 → **재고 재검증·차감 → 주문/주문항목 생성(결제키 기록) → 장바구니 비우기 → 영수증 모달**(주문번호 `MAYYYYMMDD-NNNN`)
 - `file://`·오프라인·SDK 로드 실패 환경은 자동으로 **데모 모의 결제**로 이어집니다(안내 토스트). 무통장 계좌 안내 유지.
 
-**상품 상세 / 갤러리 (v1.2 · v1.3)**
+**상품 상세 / 갤러리 (v1.2 · v1.3 · v1.6)**
 - 대표 이미지 + 디테일 컷 2장(총 3장) 썸네일 갤러리 — 썸네일 클릭·`‹ ›` 로 대표 이미지만 부분 전환(모달·옵션 상태 유지)
 - 대표 이미지는 `object-fit: contain` + 아이보리 배경으로 **잘림 0%**. 모바일(≤720px)은 **이미지 영역 고정 + 정보 영역만 스크롤**하는 2단 시트라 이미지가 위로 밀려 잘리지 않습니다.
 - 상품별 배송 조건 표시: `무료배송` / `50,000원 이상 무료배송` / `100,000원 이상 무료배송`
 - 상세 상단·상품 카드·관리자 목록에 상품 뱃지 표시
+- **모델 정보**: 상세 정보 표의 첫 줄에 `모델 정보 — 모델 174cm · 54kg · M 사이즈 착용` 처럼 표시(`products.model_info`, 관리자 입력·수정, 비우면 숨김)
+
+**이미지 전체 화면 확대 — 라이트박스 (v1.6)**
+- 상세 대표 이미지를 **탭(클릭)** 하거나 이미지 우측 상단 **「확대」 버튼**을 누르면 전체 화면 뷰어가 열립니다
+- 원본 비율(`object-fit: contain`)로 화면을 채우고, **이미지 탭 = 1x ↔ 2x 토글**, **`+`/`−` = 1x~3x**, **`원본`** 리셋, **드래그 이동**, **두 손가락 핀치 줌**(`touch-action: none` + 포인터 2개 좌표 비율), **`‹` `›`·방향키로 같은 상품의 다른 컷 전환**
+- **`✕` · Esc · 브라우저 뒤로가기** 로 뷰어만 닫히고 상세 모달·옵션 선택은 그대로 유지됩니다(히스토리 한 겹 추가)
+- 뷰어가 열려 있는 동안 배경 스크롤을 잠그고, 상단 컷 번호(`2 / 3`)·현재 줌(`2x`)을 표시
 
 **상품 뱃지 관리 (v1.3)**
 - 관리자 상품 등록/수정에서 `없음` · `BEST` · `NEW` · `SALE` · `LIMITED` 선택 또는 **직접 입력(16자 이내)** — 저장 즉시 카드·상세 상단·관리자 목록에 반영(`products.badge`)
@@ -185,7 +195,7 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 
 **관리자**
 - 대시보드(판매 중 상품·전체 주문·처리 대기·누적 매출)
-- 상품 관리: 등록/수정(옵션별 컬러·컬러코드·사이즈·재고), **대표 + 갤러리 추가 이미지(최대 6장) — 기존 컷 선택 또는 사진 파일 업로드**, **무료배송 기준 금액**, **상품 뱃지(프리셋/직접 입력)**, 전체 품절, 숨김/판매재개
+- 상품 관리: 등록/수정(옵션별 컬러·컬러코드·사이즈·재고), **대표 + 갤러리 추가 이미지(최대 6장) — 기존 컷 선택 또는 사진 파일 업로드**, **모델 정보(선택, 60자)**, **무료배송 기준 금액**, **상품 뱃지(프리셋/직접 입력)**, 전체 품절, 숨김/판매재개
 - **쿠폰 관리**: 쿠폰 코드·이름·정률/정액·할인값·최소 주문금액·만료일 + **발급 대상(전체 공용 / 회원 지정)** 으로 발행, 목록에서 발급 대상·사용 건수·중지/재개
 - 주문 관리: 상태 변경(결제완료 → 배송준비 → 배송중 → 배송완료 / 취소) + **교환·반품 접수 목록**(신청 유형·주문/상품·사유·교환 희망 옵션·배송비 결제 여부 `무료`/`3,000원 결제완료`/`6,000원 결제완료`·접수일시)과 **상태 변경**(`접수됨 → 수거중/승인 → 완료`, 또는 `반려`). **반품을 완료하면 해당 주문 상품 재고가 한 번만 복구**됩니다(교환은 재고 변동 없음)
 - 데이터: **JSON 다운로드·클립보드 복사·시드 초기화·무결성 검사·테이블 현황·현재 JSON 미리보기** + **결제 설정 카드**(현재 결제 모드·클라이언트 키 마스킹·승인 서버 유무·키 교체 방법)
@@ -230,8 +240,8 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 ## 5. 검증 결과
 
 ```
-static_check.py        396 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·v1.2~v1.5 기능 가드)
-e2e_fashion_shop.py    405 checks passed (데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.5 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
+static_check.py        429 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·모델 정보·라이트박스 가드)
+e2e_fashion_shop.py    452 checks passed (데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.6 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
 콘솔 에러              0건
 ```
 
@@ -249,6 +259,15 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 ```
 
 > 테스트는 `LD_LIBRARY_PATH`를 워크스페이스의 `.cache/browserlibs`로 지정해 headless Chromium을 실행합니다(스크립트에 포함).
+
+**v1.6 신규 검증 (E2E `run_v16`)**
+- 상세 정보 표에 「모델 정보」+ 실수치 문구 표시, 「확대」 버튼 노출
+- 이미지 클릭 → 뷰어가 화면 전체를 덮고 원본 비율로 표시, `1 / 3`·`1x`, 상세 모달은 아래에 유지
+- `+` → `2x`(transform scale(2)) · 최대 `3x` 상한 · `원본` → `1x` · 이미지 탭 → `2x`
+- 2x에서 드래그하면 `translate` 값이 바뀌고, `›`/`‹`/방향키로 컷 전환 시 `1x`·중심으로 초기화
+- Esc → 뷰어만 닫힘(상세 유지) · 「확대」로 다시 열고 **뒤로가기 → 뷰어만 닫힘** · 한 번 더 뒤로가기 → 상세 닫힘 · `✕` 닫힘
+- 관리자: 「모델 정보 (선택)」 프리필 → 수정 저장 → 상세 즉시 반영, 비우면 `NULL` 저장 + 상세에서 항목 숨김(다른 메타 유지)
+- 모바일 412×720: 「확대」 버튼이 닫기(✕)와 겹치지 않고 화면 안, 탭으로 뷰어 열림 → 화면 가득·가로 넘침 0px·줌 컨트롤/닫기 가시, 탭 `2x`·`−` `1x`·`›` 전환·`✕` 후 상세 유지
 
 **v1.5 신규 검증 (E2E `run_v15`)**
 - 마이페이지 주문 내역: 시드 접수 2건 배지(`반품 접수됨 (무료)`, `교환 접수됨 (배송비 6,000원 결제)`), 배송완료 주문(`o_001`)에만 「교환/반품 신청」 버튼, 이미 접수된 주문·결제완료/배송준비 주문에는 버튼 없음
@@ -290,6 +309,7 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 (v1.3 추가: `fashion-shop-mobile-product-form.png`, `fashion-shop-mobile-product-upload.png`, `fashion-shop-mobile-mycoupons.png`)
 (v1.4 추가: `fashion-shop-mobile-detail-fixed.png`, `fashion-shop-mobile-detail-fixed-options.png`)
 (v1.5 추가: `fashion-shop-claim-modal.png`(교환 6,000원), `fashion-shop-claim-free.png`(판매자 귀책 0원), `fashion-shop-admin-claims.png`, `fashion-shop-mobile-claim.png`, `fashion-shop-mobile-claim-change.png`)
+(v1.6 추가: `fashion-shop-lightbox.png`(2x 확대), `fashion-shop-mobile-lightbox.png`)
 
 ---
 
