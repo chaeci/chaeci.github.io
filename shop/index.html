@@ -5238,13 +5238,17 @@ table.data.sms-logs-table { min-width: 640px; }
     var author = currentUserById(r.user_id);
     var reclaimed = 0;
     if (bonus > 0 && author) {
-      addPointLog(author, 'review_reclaim', -bonus, {
-        base_amount: 0, rate: 0, order_id: oi.order_id, order_item_id: oi.id, review_id: r.id,
-        description: '리뷰 반려 포인트 회수 (' + r.product_id + ' · ' + (reason || '상품과 무관한 사진·부적절한 내용') + ')'
-      });
+      /* 보유 포인트보다 많이 회수해 마이너스 잔액이 되지 않도록 실제 차감액만 기록(내역 합계 = 보유 포인트 유지) */
+      var deduct = Math.min(bonus, userPoints(author));
+      if (deduct > 0) {
+        addPointLog(author, 'review_reclaim', -deduct, {
+          base_amount: 0, rate: 0, order_id: oi.order_id, order_item_id: oi.id, review_id: r.id,
+          description: '리뷰 반려 포인트 회수 (' + r.product_id + ' · ' + (reason || '상품과 무관한 사진·부적절한 내용') + ')'
+        });
+        reclaimed = deduct;
+      }
       oi.photo_bonus = 0;
       oi.photo_bonus_at = null;
-      reclaimed = bonus;
     }
     r.status = 'rejected';
     r.rejected_reason = String(reason || '').trim().slice(0, 200) || '상품과 무관한 사진·부적절한 내용';
