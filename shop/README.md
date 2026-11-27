@@ -104,6 +104,7 @@ fashion-shop/
    ├─ make_screenshots.py      # 대표 스크린샷 생성
    ├─ make_v18_screens.py      # v1.8 상세 모달·라이트박스·색상/팔레트·사이트 관리 스크린샷
    ├─ make_v19_screens.py      # v1.9 412px 핵심 화면(스토리·리뷰·FAQ·포인트·주소·색상 레이어) 스크린샷
+   ├─ make_v192_screens.py     # v1.9.2 리뷰 반려 후 재작성 안내(마이페이지)·재작성 모달 스크린샷
    ├─ verify_deploy.py         # 배포본 검수 (HTTP 200·콘솔 에러 0·이미지 깨짐 0·개인정보 0)
    └─ smoke.py                 # 단일 페이지 스모크(콘솔 에러 확인)
 ```
@@ -378,7 +379,7 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 (v1.5 추가: `fashion-shop-claim-modal.png`(교환 6,000원), `fashion-shop-claim-free.png`(판매자 귀책 0원), `fashion-shop-admin-claims.png`, `fashion-shop-mobile-claim.png`, `fashion-shop-mobile-claim-change.png`)
 (v1.6 추가: `fashion-shop-lightbox.png`(2x 확대), `fashion-shop-mobile-lightbox.png`)
 (v1.7 추가: `fashion-shop-v17-detail.png`(412 상세·스와이프/더블탭 힌트), `fashion-shop-v17-admin.png`(412 관리자 상품 검색·카드형 표))
-(v1.9.2 추가: `v192-review-modal-412.png`(412 리뷰 첨부 버튼 중앙 정렬), `v192-admin-orders-412.png`(412 주문 상태 필터 칩), `v192-admin-claims-412.png`(412 반품/교환 탭), `v192-admin-logs-412.png`·`v192-admin-logs-412-top.png`(412 발송 로그·과다 발송 경고), `v192-admin-logs.png`(데스크톱 발송 로그), `v192-mypage-rewrite.png`(리뷰 재작성 상태의 마이페이지)) — `fashion-shop/tests/artifacts/` 에 생성됩니다.
+(v1.9.2 추가: `fashion-shop-v192-mypage-rewrite.png`(리뷰 반려 후 '재작성 1회 가능'·리뷰 다시 쓰기), `fashion-shop-v192-rewrite-modal.png`(리뷰 다시 작성 모달), `fashion-shop-v192-review-412.png`(412 리뷰 첨부 버튼 중앙 정렬), `fashion-shop-v192-admin-orders-412.png`(412 주문 상태 필터 칩), `fashion-shop-v192-admin-claims-412.png`(412 반품/교환 탭), `fashion-shop-v192-admin-logs-412.png`(412 발송 로그·과다 발송 경고), `fashion-shop-v192-admin-logs.png`(데스크톱 발송 로그))
 
 ---
 
