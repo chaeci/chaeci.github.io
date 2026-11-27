@@ -340,17 +340,6 @@
   }
   .group-label::after{content:"";flex:1;height:1px;background:rgba(13,37,48,.09)}
 
-  /* ---------- hotel toggle ---------- */
-  .nights{
-    display:flex;gap:6px;margin:2px 0 10px;background:rgba(238,248,250,.85);
-    border:1px solid rgba(13,37,48,.07);border-radius:12px;padding:3px;
-  }
-  .nights button{
-    flex:1;appearance:none;border:0;background:transparent;color:var(--muted);
-    font-family:inherit;font-size:12px;font-weight:700;padding:8px 4px;border-radius:9px;cursor:pointer;
-    transition:background .15s,color .15s;
-  }
-  .nights button[aria-pressed="true"]{background:#fff;color:var(--brand);box-shadow:0 2px 8px rgba(4,52,70,.13)}
   .tiny{font-size:11.5px;color:var(--muted);margin:9px 0 0;line-height:1.6}
   .tiny b{color:var(--ink)}
 
@@ -697,21 +686,18 @@
 
   <!-- 날짜 -->
   <section class="card">
-    <h2>🗓️ 날짜 선택 <span class="hint" id="tabHint">4박 6일</span></h2>
+    <h2>🗓️ 날짜 선택 <span class="hint" id="tabHint">4박 6일 + 0.5박</span></h2>
     <p class="lead">탭을 누르면 항공·숙소 링크와 일자별 일정 날짜가 전부 바뀝니다.</p>
     <div class="tabs" role="tablist" aria-label="여행 날짜">
       <button class="tab" role="tab" data-trip="0" aria-selected="true">4/13(화)<span>~ 4/18(일)</span></button>
       <button class="tab" role="tab" data-trip="1" aria-selected="false">4/20(화)<span>~ 4/25(일)</span></button>
       <button class="tab" role="tab" data-trip="2" aria-selected="false">4/06(화)<span>~ 4/11(일)</span></button>
     </div>
-    <div class="nights" role="group" aria-label="숙박 일수">
-      <button data-nights="4" aria-pressed="true">4박 (기본)</button>
-      <button data-nights="5" aria-pressed="false">5박 (마지막 밤까지 방 유지)</button>
-    </div>
     <div class="summary">
       <dl>
         <dt>항공</dt><dd id="sAir">—</dd>
         <dt>숙소</dt><dd id="sHotel">—</dd>
+        <dt>0.5박</dt><dd id="sLast">—</dd>
         <dt>연차</dt><dd id="sLeave">—</dd>
       </dl>
     </div>
@@ -807,11 +793,6 @@
       <a class="btn" data-b="henann" target="_blank" rel="noopener">
         <span class="ico">🏨</span>
         <span class="txt"><strong>헤난 공홈</strong><small>성인 4명 · 직접 선택</small></span>
-        <span class="chev">›</span>
-      </a>
-      <a class="btn soft" data-b="agoda5" target="_blank" rel="noopener">
-        <span class="ico">🔁</span>
-        <span class="txt"><strong>아고다 (5박)</strong><small id="sub-agoda5">귀국일까지 방 유지</small></span>
         <span class="chev">›</span>
       </a>
     </div>
@@ -966,7 +947,7 @@
     { out: "2027-04-06", back: "2027-04-11" }
   ];
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
-  var state = { trip: 0, nights: 4 };
+  var state = { trip: 0 };
 
   function D(iso) {
     var p = iso.split("-");
@@ -1010,10 +991,6 @@
       return "https://www.agoda.com/henann-resort-alona-beach/hotel/bohol-ph.html?checkIn=" + t.hotelIn +
         "&los=" + t.nights + "&adults=4&rooms=1&currency=KRW";
     },
-    agoda5: function (t) {
-      return "https://www.agoda.com/henann-resort-alona-beach/hotel/bohol-ph.html?checkIn=" + t.out +
-        "&los=5&adults=4&rooms=1&currency=KRW";
-    },
     tripHotel: function (t) {
       return "https://kr.trip.com/hotels/detail/?hotelId=2085967&checkIn=" + t.hotelIn +
         "&checkOut=" + t.hotelOut + "&adult=4&children=0&curr=KRW";
@@ -1028,11 +1005,11 @@
 
   function currentTrip() {
     var t = TRIPS[state.trip];
-    var hotelOut = (state.nights === 5) ? t.back : ymd(addDays(t.out, 4));
+    var hotelOut = ymd(addDays(t.out, 4)); /* 헤난 4박 고정: 화 체크인 ~ 토 체크아웃 */
     return {
       out: t.out,
       back: t.back,
-      nights: state.nights,
+      nights: 4,
       hotelIn: t.out,
       hotelOut: hotelOut
     };
@@ -1107,13 +1084,14 @@
       b.setAttribute("aria-selected", i === state.trip ? "true" : "false");
     });
 
-    document.getElementById("tabHint").textContent = t.nights + "박 " + (nightsBetween(t.out, t.back) + 1) + "일";
+    document.getElementById("tabHint").textContent = "4박 6일 + 0.5박";
 
     document.getElementById("sAir").innerHTML =
       "<b>" + md(t.out) + "</b> 20:45 출발 → <b>" + md(t.back) + "</b> 07:10 도착";
     document.getElementById("sHotel").innerHTML =
-      "체크인 <b>" + md(t.hotelIn) + "</b> · 체크아웃 <b>" + md(t.hotelOut) + "</b> <span style='color:var(--muted);font-weight:500'>(" +
-      t.nights + "박)</span>";
+      "헤난 <b>4박</b> · " + md(t.hotelIn) + " 체크인 → <b>" + md(t.hotelOut) + "</b> 11:00 체크아웃";
+    document.getElementById("sLast").innerHTML =
+      md(t.hotelOut) + " <b>시원리조트</b> 샤워·수영 → 23:00 <b>공항 샌딩</b>";
     document.getElementById("sLeave").textContent = "수·목·금 연차 3일 (화요일 반차 없이 · 주말 포함 6일)";
 
     document.getElementById("sub-naver").textContent = md(t.out) + "~" + md(t.back) + " · 3성인+1소아";
@@ -1121,8 +1099,7 @@
     document.getElementById("sub-skyscanner").textContent = mdS(t.out) + "~" + mdS(t.back);
     document.getElementById("sub-kayak").textContent = mdS(t.out) + "~" + mdS(t.back);
     document.getElementById("sub-jejuair").textContent = mdS(t.out) + "~" + mdS(t.back);
-    document.getElementById("sub-agoda").textContent = md(t.hotelIn) + " 체크인 · " + t.nights + "박";
-    document.getElementById("sub-agoda5").textContent = mdS(t.out) + "~" + mdS(t.back);
+    document.getElementById("sub-agoda").textContent = md(t.hotelIn) + " 체크인 · 4박";
     document.getElementById("sub-tripHotel").textContent = mdS(t.hotelIn) + "~" + mdS(t.hotelOut) + " · 4명";
 
     Array.prototype.forEach.call(document.querySelectorAll("[data-b]"), function (a) {
@@ -1130,10 +1107,9 @@
       if (fn) a.href = fn(t);
     });
 
-    document.getElementById("hotelNote").innerHTML = (t.nights === 4)
-      ? "<b>4박 기준</b> — " + md(t.out) + " 도착(수 00:45)이라 화요일 밤부터 방이 필요해요. 체크아웃은 " + md(t.hotelOut) +
-        " 11:00이고, 그날 밤 비행기(일 01:45)까지 12시간이 남습니다. 리조트에 <b>레이트 체크아웃·짐 보관·샤워실</b>을 미리 요청하거나, 아래 <b>5박</b>으로 방을 유지할 수 있어요."
-      : "<b>5박 기준</b> — " + md(t.back) + " 밤 비행기 전까지 방을 그대로 씁니다(샤워·짐 정리 편함). 4박보다 1박 요금이 더 붙습니다.";
+    document.getElementById("hotelNote").innerHTML =
+      "<b>헤난 4박 고정</b> — " + md(t.hotelIn) + " 체크인(도착 수 00:45라 <b>레이트 체크인</b> 사전 통보) → " +
+      md(t.hotelOut) + " 11:00 체크아웃. 그날 토요일은 육상투어 뒤 공항 5분 거리 <b>시원리조트 0.5박</b>에서 샤워·수영·저녁을 하고 23:00 공항으로 갑니다(별도 예약).";
 
     renderDday(t);
     renderSchedule();
@@ -1142,16 +1118,6 @@
   tabs.forEach(function (b) {
     b.addEventListener("click", function () {
       state.trip = Number(b.getAttribute("data-trip"));
-      render();
-    });
-  });
-
-  Array.prototype.forEach.call(document.querySelectorAll("[data-nights]"), function (b) {
-    b.addEventListener("click", function () {
-      state.nights = Number(b.getAttribute("data-nights"));
-      Array.prototype.forEach.call(document.querySelectorAll("[data-nights]"), function (o) {
-        o.setAttribute("aria-pressed", String(o === b));
-      });
       render();
     });
   });
