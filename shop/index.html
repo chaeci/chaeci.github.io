@@ -2340,6 +2340,8 @@ tr.pl-reclaim td { background: #fdf8f6; }
    드로어 전 구간에 라이트 전용 고정(color-scheme: light only) + 불투명 흰 배경 +
    고대비 글자색을 못박아, prefers-color-scheme: dark / 강제 다크에서도 같은 대비를 유지한다.
    ============================================================ */
+/* 모달·드로어·뷰어 레이어 전체도 라이트 전용으로 고정(강제 다크의 자동 반전 대상 제외) */
+.modal-layer, .modal, .drawer, .lightbox, #media-viewer, .color-layer, .addr-layer { color-scheme: light only; }
 #cart-drawer, #cart-drawer .drawer-head, #cart-drawer .drawer-body, #cart-drawer .drawer-foot,
 #cart-drawer .cart-toolbar, #cart-drawer .cart-row, #cart-drawer .cart-info,
 #cart-drawer .coupon-box, #cart-drawer .ship-bar, #cart-drawer .cart-empty,
