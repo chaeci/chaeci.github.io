@@ -90,7 +90,7 @@ fashion-shop/
 │  └─ mono-atelier.db          # 위 스크립트로 만든 샘플 SQLite DB (192KB)
 └─ tests/
    ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (620 checks)
-   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / 라이트박스 / 색상·제품번호·사이트 관리 / 리뷰·포인트·FAQ·주소 검색 / file:// 프리뷰, 741 checks)
+   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / 라이트박스 / 색상·제품번호·사이트 관리 / 리뷰·포인트·FAQ·주소 검색 / file:// 프리뷰, 743 checks)
    ├─ make_screenshots.py      # 대표 스크린샷 생성
    ├─ make_v18_screens.py      # v1.8 상세 모달·라이트박스·색상/팔레트·사이트 관리 스크린샷
    ├─ make_v19_screens.py      # v1.9 412px 핵심 화면(스토리·리뷰·FAQ·포인트·주소·색상 레이어) 스크린샷
@@ -273,7 +273,7 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 
 ```
 static_check.py        620 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·모델 정보·라이트박스·색상 파이프라인·제품번호·사이트 설정·리뷰·포인트 정책/내역·FAQ·주소 API 가드)
-e2e_fashion_shop.py    741 checks passed (파트별 실행 합계 · 데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.9 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
+e2e_fashion_shop.py    743 checks passed (파트별 실행 합계 · 데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.9 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
 콘솔 에러              0건
 ```
 
