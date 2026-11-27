@@ -4,6 +4,8 @@
 모든 데이터는 **정규화된 14개 테이블(JSON) + 사이트 설정·HELP** 로 관리되고 브라우저 `localStorage`에 저장되며,
 `data/schema.sql`(SQLite 17개 테이블 — `categories`·`coupon_targets`·`order_claims`·`product_reviews`·`point_logs`·`faqs` 포함)로 **1:1 이식**할 수 있게 설계했습니다.
 
+> **v1.9.1 (2026-11-27 실기기 QA · 리뷰 검수·포인트 회수·사이즈 코드·가입/알림)** — ① **리뷰 작성 권한 제한** — 배송완료(또는 구매확정)된 주문의 상품만 작성(배송 전·교환/반품 진행 상품 차단) ② 관리자 **`포인트/회원` 탭의 「리뷰 검수 · 포인트 회수」** — 상품명·작성자·별점·본문·첨부 썸네일·지급 포인트 표시, **「반려 · 포인트 회수」** 로 포토·영상 리뷰 포인트 차감(마이너스 `point_logs` 기록, 리뷰당 1회·중복 회수 차단) + 스토어 비노출 ③ 주문/리뷰의 **상품명 클릭 → 판매중이면 상세 모달**, 판매중지·삭제는 안내 토스트 ④ 리뷰 사진·동영상 뷰어를 **상세 모달 위 별도 레이어**로 분리 — **뒤로가기는 뷰어만 닫히고**, 닫아도 **보던 리뷰 스크롤 위치 유지** ⑤ **리뷰 수정**(상품 상세·마이페이지 주문 상세) — 별점·본문·사진/영상, 포토 포인트는 주문상품당 1회만(재수정 중복 지급 없음), 반려 리뷰 수정 차단 ⑥ 리뷰 **5개씩 페이징**(이전/다음·페이지 번호, 코트 리뷰 7건 시드) ⑦ 관리자 콘솔 진입 버튼을 **헤더 1곳으로 정리**(마이페이지 중복 제거) ⑧ 푸터 HELP **`고객센터 · FAQ` → `고객센터`**(FAQ 게시판과 중복 제거) ⑨ **카테고리별 사이즈 코드** — `categories.size_codes`(예: 95·100·105 / 28·30·32 / 240·250·FREE)를 관리자 「카테고리」 탭에서 추가·수정·삭제·순서 변경, 상품 등록/수정의 사이즈 드롭다운에 즉시 반영(기존 레거시 사이즈 유지) ⑩ 로그인·회원가입 **비밀번호 보기/숨기기(👁)** ⑪ **회원가입 이메일 인증(6자리 OTP)** — 인증 전 가입 차단, 테스트 모드는 화면에 인증번호 표시, 관리자 「데이터 관리」에서 **이메일 인증 모드(테스트/API)·API URL** 저장 ⑫ **회원가입 비밀번호 정책** — 8자 이상 + 영문 대/소문자 + 숫자 + 특수문자, 연속 숫자 3자리(123·987) 차단, 입력칸 아래 **실시간 ✓/✗ 체크**(데모 계정 로그인은 영향 없음) ⑬ **가입 실패 시 입력값 유지**(이름·이메일·비밀번호·연락처·주소·인증 상태) ⑭ **주문 완료 SMS** — 테스트 모드는 실제 발송 없이 **관리자 「SMS 발송 로그」·주문 상세 발송 내역**(수신번호·본문·시각·상태) 기록, 관리자에서 **발송 사용 여부·테스트/API 모드·Webhook URL·발신번호** 설정.
+>
 > **v1.9 (2026-11-27 리뷰·포인트·브랜드 스토리·FAQ·주소 검색)** — ① 상품 등록/수정에서 **보유 이미지 36종 그리드를 없애고** 「📷 사진 업로드」 + **현재 등록 이미지 목록(대표 지정·순서 이동·삭제)** 만 표시 ② 옵션의 **색상 스와치를 누르면 색상 레이어** — ①기본 16색 프리셋 ②직접 선택(피커·HEX) ③**이 상품 사진에서 자동 추출한 색(비중%·한국어 색상명)** 을 한 번에 적용(상시 팔레트 제거) ③ 구매 상품 **리뷰 작성** — 별점(1~5)·후기·**사진 다중·동영상** 첨부, 상품 상세에서 사진 확대·동영상 재생 ④ **구매확정 시 실결제 금액의 등급별 적립률(기본 0.5%, 골드 1.0%·VIP 1.5%) 즉시 지급**, 주문항목당 1회(중복 차단) ⑤ **사진·동영상 리뷰 등록 시 등급별 추가 적립(기본 1.0%, VIP 2.0%)** 1회 ⑥ 관리자 **`포인트/회원` 탭**에서 등급별 적립률 설정·회원 포인트 확인, 마이페이지 **포인트 탭**(보유·적립/사용 내역), **체크아웃 포인트 사용**(결제 금액 차감·취소 시 환급) ⑦ 관리자 **`메인/사이트`의 브랜드 스토리**(사진·뱃지·제목·부제·본문·핵심 태그)가 홈 스토리 영역에 즉시 반영 ⑧ 푸터 **HELP의 FAQ 게시판** — 카테고리 필터·검색·아코디언, 관리자에서 추가·수정·삭제·순서 저장 ⑨ **카카오(다음) 우편번호 서비스** 연동 — 「주소 검색」으로 우편번호·기본주소(readonly)를 넣고 **상세 주소만 직접 입력**(로드 실패·차단 시 내장 도로명 주소 fallback).
 
 > **v1.8 (2026-11-27 색상 전수 점검 · 이미지 색 추출 · 제품고유키 · 상세 모달 개편 · 사이트 관리)** — ① 교환 신청 모달의 컬러가 **주문한 옵션의 색**으로 시작(주문 옵션 스와치 별도 표시) ② 옵션별 **컬러 피커 ↔ HEX 양방향 동기화**(`input`·`change` 둘 다 — 삼성 인터넷 보정) + **적용 대상 라벨**(기본 색상·프리셋이 지금 만지는 옵션에 적용) ③ 흰색 스와치를 **inset 그림자 대신 회색 테두리 + 실제 채움색**으로(회색으로 뭉개짐 제거) ④ HEX 끝값 입력 정규화(**`#` 없이 `FFFFFF`·3자리 허용**, 조작 중인 입력에는 되쓰지 않아 피커가 튀지 않음) ⑤ 색상 파이프라인 전수 E2E(카드·상세·장바구니·주문·교환·관리자 저장/재로드) ⑥ **이미지에서 색상 추출** — 대표/갤러리 사진을 canvas로 샘플링해 주요 색 6개 + **한국어 색상명·비중** 표시, 스와치를 누르면 현재 옵션에 적용(모서리 배경색 제거·유사색 병합) ⑦ 라이트박스 **뒤로가기 = 뷰어만 닫힘**(이미지 탭으로 열 때 history 동기화 누락 수정) ⑧ **제품고유키(제품번호 `MA-0001`)** 자동 채번·**대소문자 무시 중복 차단**·관리자/스토어 **제품번호 검색**·주문관리/상세·상품 상세에 표시 ⑨ 모바일 상세 모달 **이미지 고정 해제(모달 전체 스크롤)** + 구매 바 하단 sticky ⑩ 사진 위 **`1/3`·`확대`·`✕` 오버레이 제거**(정보 영역에 「닫기」·사진 아래 캡션) ⑪ 관리자 **`메인/사이트` 탭** — 히어로 배너 사진(업로드/선택)·뱃지·타이틀·서브·CTA·**효과 4종**·오버레이 농도 ⑫ 푸터 **브랜드 소개·사업자 정보 편집**(SHOP 메뉴 삭제) ⑬ 푸터 **HELP 항목이 실제 안내 모달**로 열리고 관리자에서 제목·본문 편집.
@@ -48,7 +50,9 @@ python3 fashion-shop/build.py
 | 탭 | 바꿀 수 있는 것 |
 | --- | --- |
 | **상품 관리 → 등록/수정** | **제품고유키(제품번호)** — 신규 등록 시 `MA-00XX` 자동 채번, 대소문자 무시 중복 차단 · **현재 등록 이미지 목록**(대표 지정·순서 이동·삭제) + **📷 사진 업로드** · 옵션 **색상 스와치 → 색상 레이어**(16색 프리셋·피커/HEX·이미지 색 추출) |
-| **포인트/회원** | **등급별 포인트 적립률** — 구매확정 %(기본 0.5/0.7/1.0/1.5) · 포토·영상 리뷰 %(1.0/1.2/1.5/2.0), 회원별 보유 포인트·최근 내역 |
+| **포인트/회원** | **등급별 포인트 적립률** — 구매확정 %(기본 0.5/0.7/1.0/1.5) · 포토·영상 리뷰 %(1.0/1.2/1.5/2.0), 회원별 보유 포인트·최근 내역 · **리뷰 검수** — 상품명·작성자·별점·본문·첨부 썸네일·지급 포인트, **「반려 · 포인트 회수」**(리뷰당 1회) |
+| **카테고리** | **카테고리별 사이즈 코드** — 추가·수정·삭제·순서 변경(예: 95·100·105 / 28·30·32 / FREE), 상품 등록/수정 사이즈 드롭다운에 즉시 반영 |
+| **데이터 관리** | **알림 설정** — 이메일 인증 모드(테스트/API)·API URL, **주문 SMS**(사용 여부·테스트/API·Webhook URL·발신번호) + **SMS 발송 로그** · JSON 내보내기·시드 초기화·무결성 검사·결제 설정 |
 | **메인/사이트** | **히어로 배너** — 사진 업로드/선택, 뱃지·메인 타이틀·서브 문구·CTA 버튼 문구, **효과(없음/줌인/페이드/슬라이드)**, **오버레이 농도** · **브랜드 스토리**(사진·뱃지·제목·부제·본문·핵심 태그) · **푸터 브랜드 소개 + 사업자 정보** · **HELP 메뉴 항목** · **FAQ 게시판**(카테고리·질문·답변·노출순서) |
 | **주문 관리** | 주문 행·주문 상세에 각 주문 상품의 **제품번호** 표시 |
 
@@ -65,6 +69,8 @@ python3 fashion-shop/build.py
 로그인 모달의 **「일반 회원 (데모)」 / 「관리자 (데모)」** 버튼으로 원클릭 로그인할 수 있습니다.
 관리자로 로그인하면 데스크톱은 상단 메뉴에 `관리자` 탭이, **모바일(≤980px)은 헤더 오른쪽에 `관리자` 버튼과 마이페이지 상단 관리자 배너**가 나타납니다.
 
+> 회원가입 비밀번호는 **8자 이상 + 영문 대/소문자 + 숫자 + 특수문자**(연속 숫자 3자리 금지)이며, 기존 데모 계정 `demo1234`/`admin1234` **로그인**은 그대로 동작합니다.
+>
 > 데모 회원(`demo@mono.kr`)에게는 **전용 쿠폰 `VIP15`** 가 발급되어 있어 마이페이지 → **보유 쿠폰**에서 확인할 수 있습니다.
 > 다른 계정으로 로그인하면 이 쿠폰은 목록에 보이지 않고, 코드를 직접 입력하면 `이 계정에 발급된 쿠폰이 아닙니다.`로 거부됩니다.
 
@@ -115,7 +121,7 @@ orders.coupon_code ───────────────< coupons (code 
 | 테이블 | 컬럼 | 비고 |
 | --- | --- | --- |
 | `users` | id, email, password_hash, name, phone, address, **postcode**, role, **grade**, **points**, created_at | role: customer/admin · grade: NORMAL/SILVER/GOLD/VIP · points = 보유 포인트(1P=1원) |
-| `categories` | id, label, en, sort_order, created_at | 관리자 「카테고리 관리」에서 추가·수정·삭제·순서 변경 · products.category 가 참조 |
+| `categories` | id, label, en, sort_order, **size_codes**, created_at | 관리자 「카테고리 관리」에서 추가·수정·삭제·순서 변경 · products.category 가 참조 · `size_codes` = 카테고리별 사이즈 코드 JSON 배열(상품 옵션 드롭다운에 반영) |
 | `products` | id, **product_code**, name, brand, category, price, original_price, badge, description, image, **images**, **model_info**, **free_shipping_threshold**, created_at, is_active | `product_code` = 제품고유키 `MA-0001`(UNIQUE·대소문자 무시, 관리자 등록 시 자동 채번) · `images` = 갤러리 배열(JSON) · `model_info` = 모델 착용 정보(예: `모델 174cm · 54kg · M 사이즈 착용`, NULL = 숨김) · category: outer/top/bottom/dress/acc |
 | `product_images` | id, product_id, image, alt, sort_order | 갤러리 정규화 테이블(SQLite) · (product,image) UNIQUE |
 | `product_variants` | id, product_id, color, color_hex, size, stock, sku | size: S/M/L/XL/FREE, (product,color,size) UNIQUE |
@@ -125,11 +131,12 @@ orders.coupon_code ───────────────< coupons (code 
 | `order_claims` | id, order_id, user_id, claim_type, reason_category, reason_detail, shipping_fee, payment_status, payment_key, payment_mode, exchange_option, status, stock_restored, created_at, updated_at | 교환/반품 접수 — claim_type: return/exchange · reason_category: defect/wrong_item/change_of_mind/size_color · payment_status: free/paid/pending · status: requested/approved/completed/rejected · 한 주문당 1건(order_id UNIQUE) |
 | `coupons` | id, code, name, discount_type, discount_value, min_order_amount, expires_at, is_active, **target_user_ids**, **target_grades**, created_at | discount_type: percent(%)/fixed(원) · expires_at NULL = 무기한 · `target_user_ids`/`target_grades` 가 모두 비면 전체 공용, 등급 대상이면 그 등급 회원, 회원 지정이면 그 회원만 사용 |
 | `coupon_targets` | id, coupon_id, user_id, created_at | 전용 쿠폰 발급 대상 정규화 테이블(SQLite) · (coupon,user) UNIQUE |
-| `product_reviews` | id, product_id, user_id, user_name, **order_item_id**, rating, content, **media**, created_at, updated_at | 별점 1~5 · `media` = 사진/동영상 JSON 배열 · `order_item_id` UNIQUE(주문항목당 리뷰 1건) |
+| `product_reviews` | id, product_id, user_id, user_name, **order_item_id**, rating, content, **media**, **status, rejected_reason, reclaimed_points, rejected_at**, created_at, updated_at | 별점 1~5 · `media` = 사진/동영상 JSON 배열 · `order_item_id` UNIQUE(주문항목당 리뷰 1건) · `status`: published/rejected(스토어 비노출) · 반려 시 회수 포인트 기록 |
 | `point_policies` | grade, confirm_rate, photo_rate, updated_at | 등급별 적립률(%) — 구매확정 / 포토·영상 리뷰, 관리자 「포인트/회원」에서 저장 |
-| `point_logs` | id, user_id, type, amount, base_amount, rate, order_id, order_item_id, review_id, description, created_at | amount 양수=적립, 음수=사용 · `users.points` = 이 표의 합계 |
+| `point_logs` | id, user_id, type, amount, base_amount, rate, order_id, order_item_id, review_id, description, created_at | amount 양수=적립, 음수=사용 · type: signup/confirm/photo_review/use/refund/adjust/review/**review_reclaim** · `users.points` = 이 표의 합계 |
 | `faqs` | id, category, question, answer, sort_order, is_active, created_at | FAQ 게시판 · 카테고리 필터·검색·아코디언, 관리자 `메인/사이트`에서 편집 |
-| `site_settings` | id, hero_image, hero_eyebrow, hero_title, hero_subtitle, hero_cta_label, hero_cta2_label, hero_effect, hero_overlay, **story_image, story_eyebrow, story_title, story_subtitle, story_body, story_tags**, brand_blurb, company_name, company_ceo, company_reg_no, company_mail_order_no, company_address, company_phone, company_email, updated_at | 단일 행(`id='default'`) · 관리자 「메인/사이트」 탭에서 편집 · 스토리 태그는 JSON 배열 | 단일 행(`id='default'`) · 관리자 「메인/사이트」 탭에서 편집 · hero_effect: none/zoom/fade/slide · hero_overlay 0~90% |
+| `sms_logs` | id, order_id, user_id, phone, message, kind, status, mode, sender, api_url, created_at | v1.9.1 주문 완료 SMS 발송 로그 — 테스트 모드는 status `test`, 실서버는 `sent`/`failed` · 관리자 「데이터 관리」·주문 상세에서 확인 |
+| `site_settings` | id, hero_image, hero_eyebrow, hero_title, hero_subtitle, hero_cta_label, hero_cta2_label, hero_effect, hero_overlay, **story_image, story_eyebrow, story_title, story_subtitle, story_body, story_tags**, brand_blurb, company_name, company_ceo, company_reg_no, company_mail_order_no, company_address, company_phone, company_email, **email_auth_mode, email_api_url, sms_enabled, sms_mode, sms_api_url, sms_sender**, updated_at | 단일 행(`id='default'`) · 관리자 「메인/사이트」 탭에서 편집 · 스토리 태그는 JSON 배열 | 단일 행(`id='default'`) · 관리자 「메인/사이트」 탭에서 편집 · hero_effect: none/zoom/fade/slide · hero_overlay 0~90% |
 | `help_topics` | id, title, body, sort_order | 푸터 HELP 메뉴 항목 — 누르면 안내 모달 · 관리자가 제목·본문 편집 |
 
 * `total_amount` = 상품금액 합계 + `shipping_fee` − `discount_amount` (전 건 검증됨).
@@ -139,7 +146,7 @@ orders.coupon_code ───────────────< coupons (code 
 * `coupons.target_user_ids`: `[]` = 전체 공용. 값이 있으면 그 회원만 목록 노출·코드 적용이 가능하고 다른 계정은 `이 계정에 발급된 쿠폰이 아닙니다.`로 거부됩니다. SQLite에서는 `coupon_targets` 행으로 전개됩니다.
 * `coupons.target_grades`: `[]` = 등급 제한 없음. `['GOLD','VIP']` 처럼 지정하면 그 등급 회원에게만 노출·적용됩니다(회원 지정과 동시에 쓰면 합집합). 관리자 화면에서는 `전체 공용 / 회원 등급별 / 특정 회원 지정` 3모드로 고릅니다.
 * `users.grade`: 시드 데모 회원은 `GOLD`, 관리자 계정은 `NORMAL`. 신규 가입은 `NORMAL`. 마이페이지 프로필과 관리자 주문/회원 목록에 등급 배지가 표시됩니다.
-* 시드 규모: users 2 · categories 5 · products 13(판매중 12, 숨김 1, 제품번호 MA-0001~MA-0013) · product_images 39 · product_variants 88 · orders 5(배송완료 3 포함) · order_items 6 · order_claims 2(무료 1 + 유료 1) · coupons 3(공용 2 + 전용 1) · coupon_targets 1 · site_settings 1 · help_topics 4.
+* 시드 규모: users 5(관리자 1·데모 회원 4) · categories 5(사이즈 코드 포함) · products 13(판매중 12, 숨김 1, 제품번호 MA-0001~MA-0013) · product_images 39 · product_variants 88 · orders 12(배송완료 9 포함) · order_items 13 · order_claims 2(무료 1 + 유료 1) · coupons 3(공용 2 + 전용 1) · coupon_targets 1 · product_reviews 9(코트 7건 = 5개씩 페이징 확인) · point_policies 4 · point_logs 4 · faqs 8 · sms_logs 1 · site_settings 1 · help_topics 4.
 * `order_claims.shipping_fee`: `defect`·`wrong_item` = **0원**, `change_of_mind`·`size_color` = 반품 **3,000원** / 교환 **6,000원**(왕복). 무료 접수는 `payment_status='free'`, 유료 접수는 토스 결제 후 `'paid'` + `payment_key`.
 * `order_claims.stock_restored`: 반품을 `완료`로 바꿀 때 재고 복구를 **한 번만** 하기 위한 플래그(0/1).
 * 교환/반품 신청 가능 단계는 **배송중(`shipping`)·배송완료(`delivered`)** 이고, 배송 전 주문은 `주문 취소`로 처리합니다. 시드의 `o_001`(배송완료·접수 이력 없음)에 데모 계정으로 로그인하면 바로 신청 버튼을 눌러볼 수 있습니다.
@@ -272,14 +279,16 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 ## 5. 검증 결과
 
 ```
-static_check.py        620 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·모델 정보·라이트박스·색상 파이프라인·제품번호·사이트 설정·리뷰·포인트 정책/내역·FAQ·주소 API 가드)
-e2e_fashion_shop.py    743 checks passed (파트별 실행 합계 · 데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.9 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
+static_check.py        648 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·모델 정보·라이트박스·색상 파이프라인·제품번호·사이트 설정·리뷰·포인트 정책/내역·FAQ·주소 API 가드·사이즈 코드·알림/SMS)
+e2e_fashion_shop.py    827 checks passed (파트별 실행 합계 · 데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.9.1 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
 콘솔 에러              0건
 ```
 
 E2E 시나리오: 홈·검색·정렬·품절 표시 → **회원가입 → 로그아웃 → 재로그인** → 옵션 선택(재고 확인) → 장바구니 담기 → 수량 변경 → 선택 해제/복원 → 결제(미동의 차단 → 동의) → **재고 6→4 차감** → 영수증 → 마이페이지 주문 → **취소 시 재고 4→6 복구** → 10만 원 미만 주문(배송비 3,000원) → 관리자 로그인 → **상품 등록(옵션 2개)** → 스토어 노출 → **상품 수정(가격·옵션 추가)** → 품절/숨김 → **주문 상태 3단계 변경** → **JSON 내보내기 검증** → 시드 초기화. 모바일은 검색 토글·바텀시트·주문·재고 차감까지 별도 수행.
 
 **v1.9 E2E**: 구매확정 포인트(2,890P)·중복 차단 → 사진 리뷰 작성(추가 2,595P)·중복 차단 → 체크아웃 포인트 전액 사용·주소 검색 fallback·상세주소 저장 → 주문 취소 시 포인트 환급 → 관리자 등급별 적립률 저장 → 브랜드 스토리·FAQ 저장 후 스토어 즉시 반영 → 편집기 이미지 순서 이동·색상 레이어 저장 → 모바일 412px 스크린샷까지 검증합니다.
+
+**v1.9.1 E2E (`run_v191`)**: 푸터 HELP 고객센터만 → 로그인 비밀번호 보기 토글 → 회원가입 약한 비번·연속 숫자(123) 차단·입력값 보존·이메일 인증(테스트 코드·오류·자동 입력)·강한 비번 가입 → 배송 전 리뷰 작성 차단 → 코트 리뷰 1페이지 5건·2페이지 2건 페이징 → 리뷰 사진 **뒤로가기 = 뷰어만 닫힘 / 닫아도 스크롤 유지** → 주문 상품명 클릭(판매중 상세·판매중지 토스트) → 관리자 콘솔 진입 버튼 1개 → **리뷰 반려·1,935P 회수·중복 회수 차단·스토어 비노출·수정 차단** → 리뷰 수정(별점·본문·사진 1회 지급·재수정 무지급·주문 상세에서도 수정) → 카테고리 사이즈 코드 추가·순서·삭제·편집기 드롭다운 연동 → 알림 설정(테스트/API 검증) → 주문 완료 SMS 발송 로그·주문 상세 내역 → 모바일 412px(리뷰 페이저·검수 표·알림·가입 폼) 스크린샷 검증.
 
 토스 결제 E2E는 CDN 대신 200 응답 스텁으로 SDK를 대체해 ① `TossPayments(clientKey)` → `widgets` → `setAmount` → `renderPaymentWindow` 호출,
 ② 결제창의 `paymentRequest` → `requestPayment(orderId/successUrl/failUrl)`, ③ `?tossResult=success&paymentKey=…&orderId=…&amount=…` 복귀 후

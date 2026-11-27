@@ -26,6 +26,7 @@ CREATE TABLE categories (
   label      TEXT NOT NULL,
   en         TEXT NOT NULL DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0,
+  size_codes TEXT NOT NULL DEFAULT '[]',      -- JSON 배열: 카테고리별 사이즈 코드 (예: ["95","100","105","S","M","L","XL"])
   created_at TEXT NOT NULL
 );
 
@@ -245,8 +246,33 @@ CREATE TABLE site_settings (
   company_address      TEXT NOT NULL DEFAULT '',                -- 주소
   company_phone        TEXT NOT NULL DEFAULT '',                -- 고객센터 전화
   company_email        TEXT NOT NULL DEFAULT '',                -- 고객센터 이메일
+  email_auth_mode      TEXT NOT NULL DEFAULT 'test'
+                       CHECK (email_auth_mode IN ('test','api')),
+                                                               -- 회원가입 이메일 인증 모드
+  email_api_url        TEXT NOT NULL DEFAULT '',                -- 이메일 발송 API URL (Resend·Brevo·SMTP 프록시)
+  sms_enabled          INTEGER NOT NULL DEFAULT 1 CHECK (sms_enabled IN (0,1)),   -- 주문 완료 SMS 발송
+  sms_mode             TEXT NOT NULL DEFAULT 'test' CHECK (sms_mode IN ('test','api')),
+                                                               -- 테스트(로그만) / 실서버 API
+  sms_api_url          TEXT NOT NULL DEFAULT '',                -- SMS Webhook/API URL
+  sms_sender           TEXT NOT NULL DEFAULT '',                -- 발신번호
   updated_at           TEXT NOT NULL
 );
+
+-- ===================================================== 주문 SMS 발송 로그 (v1.9.1)
+CREATE TABLE sms_logs (
+  id         TEXT PRIMARY KEY,
+  order_id   TEXT REFERENCES orders(id) ON DELETE SET NULL,
+  user_id    TEXT REFERENCES users(id) ON DELETE SET NULL,
+  phone      TEXT NOT NULL,
+  message    TEXT NOT NULL,
+  kind       TEXT NOT NULL DEFAULT 'order_created',   -- 주문 완료 알림
+  status     TEXT NOT NULL DEFAULT 'test' CHECK (status IN ('test','sent','failed','skipped')),
+  mode       TEXT NOT NULL DEFAULT 'test' CHECK (mode IN ('test','api')),
+  sender     TEXT NOT NULL DEFAULT '',
+  api_url    TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX idx_sms_logs_order ON sms_logs(order_id, created_at DESC);
 
 -- 푸터 HELP 메뉴 — 클릭하면 안내 모달로 열리는 항목(관리자가 제목·본문 편집)
 CREATE TABLE help_topics (
@@ -269,6 +295,13 @@ CREATE TABLE product_reviews (
   rating        INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
   content       TEXT NOT NULL DEFAULT '',
   media         TEXT NOT NULL DEFAULT '[]',          -- JSON 배열 (사진 다중·동영상)
+  status        TEXT NOT NULL DEFAULT 'published'
+                CHECK (status IN ('published','rejected')),
+                -- 관리자 리뷰 검수: rejected = 스토어 비노출
+  rejected_reason TEXT,                              -- 반려 사유 (관리자 입력)
+  reclaimed_points INTEGER NOT NULL DEFAULT 0 CHECK (reclaimed_points >= 0),
+                                                     -- 반려 시 회수한 포토·영상 리뷰 포인트 (중복 회수 방지)
+  rejected_at   TEXT,
   created_at    TEXT NOT NULL,
   updated_at    TEXT,
   UNIQUE (order_item_id)                             -- 동일 주문항목 중복 리뷰 금지
@@ -288,7 +321,7 @@ CREATE TABLE point_policies (
 CREATE TABLE point_logs (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type          TEXT NOT NULL CHECK (type IN ('signup','confirm','photo_review','use','refund','adjust','review')),
+  type          TEXT NOT NULL CHECK (type IN ('signup','confirm','photo_review','use','refund','adjust','review','review_reclaim')),
   amount        INTEGER NOT NULL CHECK (amount <> 0),
   base_amount   INTEGER NOT NULL DEFAULT 0,          -- 적립 기준 금액(상품 실결제 금액)
   rate          REAL NOT NULL DEFAULT 0,             -- 적용 적립률(%)
@@ -332,5 +365,5 @@ SELECT p.id AS product_id, p.product_code, p.name,
        ROUND(COALESCE(AVG(r.rating), 0), 2) AS avg_rating,
        SUM(CASE WHEN r.media <> '[]' THEN 1 ELSE 0 END) AS photo_review_count
 FROM products p
-LEFT JOIN product_reviews r ON r.product_id = p.id
+LEFT JOIN product_reviews r ON r.product_id = p.id AND r.status = 'published'
 GROUP BY p.id;
