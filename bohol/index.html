@@ -426,7 +426,7 @@
   }
   .refresh:active{background:#eef7f9}
   .refresh[disabled]{opacity:.6;cursor:progress}
-  .scan-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+  .scan-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:11px}
   .scan-actions .refresh{margin-top:0}
   .refresh.primary{
     background:linear-gradient(135deg,var(--brand),var(--brand-2));
@@ -552,7 +552,6 @@
   .logtable .num{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
   .logtable .num small{display:block;font-size:9px;font-weight:700}
   .logtable .memo{color:var(--muted);font-size:10.2px;min-width:112px}
-  .scan-actions.split{grid-template-columns:1fr 1fr;align-items:stretch}
   @media (max-width:360px){
     .mtab span{font-size:9.5px}
     .mtab i{font-size:12px}
@@ -925,8 +924,7 @@
     <div id="scanSummary">
       <p class="lead">스캔 기록을 불러오고 있습니다…</p>
     </div>
-    <div class="scan-actions split">
-      <button class="refresh" id="reloadScan" type="button">기록 새로고침</button>
+    <div class="scan-actions">
       <button class="refresh primary" id="runScan" type="button">지금 스캔</button>
     </div>
     <p class="tiny scan-note" id="scanApiNote" style="display:none"></p>
@@ -1515,9 +1513,6 @@
   }
 
   function loadScan() {
-    var btn = document.getElementById("reloadScan");
-    btn.disabled = true;
-    btn.textContent = "불러오는 중…";
     fetch("./scan-data.json?t=" + Date.now(), { cache: "no-store" })
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
@@ -1531,14 +1526,8 @@
         var st = document.getElementById("scanState");
         st.textContent = "기본값 표시";
         st.className = "hint";
-      })
-      .then(function () {
-        btn.disabled = false;
-        btn.textContent = "기록 새로고침";
       });
   }
-
-  document.getElementById("reloadScan").addEventListener("click", loadScan);
 
   /* ---------------- 지금 가격 스캔 (내부서버 API) ---------------- */
   function scanNote(msg, tone) {
