@@ -11,7 +11,8 @@ import sqlite3
 
 HERE = pathlib.Path(__file__).resolve().parent
 ORDER = ["users", "categories", "products", "product_images", "product_variants", "orders", "order_items",
-         "order_claims", "cart_items", "coupons", "site_settings", "help_topics"]
+         "order_claims", "cart_items", "coupons", "product_reviews", "point_policies", "point_logs", "faqs",
+         "site_settings", "help_topics"]
 
 
 def main():
@@ -87,8 +88,20 @@ def main():
         f"{r[0]} → {r[1]}({r[2]})" for r in con.execute(
             "SELECT code, user_name, email FROM v_coupon_targets ORDER BY code")) or "(전체 공용만)")
     print("  회원 등급:", ", ".join(
-        f"{r[0]} {r[1]}" for r in con.execute(
-            "SELECT name, grade FROM users ORDER BY id")))
+        f"{r[0]} {r[1]} {r[2]}P" for r in con.execute(
+            "SELECT name, grade, points FROM users ORDER BY id")))
+    print("  포인트 정책:", ", ".join(
+        f"{r[0]} {r[1]}%/{r[2]}%" for r in con.execute(
+            "SELECT grade, confirm_rate, photo_rate FROM point_policies ORDER BY rowid")))
+    print("  포인트 내역:", con.execute("SELECT COUNT(*) FROM point_logs").fetchone()[0], "rows ·",
+          "보유 합계 일치:", "OK" if not con.execute(
+              "SELECT COUNT(*) FROM v_member_points WHERE points <> earned_total - used_total").fetchone()[0] else "불일치")
+    print("  상품 리뷰:", ", ".join(
+        f"{r[0]} {r[1]}건 평점 {r[2]}" for r in con.execute(
+            "SELECT name, review_count, avg_rating FROM v_product_reviews WHERE review_count > 0 ORDER BY review_count DESC"))
+          or "(없음)")
+    print("  FAQ:", con.execute("SELECT COUNT(*) FROM faqs").fetchone()[0], "건 ·",
+          "/".join(sorted({r[0] for r in con.execute("SELECT category FROM faqs")})))
     print("  카테고리:", ", ".join(
         f"{r[0]}:{r[1]}" for r in con.execute(
             "SELECT id, label FROM categories ORDER BY sort_order")))

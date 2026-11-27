@@ -14,7 +14,9 @@ CREATE TABLE users (
   address       TEXT NOT NULL DEFAULT '',
   role          TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer','admin')),
   grade         TEXT NOT NULL DEFAULT 'NORMAL' CHECK (grade IN ('NORMAL','SILVER','GOLD','VIP')),
-                -- 회원 등급 — 쿠폰 발급 대상(등급별)에 사용
+                -- 회원 등급 — 쿠폰 발급 대상(등급별)·포인트 적립률에 사용
+  points        INTEGER NOT NULL DEFAULT 0 CHECK (points >= 0),   -- 보유 포인트(원 단위 1P = 1원)
+  postcode      TEXT NOT NULL DEFAULT '',                          -- 우편번호(카카오 우편번호 서비스)
   created_at    TEXT NOT NULL
 );
 
@@ -87,6 +89,8 @@ CREATE TABLE orders (
   shipping_fee     INTEGER NOT NULL DEFAULT 0 CHECK (shipping_fee >= 0),
   coupon_code      TEXT,                                    -- 적용된 쿠폰 코드 (없으면 NULL)
   discount_amount  INTEGER NOT NULL DEFAULT 0 CHECK (discount_amount >= 0),
+  points_used      INTEGER NOT NULL DEFAULT 0 CHECK (points_used >= 0),   -- 결제에 사용한 포인트
+  postcode         TEXT NOT NULL DEFAULT '',                              -- 배송지 우편번호
   recipient_name   TEXT NOT NULL,
   recipient_phone  TEXT NOT NULL,
   shipping_address TEXT NOT NULL,
@@ -105,7 +109,11 @@ CREATE TABLE order_items (
   color        TEXT NOT NULL,
   size         TEXT NOT NULL,
   unit_price   INTEGER NOT NULL CHECK (unit_price >= 0),
-  quantity     INTEGER NOT NULL CHECK (quantity > 0)
+  quantity     INTEGER NOT NULL CHECK (quantity > 0),
+  confirmed_at TEXT,                              -- 구매확정 시각 (NULL = 미확정, 중복 확정 차단)
+  confirm_points INTEGER NOT NULL DEFAULT 0 CHECK (confirm_points >= 0),  -- 구매확정 적립 포인트
+  photo_bonus    INTEGER NOT NULL DEFAULT 0 CHECK (photo_bonus >= 0),     -- 포토·영상 리뷰 추가 적립 포인트
+  photo_bonus_at TEXT                                                       -- 추가 적립 시각 (주문항목당 1회)
 );
 
 -- 교환/반품 접수 (주문 단위, 한 주문당 1건)
@@ -223,6 +231,12 @@ CREATE TABLE site_settings (
   hero_effect          TEXT NOT NULL DEFAULT 'none'
                        CHECK (hero_effect IN ('none','zoom','fade','slide')),
   hero_overlay         INTEGER NOT NULL DEFAULT 42 CHECK (hero_overlay BETWEEN 0 AND 90),
+  story_image          TEXT NOT NULL DEFAULT '',                -- 브랜드 스토리 대표 이미지
+  story_eyebrow        TEXT NOT NULL DEFAULT '',                -- 스토리 상단 뱃지
+  story_title          TEXT NOT NULL DEFAULT '',                -- 스토리 제목(줄바꿈 허용)
+  story_subtitle       TEXT NOT NULL DEFAULT '',                -- 스토리 부제
+  story_body           TEXT NOT NULL DEFAULT '',                -- 스토리 본문(줄바꿈 허용)
+  story_tags           TEXT NOT NULL DEFAULT '[]',              -- JSON 배열: 핵심 가치/태그
   brand_blurb          TEXT NOT NULL DEFAULT '',                -- 푸터 브랜드 소개
   company_name         TEXT NOT NULL DEFAULT '',                -- 상호
   company_ceo          TEXT NOT NULL DEFAULT '',                -- 대표자
@@ -242,3 +256,81 @@ CREATE TABLE help_topics (
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX idx_help_topics_sort ON help_topics(sort_order);
+
+-- ===================================================== 상품 리뷰 (v1.9)
+-- 구매한 주문항목(order_item_id) 하나당 리뷰 1건 — 별점·내용·사진/동영상(JSON 배열)
+--   media = [{"type":"image"|"video","src":"asset 파일명 또는 data: URL","name":"파일명"}]
+CREATE TABLE product_reviews (
+  id            TEXT PRIMARY KEY,
+  product_id    TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_name     TEXT NOT NULL DEFAULT '',            -- 표시용 마스킹 이름 (예: 홍길*)
+  order_item_id TEXT NOT NULL REFERENCES order_items(id) ON DELETE CASCADE,
+  rating        INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  content       TEXT NOT NULL DEFAULT '',
+  media         TEXT NOT NULL DEFAULT '[]',          -- JSON 배열 (사진 다중·동영상)
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT,
+  UNIQUE (order_item_id)                             -- 동일 주문항목 중복 리뷰 금지
+);
+
+-- ===================================================== 포인트 정책 (v1.9)
+-- 관리자 「포인트/회원」에서 등급별 적립률(%)을 수정한다.
+CREATE TABLE point_policies (
+  grade        TEXT PRIMARY KEY CHECK (grade IN ('NORMAL','SILVER','GOLD','VIP')),
+  confirm_rate REAL NOT NULL DEFAULT 0.5 CHECK (confirm_rate >= 0 AND confirm_rate <= 10),
+  photo_rate   REAL NOT NULL DEFAULT 1.0 CHECK (photo_rate >= 0 AND photo_rate <= 10),
+  updated_at   TEXT NOT NULL
+);
+
+-- ===================================================== 포인트 내역 (v1.9)
+-- amount 양수 = 적립, 음수 = 사용. users.points 는 이 표의 합계와 일치해야 한다.
+CREATE TABLE point_logs (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type          TEXT NOT NULL CHECK (type IN ('signup','confirm','photo_review','use','refund','adjust','review')),
+  amount        INTEGER NOT NULL CHECK (amount <> 0),
+  base_amount   INTEGER NOT NULL DEFAULT 0,          -- 적립 기준 금액(상품 실결제 금액)
+  rate          REAL NOT NULL DEFAULT 0,             -- 적용 적립률(%)
+  order_id      TEXT,
+  order_item_id TEXT,
+  review_id     TEXT,
+  description   TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL
+);
+
+-- ===================================================== FAQ 게시판 (v1.9)
+CREATE TABLE faqs (
+  id         TEXT PRIMARY KEY,
+  category   TEXT NOT NULL DEFAULT '기타',
+  question   TEXT NOT NULL,
+  answer     TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active  INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_reviews_product ON product_reviews(product_id, created_at DESC);
+CREATE INDEX idx_reviews_user ON product_reviews(user_id);
+CREATE INDEX idx_point_logs_user ON point_logs(user_id, created_at DESC);
+CREATE INDEX idx_point_logs_order ON point_logs(order_id);
+CREATE INDEX idx_faqs_sort ON faqs(sort_order);
+
+-- 회원별 포인트 요약 (보유 포인트 = 적립 − 사용)
+CREATE VIEW v_member_points AS
+SELECT u.id AS user_id, u.name, u.email, u.grade, u.points,
+       COALESCE(SUM(CASE WHEN l.amount > 0 THEN l.amount ELSE 0 END), 0) AS earned_total,
+       COALESCE(SUM(CASE WHEN l.amount < 0 THEN -l.amount ELSE 0 END), 0) AS used_total
+FROM users u
+LEFT JOIN point_logs l ON l.user_id = u.id
+GROUP BY u.id;
+
+-- 상품별 리뷰 요약 (평균 별점·리뷰 수·포토리뷰 수)
+CREATE VIEW v_product_reviews AS
+SELECT p.id AS product_id, p.product_code, p.name,
+       COUNT(r.id) AS review_count,
+       ROUND(COALESCE(AVG(r.rating), 0), 2) AS avg_rating,
+       SUM(CASE WHEN r.media <> '[]' THEN 1 ELSE 0 END) AS photo_review_count
+FROM products p
+LEFT JOIN product_reviews r ON r.product_id = p.id
+GROUP BY p.id;

@@ -1,7 +1,7 @@
 {
   "meta": {
     "app": "MONO ATELIER",
-    "schema_version": 7,
+    "schema_version": 8,
     "generated_at": "2026-11-27T08:20:00+09:00",
     "grades": [
       "NORMAL",
@@ -26,6 +26,8 @@
       "address": "서울특별시 송파구 올림픽로 300 101동 1203호",
       "role": "customer",
       "grade": "GOLD",
+      "points": 4725,
+      "postcode": "05551",
       "created_at": "2026-11-09T10:42:00+09:00"
     },
     {
@@ -37,6 +39,8 @@
       "address": "서울특별시 송파구 올림픽로 300 101동 1203호 3층",
       "role": "admin",
       "grade": "NORMAL",
+      "points": 0,
+      "postcode": "05551",
       "created_at": "2026-10-01T09:00:00+09:00"
     }
   ],
@@ -1439,7 +1443,9 @@
       "payment_provider": "demo",
       "payment_key": null,
       "payment_mode": "demo",
-      "created_at": "2026-11-12T10:24:00+09:00"
+      "created_at": "2026-11-12T10:24:00+09:00",
+      "postcode": "05551",
+      "points_used": 0
     },
     {
       "id": "o_002",
@@ -1457,7 +1463,9 @@
       "payment_provider": "demo",
       "payment_key": null,
       "payment_mode": "demo",
-      "created_at": "2026-11-24T15:40:00+09:00"
+      "created_at": "2026-11-24T15:40:00+09:00",
+      "postcode": "05551",
+      "points_used": 0
     },
     {
       "id": "o_003",
@@ -1475,7 +1483,9 @@
       "payment_provider": "demo",
       "payment_key": null,
       "payment_mode": "demo",
-      "created_at": "2026-11-25T09:12:00+09:00"
+      "created_at": "2026-11-25T09:12:00+09:00",
+      "postcode": "05551",
+      "points_used": 0
     },
     {
       "id": "o_004",
@@ -1493,7 +1503,9 @@
       "payment_provider": "demo",
       "payment_key": null,
       "payment_mode": "demo",
-      "created_at": "2026-11-14T11:05:00+09:00"
+      "created_at": "2026-11-14T11:05:00+09:00",
+      "postcode": "05551",
+      "points_used": 0
     },
     {
       "id": "o_005",
@@ -1511,7 +1523,29 @@
       "payment_provider": "demo",
       "payment_key": null,
       "payment_mode": "demo",
-      "created_at": "2026-11-16T14:30:00+09:00"
+      "created_at": "2026-11-16T14:30:00+09:00",
+      "postcode": "05551",
+      "points_used": 0
+    },
+    {
+      "id": "o_006",
+      "order_no": "MA20261105-1852",
+      "user_id": "u_001",
+      "status": "delivered",
+      "total_amount": 289000,
+      "shipping_fee": 0,
+      "coupon_code": null,
+      "discount_amount": 0,
+      "recipient_name": "홍길동",
+      "recipient_phone": "010-0000-0000",
+      "shipping_address": "서울특별시 송파구 올림픽로 300 101동 1203호",
+      "postcode": "05551",
+      "points_used": 0,
+      "payment_method": "card",
+      "payment_provider": "demo",
+      "payment_key": null,
+      "payment_mode": "demo",
+      "created_at": "2026-11-05T11:20:00+09:00"
     }
   ],
   "order_items": [
@@ -1523,7 +1557,11 @@
       "color": "크림",
       "size": "M",
       "unit_price": 129000,
-      "quantity": 1
+      "quantity": 1,
+      "confirmed_at": "2026-11-22T10:05:00+09:00",
+      "confirm_points": 1290,
+      "photo_bonus": 1935,
+      "photo_bonus_at": "2026-11-22T10:20:00+09:00"
     },
     {
       "id": "oi_002",
@@ -1533,7 +1571,11 @@
       "color": "블랙",
       "size": "M",
       "unit_price": 149000,
-      "quantity": 1
+      "quantity": 1,
+      "confirmed_at": null,
+      "confirm_points": 0,
+      "photo_bonus": 0,
+      "photo_bonus_at": null
     },
     {
       "id": "oi_003",
@@ -1543,7 +1585,11 @@
       "color": "화이트",
       "size": "S",
       "unit_price": 89000,
-      "quantity": 2
+      "quantity": 2,
+      "confirmed_at": null,
+      "confirm_points": 0,
+      "photo_bonus": 0,
+      "photo_bonus_at": null
     },
     {
       "id": "oi_004",
@@ -1553,7 +1599,11 @@
       "color": "차콜",
       "size": "S",
       "unit_price": 289000,
-      "quantity": 1
+      "quantity": 1,
+      "confirmed_at": null,
+      "confirm_points": 0,
+      "photo_bonus": 0,
+      "photo_bonus_at": null
     },
     {
       "id": "oi_005",
@@ -1563,7 +1613,11 @@
       "color": "미드블루",
       "size": "M",
       "unit_price": 109000,
-      "quantity": 1
+      "quantity": 1,
+      "confirmed_at": null,
+      "confirm_points": 0,
+      "photo_bonus": 0,
+      "photo_bonus_at": null
     },
     {
       "id": "oi_006",
@@ -1573,7 +1627,25 @@
       "color": "차콜",
       "size": "M",
       "unit_price": 139000,
-      "quantity": 1
+      "quantity": 1,
+      "confirmed_at": null,
+      "confirm_points": 0,
+      "photo_bonus": 0,
+      "photo_bonus_at": null
+    },
+    {
+      "id": "oi_007",
+      "order_id": "o_006",
+      "variant_id": "v_001",
+      "product_name": "울 더블 브레스티드 코트",
+      "color": "차콜",
+      "size": "S",
+      "unit_price": 289000,
+      "quantity": 1,
+      "confirmed_at": null,
+      "confirm_points": 0,
+      "photo_bonus": 0,
+      "photo_bonus_at": null
     }
   ],
   "order_claims": [
@@ -1655,6 +1727,212 @@
       "created_at": "2026-11-20T10:00:00+09:00"
     }
   ],
+  "product_reviews": [
+    {
+      "id": "rv_001",
+      "product_id": "p_002",
+      "user_id": "u_001",
+      "user_name": "홍길*",
+      "order_item_id": "oi_001",
+      "rating": 5,
+      "content": "캐시미어라 그런지 정말 부드럽고 목선이 답답하지 않아요. 크림 색도 화면과 거의 같고, 코트 안에 입어도 두께감이 부담스럽지 않습니다.",
+      "media": [
+        {
+          "type": "image",
+          "src": "knit-detail.webp",
+          "name": "착용 디테일"
+        },
+        {
+          "type": "image",
+          "src": "knit-fabric.webp",
+          "name": "소재 클로즈업"
+        }
+      ],
+      "created_at": "2026-11-22T10:20:00+09:00"
+    },
+    {
+      "id": "rv_002",
+      "product_id": "p_003",
+      "user_id": "u_001",
+      "user_name": "홍길*",
+      "order_item_id": "oi_002",
+      "rating": 4,
+      "content": "허리선이 높아서 다리가 길어 보입니다. 기장이 조금 길어 힐을 신어야 하지만 핏은 만족해요.",
+      "media": [],
+      "created_at": "2026-11-18T09:10:00+09:00"
+    },
+    {
+      "id": "rv_003",
+      "product_id": "p_001",
+      "user_id": "u_001",
+      "user_name": "홍길*",
+      "order_item_id": "oi_007",
+      "rating": 5,
+      "content": "무게감이 있지만 어깨가 편하고, 차콜 색이 사진보다 더 깊어 보입니다. 오래 입을 코트로 추천합니다.",
+      "media": [
+        {
+          "type": "image",
+          "src": "coat-detail.webp",
+          "name": "코트 디테일"
+        }
+      ],
+      "created_at": "2026-11-12T14:40:00+09:00"
+    }
+  ],
+  "point_policies": [
+    {
+      "grade": "NORMAL",
+      "confirm_rate": 0.5,
+      "photo_rate": 1.0,
+      "updated_at": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "grade": "SILVER",
+      "confirm_rate": 0.7,
+      "photo_rate": 1.2,
+      "updated_at": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "grade": "GOLD",
+      "confirm_rate": 1.0,
+      "photo_rate": 1.5,
+      "updated_at": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "grade": "VIP",
+      "confirm_rate": 1.5,
+      "photo_rate": 2.0,
+      "updated_at": "2026-11-27T08:30:00+09:00"
+    }
+  ],
+  "point_logs": [
+    {
+      "id": "pl_001",
+      "user_id": "u_001",
+      "type": "signup",
+      "amount": 2000,
+      "base_amount": 0,
+      "rate": 0,
+      "order_id": null,
+      "order_item_id": null,
+      "review_id": null,
+      "description": "가입 축하 포인트",
+      "created_at": "2026-11-09T10:42:00+09:00"
+    },
+    {
+      "id": "pl_002",
+      "user_id": "u_001",
+      "type": "use",
+      "amount": -500,
+      "base_amount": 0,
+      "rate": 0,
+      "order_id": "o_005",
+      "order_item_id": null,
+      "review_id": null,
+      "description": "주문 결제에 포인트 사용",
+      "created_at": "2026-11-16T14:30:00+09:00"
+    },
+    {
+      "id": "pl_003",
+      "user_id": "u_001",
+      "type": "confirm",
+      "amount": 1290,
+      "base_amount": 129000,
+      "rate": 1.0,
+      "order_id": "o_001",
+      "order_item_id": "oi_001",
+      "review_id": null,
+      "description": "구매확정 적립 (골드 1.0%)",
+      "created_at": "2026-11-22T10:05:00+09:00"
+    },
+    {
+      "id": "pl_004",
+      "user_id": "u_001",
+      "type": "photo_review",
+      "amount": 1935,
+      "base_amount": 129000,
+      "rate": 1.5,
+      "order_id": "o_001",
+      "order_item_id": "oi_001",
+      "review_id": "rv_001",
+      "description": "포토·영상 리뷰 추가 적립 (골드 1.5%)",
+      "created_at": "2026-11-22T10:20:00+09:00"
+    }
+  ],
+  "faqs": [
+    {
+      "id": "faq_001",
+      "category": "배송",
+      "question": "배송은 얼마나 걸리나요?",
+      "answer": "평일 오후 2시 이전 결제 건은 당일 출고됩니다. 수도권은 출고 후 1~2일, 지방은 2~3일 정도 소요되며 제주·도서산간은 하루 더 걸릴 수 있습니다.",
+      "sort_order": 1,
+      "is_active": true,
+      "created_at": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "id": "faq_002",
+      "category": "배송",
+      "question": "무료배송 기준은 어떻게 되나요?",
+      "answer": "기본 100,000원 이상 구매 시 무료배송입니다. 상품에 별도 기준이 있는 경우 상품 상세의 배송 안내를 확인해 주세요(0원 = 무조건 무료배송).",
+      "sort_order": 2,
+      "is_active": true,
+      "created_at": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "id": "faq_003",
+      "category": "주문/결제",
+      "question": "쿠폰과 포인트를 같이 사용할 수 있나요?",
+      "answer": "네. 결제 화면에서 쿠폰을 적용한 뒤 보유 포인트를 원하는 만큼 입력해 사용할 수 있습니다. 포인트는 결제 금액을 넘지 않게 사용되며, 남은 금액만 결제됩니다.",
+      "sort_order": 3,
+      "is_active": true,
+      "created_at": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "id": "faq_004",
+      "category": "주문/결제",
+      "question": "주문 취소는 언제까지 가능한가요?",
+      "answer": "상품 준비 단계까지 마이페이지 > 주문 내역에서 직접 취소할 수 있습니다. 배송이 시작된 뒤에는 취소할 수 없으며 교환·반품으로 접수해 주세요. 취소 시 사용한 포인트는 다시 적립됩니다.",
+      "sort_order": 4,
+      "is_active": true,
+      "created_at": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "id": "faq_005",
+      "category": "교환/반품",
+      "question": "교환·반품 배송비는 얼마인가요?",
+      "answer": "제품 하자·오배송은 판매자 귀책으로 무료입니다. 단순 변심·사이즈/색상 변경은 반품 3,000원, 교환(왕복) 6,000원입니다. 수령 후 7일 이내 신청해 주세요.",
+      "sort_order": 5,
+      "is_active": true,
+      "created_at": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "id": "faq_006",
+      "category": "회원/포인트",
+      "question": "포인트는 어떻게 적립되나요?",
+      "answer": "구매확정 시 결제 금액의 등급별 적립률(일반 0.5% · 실버 0.7% · 골드 1.0% · VIP 1.5%)만큼 적립됩니다. 사진이나 동영상을 첨부한 리뷰를 등록하면 등급별 추가 적립률(1.0~2.0%)이 한 번 더 지급됩니다.",
+      "sort_order": 6,
+      "is_active": true,
+      "created_at": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "id": "faq_007",
+      "category": "회원/포인트",
+      "question": "구매확정을 누르면 무엇이 바뀌나요?",
+      "answer": "구매확정한 주문 상품은 적립 포인트가 즉시 지급되고, 같은 상품에 리뷰를 작성할 수 있습니다. 한 번 확정한 상품은 다시 확정할 수 없어 포인트가 중복 지급되지 않습니다.",
+      "sort_order": 7,
+      "is_active": true,
+      "created_at": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "id": "faq_008",
+      "category": "상품",
+      "question": "사이즈는 어떻게 고르면 좋나요?",
+      "answer": "상품 상세의 실측 사이즈와 모델 착용 정보(키·몸무게·착용 사이즈)를 참고해 주세요. 평소 착용 사이즈와 실측 단면을 비교하면 가장 정확합니다.",
+      "sort_order": 8,
+      "is_active": true,
+      "created_at": "2026-11-27T08:30:00+09:00"
+    }
+  ],
   "site_settings": {
     "id": "default",
     "hero_image": "hero.webp",
@@ -1666,6 +1944,17 @@
     "hero_effect": "zoom",
     "hero_overlay": 42,
     "brand_blurb": "단정한 실루엣, 좋은 소재. 서울에서 만드는 모던 컨템포러리 브랜드입니다.",
+    "story_image": "coat.webp",
+    "story_eyebrow": "ATELIER NOTE 01",
+    "story_title": "옷장은 계절이 아니라,\n태도로 채워집니다.",
+    "story_subtitle": "MONO ATELIER가 옷을 만드는 기준",
+    "story_body": "한 벌의 코트가 계절을 견디는 방식은 화려함이 아니라 균형에 있습니다. 어깨선, 소매의 길이, 단추 하나의 간격까지.\n\n우리는 사진보다 실물에서 더 좋아 보이는 옷을 만듭니다. 유행을 따라가기보다 오래 입을 수 있는 실루엣을 고르고, 피부에 닿는 소재부터 확인합니다.",
+    "story_tags": [
+      "좋은 소재",
+      "단정한 실루엣",
+      "오래 입는 옷",
+      "서울 제작"
+    ],
     "company_name": "모노 아뜰리에",
     "company_ceo": "홍길동",
     "company_reg_no": "000-00-00000",
