@@ -9296,9 +9296,10 @@ tr.pl-reclaim td { background: #fdf8f6; }
     var scope = adminOrderScope();
     var filter = ui.adminOrderFilter || 'all';
     var list = adminOrderListOf(scope);
+    var filterLabel = filter === 'pending' ? '처리 대기' : ((STATUS[filter] || {}).label || filter);
     var head = '<div class="coupon-stat">' +
         (filter === 'all' ? '전체 <b>' + scope.length + '</b>건'
-          : '<b>' + esc(({ pending: { label: '처리 대기' } }[filter] || STATUS[filter] || {}).label || filter) + '</b> ' + list.length + '건') +
+          : '<b>' + esc(filterLabel) + '</b> ' + list.length + '건') +
         ' · 결제완료 <b>' + scope.filter(function (o) { return o.status === 'paid'; }).length + '</b>건' +
         ' · 처리 대기 <b>' + scope.filter(function (o) { return o.status === 'paid' || o.status === 'preparing'; }).length + '</b>건</div>' +
       adminFilterChipsHTML('admin-order-filter', adminOrderChips(scope), filter);
