@@ -261,6 +261,7 @@ CREATE TABLE site_settings (
                                                                -- 테스트(로그만) / 실서버 API
   sms_api_url          TEXT NOT NULL DEFAULT '',                -- SMS Webhook/API URL
   sms_sender           TEXT NOT NULL DEFAULT '',                -- 발신번호
+  faq_categories       TEXT NOT NULL DEFAULT '[]',              -- v1.9.5 JSON 배열: FAQ 카테고리 목록(관리자에서 추가·삭제·순서)
   updated_at           TEXT NOT NULL
 );
 
