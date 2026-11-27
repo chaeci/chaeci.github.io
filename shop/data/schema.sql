@@ -227,6 +227,8 @@ JOIN users u ON u.id = t.user_id;
 -- 관리자 「메인/사이트 관리」에서 편집 — 히어로 배너·푸터 브랜드 소개·사업자 정보
 CREATE TABLE site_settings (
   id                   TEXT PRIMARY KEY,                        -- 'default' 단일 행
+  top_banner_text      TEXT NOT NULL DEFAULT '',                -- v1.9.3 상단 안내 띠 문구(비우면 띠 숨김)
+  top_banner_sub       TEXT NOT NULL DEFAULT '',                -- v1.9.3 상단 띠 보조 문구(비우면 숨김)
   hero_image           TEXT NOT NULL,                           -- 대표 배너 이미지(asset 파일명 또는 업로드 Data URL)
   hero_eyebrow         TEXT NOT NULL DEFAULT '',                -- 상단 뱃지 문구
   hero_title           TEXT NOT NULL,                           -- 메인 타이틀
