@@ -225,7 +225,8 @@
   }
   .track .swimmer{
     position:absolute;top:50%;left:4%;font-size:17px;line-height:1;
-    transform:translate(-50%,-50%);
+    /* 🐢 이모지는 기본으로 왼쪽을 봐서 진행 방향(→)과 반대로 헤엄친다. 좌우를 뒤집어 앞을 보게 한다. */
+    transform:translate(-50%,-50%) scaleX(-1);
     transition:left .6s cubic-bezier(.3,.9,.3,1);
     filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 0 1px rgba(255,255,255,.9)) drop-shadow(0 2px 4px rgba(0,20,30,.7));
   }
