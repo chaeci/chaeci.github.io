@@ -6039,7 +6039,7 @@ table.data.claims { min-width: 780px; }
     if (canConfirmItem(o, oi)) {
       acts.push('<button class="btn small" data-action="confirm-purchase" data-oi="' + esc(oi.id) + '">구매확정</button>');
     }
-    if (!rv) {
+    if (!rv && o.status !== 'cancelled') {
       acts.push('<button class="btn ghost small" data-action="open-review" data-pid="' + esc(orderItemProductId(oi) || '') + '" data-oi="' + esc(oi.id) + '">리뷰 쓰기</button>');
     }
     if (!bits.length && !acts.length) return '';
