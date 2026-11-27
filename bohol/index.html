@@ -552,7 +552,7 @@
   .logtable .num{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
   .logtable .num small{display:block;font-size:9px;font-weight:700}
   .logtable .memo{color:var(--muted);font-size:10.2px;min-width:112px}
-  .scan-actions.one{grid-template-columns:1fr}
+  .scan-actions.split{grid-template-columns:1fr 1fr;align-items:stretch}
   @media (max-width:360px){
     .mtab span{font-size:9.5px}
     .mtab i{font-size:12px}
@@ -820,19 +820,6 @@
   </section>
 
 
-  <!-- 가격 스캔 요약 -->
-  <section class="card" id="scanCard">
-    <h2>📉 가격 스캔 요약 <span class="hint">매일 10:00</span></h2>
-    <div id="scanSummary">
-      <p class="lead">스캔 기록을 불러오고 있습니다…</p>
-    </div>
-    <div class="scan-actions one">
-      <button class="refresh primary" id="runScan" type="button">지금 가격 스캔</button>
-    </div>
-    <p class="tiny scan-note" id="scanApiNote" style="display:none"></p>
-    <button class="linkbtn" type="button" data-goto="3">📊 스캔로그 탭에서 전체 기록 보기 ›</button>
-  </section>
-
   </div><!-- /panel-air -->
 
   <!-- ========== 패널 2: 세부일정 ========== -->
@@ -932,14 +919,24 @@
   <!-- ========== 패널 4: 스캔로그 ========== -->
   <div class="panel" id="panel-log" role="tabpanel" aria-label="스캔로그" hidden>
 
+  <!-- 가격 스캔 요약 + 스캔 버튼 (원래 항공·숙소 탭에 있던 카드를 이곳으로 옮김) -->
+  <section class="card" id="scanCard">
+    <h2>📉 가격 스캔 요약 <span class="hint">매일 10:00</span></h2>
+    <div id="scanSummary">
+      <p class="lead">스캔 기록을 불러오고 있습니다…</p>
+    </div>
+    <div class="scan-actions split">
+      <button class="refresh" id="reloadScan" type="button">기록 새로고침</button>
+      <button class="refresh primary" id="runScan" type="button">지금 스캔</button>
+    </div>
+    <p class="tiny scan-note" id="scanApiNote" style="display:none"></p>
+  </section>
+
   <!-- 스캔 로그 -->
   <section class="card">
     <h2>📊 매일 오전 10시 스캔 로그 <span class="hint" id="scanState">불러오는 중</span></h2>
     <div id="scanLogBody">
       <p class="lead">스캔 기록을 불러오고 있습니다…</p>
-    </div>
-    <div class="scan-actions one">
-      <button class="refresh" id="reloadScan" type="button">기록 새로고침</button>
     </div>
   </section>
 
@@ -1617,7 +1614,7 @@
       .then(function () {
         scanBusy = false;
         btn.disabled = false;
-        btn.textContent = label || "지금 가격 스캔";
+        btn.textContent = label || "지금 스캔";
       });
   }
 
