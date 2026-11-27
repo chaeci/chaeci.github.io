@@ -1,9 +1,11 @@
 # MONO ATELIER — 의류 쇼핑몰 프로토타입
 
 프론트엔드만으로 완결되는 모던 컨템포러리 의류 쇼핑몰입니다.
-모든 데이터는 **정규화된 14개 테이블(JSON) + 사이트 설정·HELP** 로 관리되고 브라우저 `localStorage`에 저장되며,
-`data/schema.sql`(SQLite 17개 테이블 — `categories`·`coupon_targets`·`order_claims`·`product_reviews`·`point_logs`·`faqs` 포함)로 **1:1 이식**할 수 있게 설계했습니다.
+모든 데이터는 **정규화된 15개 테이블(JSON) + 사이트 설정·HELP** 로 관리되고 브라우저 `localStorage`에 저장되며,
+`data/schema.sql`(SQLite 18개 테이블 — `categories`·`coupon_targets`·`order_claims`·`product_reviews`·`point_logs`·`faqs`·`dispatch_logs` 포함)로 **1:1 이식**할 수 있게 설계했습니다.
 
+> **v1.9.2 (2026-11-27 v1.9.1 실기기 QA 후속 · 리뷰 재작성·구매확정 제한·관리자 탭 분리·새로고침 유지·발송 로그)** — ① **반려·포인트 회수된 리뷰는 딱 1번 재작성 가능** — 1차 리뷰가 반려되면 주문항목에 `review_attempts`/`rewrite_used`를 남겨 **2차 리뷰 1회**를 허용하고, 2차마저 반려되면 최종 차단(재작성 불가). 포토·영상 포인트는 반려 때 회수되고 재작성 때 1회 다시 지급(주문항목당 최대 2회, 중복 지급 없음) ② **리뷰 작성은 `배송완료` + `구매확정(confirmed_at)` 이후에만** — 결제완료·배송중·미확정 배송완료·교환/반품 진행 건은 버튼 미노출 + `addReview` 차단 ③ 관리자 **「주문 관리」 상태별 필터 칩**(전체·결제완료·배송준비·배송중·배송완료·취소됨 + 건수)으로 결제완료 건만 바로 처리 ④ 리뷰 모달 **사진·동영상 추가 버튼**이 `.field label` 규칙에 눌려 위로 쏠리던 문제 수정 — 48~52px 칸 안에서 세로·가로 중앙 ⑤ **리뷰 저장 직후 즉시 갱신** — 새로고침 없이 주문 카드·주문 상세·상품 상세가 다시 그려져 `리뷰 쓰기` → `리뷰 수정`/`리뷰 완료`로 바로 바뀜(작성 직후 다시 눌러도 배송완료 안내가 나오지 않음) ⑥ **「주문 관리」와 「반품/교환」 탭 분리** — 일반 주문 처리와 클레임 처리를 따로 ⑦ 「반품/교환」 탭에도 **상태별 필터**(전체·접수됨·수거중/승인·완료·반려 + 건수) ⑧ **새로고침해도 보던 화면 유지** — `#/mypage/orders`·`#/admin/claims` 처럼 URL 해시와 뷰·탭을 동기화해 F5·`page.reload()` 후에도 마이페이지·관리자 탭 그대로(비관리자의 `#/admin` 은 스토어로) ⑨ **「발송 로그」 탭 분리** — 데이터 관리의 SMS 로그를 별도 탭으로 옮기고 412px에서 카드형으로 깨짐 0 ⑩ **발송 로그 채널·상태 필터 + 키워드 검색**(수신번호·이메일·본문·유형, 입력 즉시) ⑪ **발송 로그 통합(SMS + 이메일 인증 OTP)** + **과다 발송 감지** — 같은 수신자 10분 내 3회 이상·5분 내 전체 12건 이상이면 ⚠️ 경고 카드, 같은 이메일 연속 요청은 **60초 쿨다운으로 차단(`blocked` 기록)**.
+>
 > **v1.9.1 (2026-11-27 실기기 QA · 리뷰 검수·포인트 회수·사이즈 코드·가입/알림)** — ① **리뷰 작성 권한 제한** — 배송완료(또는 구매확정)된 주문의 상품만 작성(배송 전·교환/반품 진행 상품 차단) ② 관리자 **`포인트/회원` 탭의 「리뷰 검수 · 포인트 회수」** — 상품명·작성자·별점·본문·첨부 썸네일·지급 포인트 표시, **「반려 · 포인트 회수」** 로 포토·영상 리뷰 포인트 차감(마이너스 `point_logs` 기록, 리뷰당 1회·중복 회수 차단) + 스토어 비노출 ③ 주문/리뷰의 **상품명 클릭 → 판매중이면 상세 모달**, 판매중지·삭제는 안내 토스트 ④ 리뷰 사진·동영상 뷰어를 **상세 모달 위 별도 레이어**로 분리 — **뒤로가기는 뷰어만 닫히고**, 닫아도 **보던 리뷰 스크롤 위치 유지** ⑤ **리뷰 수정**(상품 상세·마이페이지 주문 상세) — 별점·본문·사진/영상, 포토 포인트는 주문상품당 1회만(재수정 중복 지급 없음), 반려 리뷰 수정 차단 ⑥ 리뷰 **5개씩 페이징**(이전/다음·페이지 번호, 코트 리뷰 7건 시드) ⑦ 관리자 콘솔 진입 버튼을 **헤더 1곳으로 정리**(마이페이지 중복 제거) ⑧ 푸터 HELP **`고객센터 · FAQ` → `고객센터`**(FAQ 게시판과 중복 제거) ⑨ **카테고리별 사이즈 코드** — `categories.size_codes`(예: 95·100·105 / 28·30·32 / 240·250·FREE)를 관리자 「카테고리」 탭에서 추가·수정·삭제·순서 변경, 상품 등록/수정의 사이즈 드롭다운에 즉시 반영(기존 레거시 사이즈 유지) ⑩ 로그인·회원가입 **비밀번호 보기/숨기기(👁)** ⑪ **회원가입 이메일 인증(6자리 OTP)** — 인증 전 가입 차단, 테스트 모드는 화면에 인증번호 표시, 관리자 「데이터 관리」에서 **이메일 인증 모드(테스트/API)·API URL** 저장 ⑫ **회원가입 비밀번호 정책** — 8자 이상 + 영문 대/소문자 + 숫자 + 특수문자, 연속 숫자 3자리(123·987) 차단, 입력칸 아래 **실시간 ✓/✗ 체크**(데모 계정 로그인은 영향 없음) ⑬ **가입 실패 시 입력값 유지**(이름·이메일·비밀번호·연락처·주소·인증 상태) ⑭ **주문 완료 SMS** — 테스트 모드는 실제 발송 없이 **관리자 「SMS 발송 로그」·주문 상세 발송 내역**(수신번호·본문·시각·상태) 기록, 관리자에서 **발송 사용 여부·테스트/API 모드·Webhook URL·발신번호** 설정.
 >
 > **v1.9 (2026-11-27 리뷰·포인트·브랜드 스토리·FAQ·주소 검색)** — ① 상품 등록/수정에서 **보유 이미지 36종 그리드를 없애고** 「📷 사진 업로드」 + **현재 등록 이미지 목록(대표 지정·순서 이동·삭제)** 만 표시 ② 옵션의 **색상 스와치를 누르면 색상 레이어** — ①기본 16색 프리셋 ②직접 선택(피커·HEX) ③**이 상품 사진에서 자동 추출한 색(비중%·한국어 색상명)** 을 한 번에 적용(상시 팔레트 제거) ③ 구매 상품 **리뷰 작성** — 별점(1~5)·후기·**사진 다중·동영상** 첨부, 상품 상세에서 사진 확대·동영상 재생 ④ **구매확정 시 실결제 금액의 등급별 적립률(기본 0.5%, 골드 1.0%·VIP 1.5%) 즉시 지급**, 주문항목당 1회(중복 차단) ⑤ **사진·동영상 리뷰 등록 시 등급별 추가 적립(기본 1.0%, VIP 2.0%)** 1회 ⑥ 관리자 **`포인트/회원` 탭**에서 등급별 적립률 설정·회원 포인트 확인, 마이페이지 **포인트 탭**(보유·적립/사용 내역), **체크아웃 포인트 사용**(결제 금액 차감·취소 시 환급) ⑦ 관리자 **`메인/사이트`의 브랜드 스토리**(사진·뱃지·제목·부제·본문·핵심 태그)가 홈 스토리 영역에 즉시 반영 ⑧ 푸터 **HELP의 FAQ 게시판** — 카테고리 필터·검색·아코디언, 관리자에서 추가·수정·삭제·순서 저장 ⑨ **카카오(다음) 우편번호 서비스** 연동 — 「주소 검색」으로 우편번호·기본주소(readonly)를 넣고 **상세 주소만 직접 입력**(로드 실패·차단 시 내장 도로명 주소 fallback).
@@ -52,9 +54,11 @@ python3 fashion-shop/build.py
 | **상품 관리 → 등록/수정** | **제품고유키(제품번호)** — 신규 등록 시 `MA-00XX` 자동 채번, 대소문자 무시 중복 차단 · **현재 등록 이미지 목록**(대표 지정·순서 이동·삭제) + **📷 사진 업로드** · 옵션 **색상 스와치 → 색상 레이어**(16색 프리셋·피커/HEX·이미지 색 추출) |
 | **포인트/회원** | **등급별 포인트 적립률** — 구매확정 %(기본 0.5/0.7/1.0/1.5) · 포토·영상 리뷰 %(1.0/1.2/1.5/2.0), 회원별 보유 포인트·최근 내역 · **리뷰 검수** — 상품명·작성자·별점·본문·첨부 썸네일·지급 포인트, **「반려 · 포인트 회수」**(리뷰당 1회) |
 | **카테고리** | **카테고리별 사이즈 코드** — 추가·수정·삭제·순서 변경(예: 95·100·105 / 28·30·32 / FREE), 상품 등록/수정 사이즈 드롭다운에 즉시 반영 |
-| **데이터 관리** | **알림 설정** — 이메일 인증 모드(테스트/API)·API URL, **주문 SMS**(사용 여부·테스트/API·Webhook URL·발신번호) + **SMS 발송 로그** · JSON 내보내기·시드 초기화·무결성 검사·결제 설정 |
+| **데이터 관리** | **알림 설정** — 이메일 인증 모드(테스트/API)·API URL, **주문 SMS**(사용 여부·테스트/API·Webhook URL·발신번호) · JSON 내보내기·시드 초기화·무결성 검사·결제 설정 (**발송 로그는 「발송 로그」 탭으로 분리**) |
+| **발송 로그** | **SMS·이메일 인증 발송 내역** — 채널(전체/SMS/이메일)·상태(테스트/발송/차단/실패) 필터, **키워드 검색**(수신번호·이메일·본문·유형), **⚠️ 과다 발송 이상 징후 경고**(동일 수신자 10분 3회↑ · 5분 전체 12건↑) |
 | **메인/사이트** | **히어로 배너** — 사진 업로드/선택, 뱃지·메인 타이틀·서브 문구·CTA 버튼 문구, **효과(없음/줌인/페이드/슬라이드)**, **오버레이 농도** · **브랜드 스토리**(사진·뱃지·제목·부제·본문·핵심 태그) · **푸터 브랜드 소개 + 사업자 정보** · **HELP 메뉴 항목** · **FAQ 게시판**(카테고리·질문·답변·노출순서) |
-| **주문 관리** | 주문 행·주문 상세에 각 주문 상품의 **제품번호** 표시 |
+| **주문 관리** | **상태별 필터 칩**(전체·결제완료·배송준비·배송중·배송완료·취소됨 + 건수)으로 결제완료 건만 골라 처리 · 주문 행·주문 상세에 각 주문 상품의 **제품번호** 표시 |
+| **반품/교환** | **교환·반품 접수 전담 탭** — 상태별 필터(전체·접수됨·수거중/승인·완료·반려 + 건수), 사유·배송비 결제·희망 옵션 확인, 상태 변경(반품 완료 시 재고 1회 복구) |
 
 * 스토어 홈 히어로·푸터는 저장 즉시 반영됩니다. HELP 항목은 푸터에서 누르면 안내 모달로 열립니다.
 * 푸터의 `SHOP` 메뉴는 없어졌습니다(상단 카테고리 필터·상품 목록에서 이동).
@@ -96,7 +100,7 @@ fashion-shop/
 │  └─ mono-atelier.db          # 위 스크립트로 만든 샘플 SQLite DB (192KB)
 └─ tests/
    ├─ static_check.py          # 데이터 무결성·번들·개인정보·결제 설정 정적 검사 (620 checks)
-   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / 라이트박스 / 색상·제품번호·사이트 관리 / 리뷰·포인트·FAQ·주소 검색 / file:// 프리뷰, 743 checks)
+   ├─ e2e_fashion_shop.py      # Playwright E2E (데스크톱 1280 / 모바일 412·360·720 / 주문·배송비 토스 결제 / 라이트박스 / 색상·제품번호·사이트 관리 / 리뷰·포인트·FAQ·주소 검색 / 반품·교환·발송 로그 / file:// 프리뷰, 906 checks)
    ├─ make_screenshots.py      # 대표 스크린샷 생성
    ├─ make_v18_screens.py      # v1.8 상세 모달·라이트박스·색상/팔레트·사이트 관리 스크린샷
    ├─ make_v19_screens.py      # v1.9 412px 핵심 화면(스토리·리뷰·FAQ·포인트·주소·색상 레이어) 스크린샷
@@ -127,11 +131,12 @@ orders.coupon_code ───────────────< coupons (code 
 | `product_variants` | id, product_id, color, color_hex, size, stock, sku | size: S/M/L/XL/FREE, (product,color,size) UNIQUE |
 | `cart_items` | id, user_id, variant_id, quantity, added_at | (user,variant) UNIQUE |
 | `orders` | id, order_no, user_id, status, total_amount, shipping_fee, **coupon_code**, **discount_amount**, **points_used**, **postcode**, recipient_name, recipient_phone, shipping_address, payment_method, payment_provider, payment_key, payment_mode, created_at | status: paid/preparing/shipping/delivered/cancelled · payment_provider: demo/tosspayments · payment_mode: demo/demo-fallback/test-client/server |
-| `order_items` | id, order_id, variant_id, product_name, color, size, unit_price, quantity, **confirmed_at, confirm_points, photo_bonus, photo_bonus_at** | 상품명·컬러·사이즈·가격은 **주문 시점 스냅샷** · 구매확정/포토리뷰 적립은 주문항목당 1회 |
+| `order_items` | id, order_id, variant_id, product_name, color, size, unit_price, quantity, **confirmed_at, confirm_points, photo_bonus, photo_bonus_at**, **review_attempts, rewrite_used** | 상품명·컬러·사이즈·가격은 **주문 시점 스냅샷** · 구매확정/포토리뷰 적립은 주문항목당 1회 · `review_attempts` = 리뷰 작성 횟수(1 = 최초, 2 = 반려 후 재작성), `rewrite_used` = 재작성 기회 사용 여부 |
 | `order_claims` | id, order_id, user_id, claim_type, reason_category, reason_detail, shipping_fee, payment_status, payment_key, payment_mode, exchange_option, status, stock_restored, created_at, updated_at | 교환/반품 접수 — claim_type: return/exchange · reason_category: defect/wrong_item/change_of_mind/size_color · payment_status: free/paid/pending · status: requested/approved/completed/rejected · 한 주문당 1건(order_id UNIQUE) |
 | `coupons` | id, code, name, discount_type, discount_value, min_order_amount, expires_at, is_active, **target_user_ids**, **target_grades**, created_at | discount_type: percent(%)/fixed(원) · expires_at NULL = 무기한 · `target_user_ids`/`target_grades` 가 모두 비면 전체 공용, 등급 대상이면 그 등급 회원, 회원 지정이면 그 회원만 사용 |
 | `coupon_targets` | id, coupon_id, user_id, created_at | 전용 쿠폰 발급 대상 정규화 테이블(SQLite) · (coupon,user) UNIQUE |
-| `product_reviews` | id, product_id, user_id, user_name, **order_item_id**, rating, content, **media**, **status, rejected_reason, reclaimed_points, rejected_at**, created_at, updated_at | 별점 1~5 · `media` = 사진/동영상 JSON 배열 · `order_item_id` UNIQUE(주문항목당 리뷰 1건) · `status`: published/rejected(스토어 비노출) · 반려 시 회수 포인트 기록 |
+| `product_reviews` | id, product_id, user_id, user_name, **order_item_id**, **attempt**, rating, content, **media**, **status, rejected_reason, reclaimed_points, rejected_at**, created_at, updated_at | 별점 1~5 · `media` = 사진/동영상 JSON 배열 · `attempt` = 리뷰 차수(1 = 최초, 2 = 반려 후 재작성) · `UNIQUE(order_item_id, attempt)` · `status`: published/rejected(스토어 비노출) · 반려 시 회수 포인트 기록 |
+| `dispatch_logs` | id, channel, to, kind, summary, status, mode, order_id, created_at | v1.9.2 통합 발송 로그 — channel: sms/email · kind: order_created/email_otp/email_resend · status: test/sent/blocked/failed · 인증번호 자체는 저장하지 않음(SQLite 컬럼명은 예약어를 피해 `to_addr`) |
 | `point_policies` | grade, confirm_rate, photo_rate, updated_at | 등급별 적립률(%) — 구매확정 / 포토·영상 리뷰, 관리자 「포인트/회원」에서 저장 |
 | `point_logs` | id, user_id, type, amount, base_amount, rate, order_id, order_item_id, review_id, description, created_at | amount 양수=적립, 음수=사용 · type: signup/confirm/photo_review/use/refund/adjust/review/**review_reclaim** · `users.points` = 이 표의 합계 |
 | `faqs` | id, category, question, answer, sort_order, is_active, created_at | FAQ 게시판 · 카테고리 필터·검색·아코디언, 관리자 `메인/사이트`에서 편집 |
@@ -146,7 +151,7 @@ orders.coupon_code ───────────────< coupons (code 
 * `coupons.target_user_ids`: `[]` = 전체 공용. 값이 있으면 그 회원만 목록 노출·코드 적용이 가능하고 다른 계정은 `이 계정에 발급된 쿠폰이 아닙니다.`로 거부됩니다. SQLite에서는 `coupon_targets` 행으로 전개됩니다.
 * `coupons.target_grades`: `[]` = 등급 제한 없음. `['GOLD','VIP']` 처럼 지정하면 그 등급 회원에게만 노출·적용됩니다(회원 지정과 동시에 쓰면 합집합). 관리자 화면에서는 `전체 공용 / 회원 등급별 / 특정 회원 지정` 3모드로 고릅니다.
 * `users.grade`: 시드 데모 회원은 `GOLD`, 관리자 계정은 `NORMAL`. 신규 가입은 `NORMAL`. 마이페이지 프로필과 관리자 주문/회원 목록에 등급 배지가 표시됩니다.
-* 시드 규모: users 5(관리자 1·데모 회원 4) · categories 5(사이즈 코드 포함) · products 13(판매중 12, 숨김 1, 제품번호 MA-0001~MA-0013) · product_images 39 · product_variants 88 · orders 12(배송완료 9 포함) · order_items 13 · order_claims 2(무료 1 + 유료 1) · coupons 3(공용 2 + 전용 1) · coupon_targets 1 · product_reviews 9(코트 7건 = 5개씩 페이징 확인) · point_policies 4 · point_logs 4 · faqs 8 · sms_logs 1 · site_settings 1 · help_topics 4.
+* 시드 규모: users 5(관리자 1·데모 회원 4) · categories 5(사이즈 코드 포함) · products 13(판매중 12, 숨김 1, 제품번호 MA-0001~MA-0013) · product_images 39 · product_variants 88 · orders 12(배송완료 9 포함) · order_items 13 · order_claims 2(무료 1 + 유료 1) · coupons 3(공용 2 + 전용 1) · coupon_targets 1 · product_reviews 9(코트 7건 = 5개씩 페이징 확인) · point_policies 4 · point_logs 4 · faqs 8 · sms_logs 1 · **dispatch_logs 3(SMS 1 + 이메일 2, 차단 1)** · site_settings 1 · help_topics 4.
 * `order_claims.shipping_fee`: `defect`·`wrong_item` = **0원**, `change_of_mind`·`size_color` = 반품 **3,000원** / 교환 **6,000원**(왕복). 무료 접수는 `payment_status='free'`, 유료 접수는 토스 결제 후 `'paid'` + `payment_key`.
 * `order_claims.stock_restored`: 반품을 `완료`로 바꿀 때 재고 복구를 **한 번만** 하기 위한 플래그(0/1).
 * 교환/반품 신청 가능 단계는 **배송중(`shipping`)·배송완료(`delivered`)** 이고, 배송 전 주문은 `주문 취소`로 처리합니다. 시드의 `o_001`(배송완료·접수 이력 없음)에 데모 계정으로 로그인하면 바로 신청 버튼을 눌러볼 수 있습니다.
@@ -235,14 +240,16 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 - 상품 관리: **상품명/브랜드/카테고리/뱃지 실시간 검색**, **최신 등록순 정렬(방금 등록한 상품이 첫 행)**, **사진 수 배지**, 등록/수정(옵션별 컬러·**컬러 피커+HEX**·사이즈·재고), **대표 + 갤러리 이미지 썸네일 그리드(클릭 추가/해제, 최대 6장+대표)**, **대표 지정**, **기본 색상 피커**, **모델 정보(선택, 60자)**, **무료배송 기준 금액**, **상품 뱃지(프리셋/직접 입력)**, **판매 상태 ON/OFF 정확 저장**, 전체 품절, 숨김/판매재개
 - **쿠폰 관리**: 쿠폰 코드·이름·정률/정액·할인값·최소 주문금액·만료일 + **발급 대상(전체 공용 / 회원 등급별 / 특정 회원 지정·실시간 이름·이메일 검색)** 으로 발행, 목록에서 **발행된 쿠폰 수정**(이름·할인·최소금액·만료일·발급 대상)·발급 대상·사용 건수·중지/재개
 - **카테고리 관리**: 추가·이름/영문 코드 수정·삭제·순서 변경(↑↓). 스토어 상단 필터와 상품 등록/수정 드롭다운에 **즉시 반영**되며, 상품이 연결된 카테고리는 삭제가 차단됩니다
-- 주문 관리: 상태 변경(결제완료 → 배송준비 → 배송중 → 배송완료 / 취소) + **교환·반품 접수 목록**(신청 유형·주문/상품·사유·교환 희망 옵션·배송비 결제 여부 `무료`/`3,000원 결제완료`/`6,000원 결제완료`·접수일시)과 **상태 변경**(`접수됨 → 수거중/승인 → 완료`, 또는 `반려`). **반품을 완료하면 해당 주문 상품 재고가 한 번만 복구**됩니다(교환은 재고 변동 없음)
+- 주문 관리: 「주문 관리」와 「반품/교환」 **탭 분리** — 주문 관리는 **상태별 필터 칩(전체·결제완료·배송준비·배송중·배송완료·취소됨 + 건수)** 과 상태 변경(결제완료 → 배송준비 → 배송중 → 배송완료 / 취소)만 담당하고, 교환·반품 클레임 처리는 「반품/교환」 탭에서 **클레임 상태 필터**(전체·접수됨·수거중/승인·완료·반려)와 함께 처리합니다. 반품을 `완료`로 바꿀 때만 재고가 한 번 복구됩니다(교환은 재고 변동 없음)
+- **발송 로그**: SMS(주문 완료 안내)·이메일 인증번호 발송을 한 탭에 모아 **채널·상태 필터 + 키워드 검색**, 최근 10분 동일 수신자 3회 이상·5분 전체 12건 이상이면 **⚠️ 과다 발송 이상 징후** 경고, 같은 이메일 연속 요청은 60초 쿨다운으로 `blocked` 처리
 - 데이터: **JSON 다운로드·클립보드 복사·시드 초기화·무결성 검사·테이블 현황·현재 JSON 미리보기** + **결제 설정 카드** — `결제 모드(test/live)`·`클라이언트 키`·`승인 API URL`을 화면에서 직접 입력·저장·초기화하고 **localStorage 저장값을 우선 적용**(서버 파일 수정 없이 사업자 키로 전환). 시크릿 키(`live_gsk_…`) 입력은 차단합니다.
 - **412px 관리자 표**: 상품·주문·쿠폰·교환/반품 표가 **data-label 기반 카드형 행**으로 바뀌어 찌그러짐·가로 잘림 없이 표시됩니다.
-- **모바일(≤980px) 진입 경로**: 헤더 `관리자` 버튼 / 마이페이지 헤더 `관리자 콘솔` 버튼 / 마이페이지 상단 관리자 배너. 412px에서도 탭 4종(상품 관리·주문 관리·쿠폰 관리·데이터 관리)과 `+ 상품 등록` 이 잘리지 않습니다.
+- **모바일(≤980px) 진입 경로**: 헤더 `관리자` 버튼 / 마이페이지 상단 관리자 배너. 412px에서도 탭 9종(상품 관리·주문 관리·반품/교환·쿠폰 관리·포인트/회원·카테고리·메인/사이트·발송 로그·데이터 관리)이 **3열 3행**으로 잘리지 않고 들어갑니다.
 
 **화면 이동 / 검색 (v1.2 · v1.3)**
 - 상품 상세·로그인·주문 상세·영수증 모달, 장바구니 드로어가 열린 상태의 **브라우저 뒤로가기 → 해당 레이어만 닫힘**(사이트 이탈 없음, `pushState`+`popstate`)
 - 마이페이지·관리자·결제 화면에서 뒤로가기 → 스토어 복귀
+- **주소 해시 동기화 (v1.9.2)** — `#/mypage/orders`, `#/admin/claims`, `#/checkout` 처럼 뷰·탭이 URL 에 남아 **새로고침(F5)·`page.reload()` 후에도 보던 화면과 탭이 그대로** 유지됩니다(로그인 세션 유지 시). 해시를 직접 바꿔도 해당 화면으로 이동하며, 비관리자의 `#/admin` 은 스토어로 돌아갑니다.
 - **「주문하기」·「바로 구매」는 언제나 결제 화면으로 직행** — 드로어·상세 모달을 함께 닫고 열기 때문에 결제 화면이 가려지거나 닫히지 않습니다(v1.3에서 드로어 잔존·히스토리 오버슛 수정)
 - **상품 검색 UI는 스토어(home) 화면에만** 표시 — 마이페이지·관리자·장바구니(열림)·결제 화면에서는 검색창·검색 아이콘이 렌더링되지 않습니다.
 
@@ -268,6 +275,7 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 **정책**
 - 재고 차감·복구는 변이 시점에 즉시 반영되며, 취소는 `paid`/`preparing`에서만 가능(배송 시작 후 차단).
 - 교환/반품은 **배송중·배송완료** 주문만 신청할 수 있고 **한 주문당 1건**(`order_claims.order_id UNIQUE`)만 접수됩니다. 반품을 `완료`로 바꿀 때만 재고가 복구되고 중복 복구되지 않습니다(교환은 재고 변동 없음).
+- 리뷰는 **배송완료 + 구매확정(`confirmed_at`)** 된 주문항목에만 작성할 수 있고, 관리자가 **반려·포인트 회수**하면 **딱 1번 재작성**할 수 있습니다(2차마저 반려되면 최종 차단). 포토·영상 포인트는 반려 시 회수되고 재작성 시 1회 다시 지급되어 **주문항목당 최대 2회**를 넘지 않습니다.
 - 관리자가 옵션을 삭제해도 과거 주문이 참조하는 옵션은 재고 0으로 보존(주문 스냅샷 무결성 유지).
 - 쿠폰은 활성 상태·만료일·최소 주문금액을 **계산 시점마다** 검사하고, 결제 시 주문에 `coupon_code`/`discount_amount` 스냅샷을 남깁니다(이후 쿠폰을 중지해도 과거 주문 금액은 그대로).
 - 배송비는 **선택된 상품군 합계**로 판정하며 한 주문에 3,000원 1회만 부과합니다.
@@ -279,8 +287,8 @@ foreign_key_check: OK · 주문 금액(합계+배송비−할인) 불일치 0 ·
 ## 5. 검증 결과
 
 ```
-static_check.py        648 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·모델 정보·라이트박스·색상 파이프라인·제품번호·사이트 설정·리뷰·포인트 정책/내역·FAQ·주소 API 가드·사이즈 코드·알림/SMS)
-e2e_fashion_shop.py    827 checks passed (파트별 실행 합계 · 데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.9.1 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
+static_check.py        670 checks passed (스키마·컬럼·enum·FK·주문금액·해시·DDL·번들·개인정보·결제 설정·교환/반품 배송비 정책·모델 정보·라이트박스·색상 파이프라인·제품번호·사이트 설정·리뷰·포인트 정책/내역·FAQ·주소 API 가드·사이즈 코드·알림/SMS·리뷰 재작성·발송 로그)
+e2e_fashion_shop.py    906 checks passed (파트별 실행 합계 · 데스크톱 1280 / 모바일 412·360·720 / v1.2~v1.9.2 기능 / 토스 결제 스텁(주문·배송비) / 단일 프리뷰)
 콘솔 에러              0건
 ```
 
@@ -289,6 +297,8 @@ E2E 시나리오: 홈·검색·정렬·품절 표시 → **회원가입 → 로�
 **v1.9 E2E**: 구매확정 포인트(2,890P)·중복 차단 → 사진 리뷰 작성(추가 2,595P)·중복 차단 → 체크아웃 포인트 전액 사용·주소 검색 fallback·상세주소 저장 → 주문 취소 시 포인트 환급 → 관리자 등급별 적립률 저장 → 브랜드 스토리·FAQ 저장 후 스토어 즉시 반영 → 편집기 이미지 순서 이동·색상 레이어 저장 → 모바일 412px 스크린샷까지 검증합니다.
 
 **v1.9.1 E2E (`run_v191`)**: 푸터 HELP 고객센터만 → 로그인 비밀번호 보기 토글 → 회원가입 약한 비번·연속 숫자(123) 차단·입력값 보존·이메일 인증(테스트 코드·오류·자동 입력)·강한 비번 가입 → 배송 전 리뷰 작성 차단 → 코트 리뷰 1페이지 5건·2페이지 2건 페이징 → 리뷰 사진 **뒤로가기 = 뷰어만 닫힘 / 닫아도 스크롤 유지** → 주문 상품명 클릭(판매중 상세·판매중지 토스트) → 관리자 콘솔 진입 버튼 1개 → **리뷰 반려·1,935P 회수·중복 회수 차단·스토어 비노출·수정 차단** → 리뷰 수정(별점·본문·사진 1회 지급·재수정 무지급·주문 상세에서도 수정) → 카테고리 사이즈 코드 추가·순서·삭제·편집기 드롭다운 연동 → 알림 설정(테스트/API 검증) → 주문 완료 SMS 발송 로그·주문 상세 내역 → 모바일 412px(리뷰 페이저·검수 표·알림·가입 폼) 스크린샷 검증.
+
+**v1.9.2 E2E (`run_v192` · 74 checks)**: 결제완료 주문은 리뷰 버튼 0·`addReview` 차단 → 배송완료로 바꿔도 **구매확정 전에는 버튼 0**(안내 문구) → 구매확정(UI) 후 버튼 노출·포인트 1,730P → 리뷰 모달 **사진·동영상 버튼이 칸 안 세로·가로 중앙**(412px 포함) → 사진 리뷰 등록 직후 **새로고침 없이** 주문 카드가 `리뷰 완료`·`리뷰 수정`으로 바뀜(오류 토스트 0) → 관리자 반려 시 2,595P 회수 → 마이페이지 `리뷰 반려 · 재작성 1회 가능` + **리뷰 다시 쓰기** → 모달 제목 `리뷰 다시 작성`·1회 안내 → 2차 리뷰(attempt 2) 게시·포토 포인트 1회 재지급 → 2차 반려 시 포인트 재회수·**재작성 불가**·3차 작성 차단 → 반려 리뷰 스토어 비노출 → 관리자 **주문 상태 필터 칩 6종 건수 일치·필터링** → **주문 관리/반품·교환 탭 분리**·클레임 상태 필터 → **주문 관리·반품/교환·마이페이지 주문 내역이 새로고침 후에도 유지**(`#/admin/orders`·`#/mypage/orders`)·해시로 포인트 탭 직접 열기·비관리자 `#/admin` 은 스토어로 → 데이터 관리에서 **SMS 로그 분리** → 발송 로그 **채널/상태 필터·키워드 검색(포커스 유지)·결과 없음** → 이메일 OTP 3회 요청 시 **1건 발송 + 2건 blocked·인증번호 미저장·60초 쿨다운** → **⚠️ 과다 발송 경고 카드**(동일 수신자 3회) → 주문 SMS도 통합 로그 기록 → 모바일 412px(리뷰 모달·관리자 탭 9종 3열·주문 필터·반품 카드·발송 로그) 가로 넘침 0 스크린샷 검증.
 
 토스 결제 E2E는 CDN 대신 200 응답 스텁으로 SDK를 대체해 ① `TossPayments(clientKey)` → `widgets` → `setAmount` → `renderPaymentWindow` 호출,
 ② 결제창의 `paymentRequest` → `requestPayment(orderId/successUrl/failUrl)`, ③ `?tossResult=success&paymentKey=…&orderId=…&amount=…` 복귀 후
@@ -315,7 +325,7 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 - 결제 설정: test/live·키·승인 URL 저장 → 즉시 적용·localStorage·새로고침 유지·출처 표시, **초기화 → 기본 테스트 키**, `gsk_` 시크릿 키 저장 거부
 - 교환: 주문 상품(니트)의 **실제 컬러(크림/오트밀/블랙)와 재고**, 사이즈·재고 선택 → `exchange_option='오트밀 / L'` 접수
 - 반품 접수 주문(`o_004`) 상세 모달 **`NaN` 0건** + 금액 표시
-- 412px 관리자: **가로 넘침 0**, 탭 5종 한 줄, 표가 **카드형 flex 행 + data-label**, 주문/쿠폰 탭도 넘침 0
+- 412px 관리자: **가로 넘침 0**, 탭 9종 3열 3행, 표가 **카드형 flex 행 + data-label**, 주문/쿠폰/반품·교환/발송 로그 탭도 넘침 0
 
 **v1.6 신규 검증 (E2E `run_v16`)**
 - 상세 정보 표에 「모델 정보」+ 실수치 문구 표시, 「확대」 버튼 노출
@@ -335,7 +345,7 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 - 모바일 412×720: 모달 상단 잘림 0·`bottom ≤ 720`·제출 버튼 가시·가로 넘침 0px·가로 스크롤 0, 하자 선택 시 0원/무료 버튼 → 접수 후 배지 표시
 
 **v1.2 신규 검증 (E2E `run_v12`)**
-- 412px 헤더 `관리자` → 콘솔 진입, 탭 4종이 화면 안에 4열로 들어가고 `+ 상품 등록` 이 보임
+- 412px 헤더 `관리자` → 콘솔 진입, 탭 9종이 화면 안에 3열로 들어가고 `+ 상품 등록` 이 보임
 - 마이페이지·관리자·결제·장바구니에서 검색 UI 0개, 스토어에서는 정상 노출
 - 상세 대표 이미지 `object-fit: contain` + 영역 안 온전 표시, 썸네일 클릭 시 모달 DOM 유지하며 이미지만 전환
 - 관리자 모달에서 추가 이미지 3장 저장/삭제 → `product_images` 동기화, 무료배송 기준 저장
@@ -368,6 +378,7 @@ python3 fashion-shop/tests/verify_deploy.py https://chaeci.github.io   # 라이�
 (v1.5 추가: `fashion-shop-claim-modal.png`(교환 6,000원), `fashion-shop-claim-free.png`(판매자 귀책 0원), `fashion-shop-admin-claims.png`, `fashion-shop-mobile-claim.png`, `fashion-shop-mobile-claim-change.png`)
 (v1.6 추가: `fashion-shop-lightbox.png`(2x 확대), `fashion-shop-mobile-lightbox.png`)
 (v1.7 추가: `fashion-shop-v17-detail.png`(412 상세·스와이프/더블탭 힌트), `fashion-shop-v17-admin.png`(412 관리자 상품 검색·카드형 표))
+(v1.9.2 추가: `v192-review-modal-412.png`(412 리뷰 첨부 버튼 중앙 정렬), `v192-admin-orders-412.png`(412 주문 상태 필터 칩), `v192-admin-claims-412.png`(412 반품/교환 탭), `v192-admin-logs-412.png`·`v192-admin-logs-412-top.png`(412 발송 로그·과다 발송 경고), `v192-admin-logs.png`(데스크톱 발송 로그), `v192-mypage-rewrite.png`(리뷰 재작성 상태의 마이페이지)) — `fashion-shop/tests/artifacts/` 에 생성됩니다.
 
 ---
 

@@ -114,7 +114,11 @@ CREATE TABLE order_items (
   confirmed_at TEXT,                              -- 구매확정 시각 (NULL = 미확정, 중복 확정 차단)
   confirm_points INTEGER NOT NULL DEFAULT 0 CHECK (confirm_points >= 0),  -- 구매확정 적립 포인트
   photo_bonus    INTEGER NOT NULL DEFAULT 0 CHECK (photo_bonus >= 0),     -- 포토·영상 리뷰 추가 적립 포인트
-  photo_bonus_at TEXT                                                       -- 추가 적립 시각 (주문항목당 1회)
+  photo_bonus_at TEXT,                                                      -- 추가 적립 시각 (주문항목당 1회)
+  review_attempts INTEGER NOT NULL DEFAULT 0 CHECK (review_attempts BETWEEN 0 AND 2),
+                  -- v1.9.2 리뷰 작성 횟수 (1 = 최초, 2 = 반려 후 재작성)
+  rewrite_used   INTEGER NOT NULL DEFAULT 0 CHECK (rewrite_used IN (0,1))
+                  -- v1.9.2 리뷰가 반려·포인트 회수된 뒤 1회 재작성 기회를 이미 썼는지
 );
 
 -- 교환/반품 접수 (주문 단위, 한 주문당 1건)
@@ -292,6 +296,8 @@ CREATE TABLE product_reviews (
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   user_name     TEXT NOT NULL DEFAULT '',            -- 표시용 마스킹 이름 (예: 홍길*)
   order_item_id TEXT NOT NULL REFERENCES order_items(id) ON DELETE CASCADE,
+  attempt       INTEGER NOT NULL DEFAULT 1 CHECK (attempt BETWEEN 1 AND 2),
+                                                     -- v1.9.2 리뷰 차수(1 = 최초, 2 = 반려 후 재작성)
   rating        INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
   content       TEXT NOT NULL DEFAULT '',
   media         TEXT NOT NULL DEFAULT '[]',          -- JSON 배열 (사진 다중·동영상)
@@ -304,7 +310,7 @@ CREATE TABLE product_reviews (
   rejected_at   TEXT,
   created_at    TEXT NOT NULL,
   updated_at    TEXT,
-  UNIQUE (order_item_id)                             -- 동일 주문항목 중복 리뷰 금지
+  UNIQUE (order_item_id, attempt)                    -- 주문항목당 차수별 1건(재작성은 attempt 2)
 );
 
 -- ===================================================== 포인트 정책 (v1.9)
@@ -345,6 +351,23 @@ CREATE TABLE faqs (
 
 CREATE INDEX idx_reviews_product ON product_reviews(product_id, created_at DESC);
 CREATE INDEX idx_reviews_user ON product_reviews(user_id);
+CREATE INDEX idx_reviews_item ON product_reviews(order_item_id, attempt);
+-- ===================================================== 발송 로그 (v1.9.2)
+-- SMS(주문 완료 안내) + 이메일 인증번호 발송 기록을 한 표에 남긴다.
+--   status: test(테스트) / sent(발송) / blocked(쿨다운·과다 발송 차단) / failed(실패)
+CREATE TABLE dispatch_logs (
+  id         TEXT PRIMARY KEY,
+  channel    TEXT NOT NULL CHECK (channel IN ('sms','email')),
+  to_addr    TEXT NOT NULL,                              -- 수신번호 또는 이메일 주소
+  kind       TEXT NOT NULL DEFAULT 'order_created',      -- order_created | email_otp | email_resend
+  summary    TEXT NOT NULL DEFAULT '',                   -- 본문 요약(인증번호 자체는 저장하지 않음)
+  status     TEXT NOT NULL DEFAULT 'test' CHECK (status IN ('test','sent','blocked','failed')),
+  mode       TEXT NOT NULL DEFAULT 'test' CHECK (mode IN ('test','api')),
+  order_id   TEXT REFERENCES orders(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX idx_dispatch_recipient ON dispatch_logs(channel, to_addr, created_at DESC);
+CREATE INDEX idx_dispatch_created ON dispatch_logs(created_at DESC);
 CREATE INDEX idx_point_logs_user ON point_logs(user_id, created_at DESC);
 CREATE INDEX idx_point_logs_order ON point_logs(order_id);
 CREATE INDEX idx_faqs_sort ON faqs(sort_order);

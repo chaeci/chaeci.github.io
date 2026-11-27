@@ -1,8 +1,8 @@
 {
   "meta": {
     "app": "MONO ATELIER",
-    "schema_version": 9,
-    "generated_at": "2026-11-27T08:20:00+09:00",
+    "schema_version": 10,
+    "generated_at": "2026-11-27T16:10:00+09:00",
     "grades": [
       "NORMAL",
       "SILVER",
@@ -1756,7 +1756,9 @@
       "confirmed_at": "2026-11-22T10:05:00+09:00",
       "confirm_points": 1290,
       "photo_bonus": 1935,
-      "photo_bonus_at": "2026-11-22T10:20:00+09:00"
+      "photo_bonus_at": "2026-11-22T10:20:00+09:00",
+      "review_attempts": 1,
+      "rewrite_used": 0
     },
     {
       "id": "oi_002",
@@ -1770,7 +1772,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 1,
+      "rewrite_used": 0
     },
     {
       "id": "oi_003",
@@ -1784,7 +1788,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 0,
+      "rewrite_used": 0
     },
     {
       "id": "oi_004",
@@ -1798,7 +1804,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 0,
+      "rewrite_used": 0
     },
     {
       "id": "oi_005",
@@ -1812,7 +1820,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 0,
+      "rewrite_used": 0
     },
     {
       "id": "oi_006",
@@ -1826,7 +1836,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 0,
+      "rewrite_used": 0
     },
     {
       "id": "oi_007",
@@ -1840,7 +1852,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 1,
+      "rewrite_used": 0
     },
     {
       "id": "oi_008",
@@ -1854,7 +1868,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 1,
+      "rewrite_used": 0
     },
     {
       "id": "oi_009",
@@ -1868,7 +1884,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 1,
+      "rewrite_used": 0
     },
     {
       "id": "oi_010",
@@ -1882,7 +1900,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 1,
+      "rewrite_used": 0
     },
     {
       "id": "oi_011",
@@ -1896,7 +1916,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 1,
+      "rewrite_used": 0
     },
     {
       "id": "oi_012",
@@ -1910,7 +1932,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 1,
+      "rewrite_used": 0
     },
     {
       "id": "oi_013",
@@ -1924,7 +1948,9 @@
       "confirmed_at": null,
       "confirm_points": 0,
       "photo_bonus": 0,
-      "photo_bonus_at": null
+      "photo_bonus_at": null,
+      "review_attempts": 1,
+      "rewrite_used": 0
     }
   ],
   "order_claims": [
@@ -2032,7 +2058,8 @@
       "reclaimed_points": 0,
       "rejected_at": null,
       "created_at": "2026-11-22T10:20:00+09:00",
-      "updated_at": null
+      "updated_at": null,
+      "attempt": 1
     },
     {
       "id": "rv_002",
@@ -2048,7 +2075,8 @@
       "reclaimed_points": 0,
       "rejected_at": null,
       "created_at": "2026-11-18T09:10:00+09:00",
-      "updated_at": null
+      "updated_at": null,
+      "attempt": 1
     },
     {
       "id": "rv_003",
@@ -2070,7 +2098,8 @@
       "reclaimed_points": 0,
       "rejected_at": null,
       "created_at": "2026-11-12T14:40:00+09:00",
-      "updated_at": null
+      "updated_at": null,
+      "attempt": 1
     },
     {
       "id": "rv_004",
@@ -2086,7 +2115,8 @@
       "reclaimed_points": 0,
       "rejected_at": null,
       "created_at": "2026-10-30T09:15:00+09:00",
-      "updated_at": null
+      "updated_at": null,
+      "attempt": 1
     },
     {
       "id": "rv_005",
@@ -2102,7 +2132,8 @@
       "reclaimed_points": 0,
       "rejected_at": null,
       "created_at": "2026-11-09T18:05:00+09:00",
-      "updated_at": null
+      "updated_at": null,
+      "attempt": 1
     },
     {
       "id": "rv_006",
@@ -2118,7 +2149,8 @@
       "reclaimed_points": 0,
       "rejected_at": null,
       "created_at": "2026-11-14T11:30:00+09:00",
-      "updated_at": null
+      "updated_at": null,
+      "attempt": 1
     },
     {
       "id": "rv_007",
@@ -2134,7 +2166,8 @@
       "reclaimed_points": 0,
       "rejected_at": null,
       "created_at": "2026-11-20T13:45:00+09:00",
-      "updated_at": null
+      "updated_at": null,
+      "attempt": 1
     },
     {
       "id": "rv_008",
@@ -2150,7 +2183,8 @@
       "reclaimed_points": 0,
       "rejected_at": null,
       "created_at": "2026-11-24T08:20:00+09:00",
-      "updated_at": null
+      "updated_at": null,
+      "attempt": 1
     },
     {
       "id": "rv_009",
@@ -2166,7 +2200,8 @@
       "reclaimed_points": 0,
       "rejected_at": null,
       "created_at": "2026-11-26T19:10:00+09:00",
-      "updated_at": null
+      "updated_at": null,
+      "attempt": 1
     }
   ],
   "point_policies": [
@@ -2336,6 +2371,41 @@
       "sender": "02-0000-0000",
       "api_url": "",
       "created_at": "2026-11-12T10:24:00+09:00"
+    }
+  ],
+  "dispatch_logs": [
+    {
+      "id": "dsp_001",
+      "channel": "sms",
+      "to": "010-0000-0000",
+      "kind": "order_created",
+      "summary": "[MONO ATELIER] 홍길동님 주문이 접수되었습니다. MA20261112-4821 · 캐시미어 리브 니트 외 1건 · 결제 278,000원. 배송은 준비 후 순차적으로 진행됩니다.",
+      "status": "test",
+      "mode": "test",
+      "order_id": "o_001",
+      "created_at": "2026-11-12T10:24:00+09:00"
+    },
+    {
+      "id": "dsp_002",
+      "channel": "email",
+      "to": "signup-test@mono.kr",
+      "kind": "email_otp",
+      "summary": "[MONO ATELIER] 회원가입 이메일 인증번호 발송 (6자리, 5분 유효)",
+      "status": "test",
+      "mode": "test",
+      "order_id": null,
+      "created_at": "2026-11-26T21:14:00+09:00"
+    },
+    {
+      "id": "dsp_003",
+      "channel": "email",
+      "to": "signup-test@mono.kr",
+      "kind": "email_otp",
+      "summary": "인증번호 재발송 차단 — 쿨다운 41초 남음",
+      "status": "blocked",
+      "mode": "test",
+      "order_id": null,
+      "created_at": "2026-11-26T21:14:19+09:00"
     }
   ],
   "site_settings": {

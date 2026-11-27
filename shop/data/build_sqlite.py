@@ -12,7 +12,7 @@ import sqlite3
 HERE = pathlib.Path(__file__).resolve().parent
 ORDER = ["users", "categories", "products", "product_images", "product_variants", "orders", "order_items",
          "order_claims", "cart_items", "coupons", "product_reviews", "point_policies", "point_logs", "faqs",
-         "sms_logs", "site_settings", "help_topics"]
+         "sms_logs", "dispatch_logs", "site_settings", "help_topics"]
 
 
 def main():
@@ -38,11 +38,13 @@ def main():
         if not rows:
             continue
         cols = [r["name"] for r in con.execute(f"PRAGMA table_info({table})")]
+        # dispatch_logs 는 SQL 예약어(to)를 피하려고 to_addr 컬럼을 쓴다 — 시드의 to 를 옮긴다.
+        alias = {"to_addr": "to"} if table == "dispatch_logs" else {}
         payload = []
         for row in rows:
             values = []
             for c in cols:
-                v = row.get(c)
+                v = row.get(alias.get(c, c))
                 if isinstance(v, bool):
                     v = int(v)
                 if isinstance(v, (list, dict)):   # 예: coupons.target_grades (JSON 배열)
