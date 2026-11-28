@@ -247,6 +247,8 @@ CREATE TABLE site_settings (
   story_subtitle       TEXT NOT NULL DEFAULT '',                -- 스토리 부제
   story_body           TEXT NOT NULL DEFAULT '',                -- 스토리 본문(줄바꿈 허용)
   story_tags           TEXT NOT NULL DEFAULT '[]',              -- JSON 배열: 핵심 가치/태그
+  brand_story_enabled  INTEGER NOT NULL DEFAULT 1 CHECK (brand_story_enabled IN (0,1)),
+                                                               -- v1.9.9 메인페이지 브랜드 스토리 노출(0 = 홈에서 숨김)
   brand_blurb          TEXT NOT NULL DEFAULT '',                -- 푸터 브랜드 소개
   company_name         TEXT NOT NULL DEFAULT '',                -- 상호
   company_ceo          TEXT NOT NULL DEFAULT '',                -- 대표자
