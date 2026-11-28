@@ -4647,12 +4647,14 @@ table.data.badge-grid th, table.data.badge-grid td { padding: 6px 4px; }
     if (couponTargetGrades(c).length && !couponTargets(c).length) return 'grade';
     return 'user';
   }
+  /* v1.9.13 — 발급 대상 조건도 AND 로 본다(회원 지정이 있으면 그 회원이면서, 등급 조건이 있으면 그 등급이어야 사용 가능) */
   function couponForUser(c, user) {
     var t = couponTargets(c), g = couponTargetGrades(c);
     if (!t.length && !g.length) return true;               // 전체 공용
     if (!user) return false;
-    if (t.indexOf(user.id) >= 0) return true;              // 특정 회원 지정
-    return g.indexOf(gradeOf(user)) >= 0;                  // 등급 대상
+    if (t.length && t.indexOf(user.id) < 0) return false;   // 특정 회원 지정
+    if (g.length && g.indexOf(gradeOf(user)) < 0) return false;   // 등급 대상
+    return true;
   }
   function userLabel(id) {
     var u = currentUserById(id);
