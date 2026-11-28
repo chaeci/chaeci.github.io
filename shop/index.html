@@ -10913,10 +10913,10 @@ table.data.admin-grid td.sel-check-cell input:disabled { cursor: not-allowed; op
       '<p>구매한 상품의 리뷰만 등록됩니다. 상품과 무관한 사진·부적절한 내용은 <b>반려</b>하면 스토어에서 숨겨지고, ' +
         '그 리뷰로 지급된 <b>포토·영상 리뷰 포인트가 회수</b>됩니다(리뷰당 1회, 중복 회수 없음).</p>' +
       '<div class="coupon-stat" data-hook="review-stat">게시중 <b>' + live + '</b>건 · 반려 <b>' + rejected + '</b>건 · 회수 포인트 <b>' + reclaimed.toLocaleString('ko-KR') + 'P</b></div>' +
-      adminBulkBarHTML('review', {
+      (info.total ? adminBulkBarHTML('review', {
         action: '일괄 회수',
         hint: '선택한 리뷰를 한 사유로 반려하고 포인트를 회수합니다. 이미 반려된 리뷰는 선택할 수 없습니다.'
-      }) +
+      }) : '') +
       '<div class="table-wrap table-scroll" data-hook="review-admin-rows"><table class="data review-admin-table admin-grid" data-bulk-rows="review">' +
         '<thead><tr>' + adminSelHeadHTML('review', info.rows.map(function (r) { return r.id; }), eligibleIds) +
         '<th>번호</th><th>리뷰</th><th>지급 포인트</th><th>검수</th><th>관리</th></tr></thead>' +
@@ -15911,6 +15911,12 @@ table.data.admin-grid td.sel-check-cell input:disabled { cursor: not-allowed; op
     var t = ev.target;
     /* v1.9.4 — FAQ 카드 저장 검증 표시는 다시 입력하면 바로 지운다 */
     if (t && t.classList && t.classList.contains('faq-invalid')) t.classList.remove('faq-invalid');
+    /* v1.9.16 — 리뷰 일괄 회수 사유를 다시 입력하면 오류 표시를 지운다 */
+    if (t && t.dataset && t.dataset.hook === 'bulk-reclaim-reason') {
+      t.classList.remove('br-invalid');
+      var brErrMsg = $('[data-hook=bulk-reclaim-error]');
+      if (brErrMsg) brErrMsg.hidden = true;
+    }
     /* 회원가입 — 비밀번호 조건 실시간 체크 + 입력값 보존 */
     if (t.id === 'af-password') syncPwRules(t.value);
     if (ui.modal && ui.modal.type === 'auth' && ui.auth.tab === 'signup' && t.id && /^af-/.test(t.id)) {
