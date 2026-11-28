@@ -6064,7 +6064,6 @@ table.data.admin-grid td.sel-check-cell input:disabled { cursor: not-allowed; op
       }
     }
     o.status = status;
-    o.status_updated_at = nowISO();
     return { ok: true, order: o, restored: restored, refunded: refunded };
   }
   /* 일괄 상태 변경 — 취소된 주문·이미 같은 상태인 주문은 건너뛰고 결과를 모아 돌려준다 */
