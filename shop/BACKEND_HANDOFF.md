@@ -707,7 +707,7 @@ with tx(conn):                      # BEGIN IMMEDIATE
 7) 실패 → 402 PAYMENT_FAILED + 토스 메시지(그대로 노출하지 말고 요약)
 ```
 
-- ④와 ⑥ 사이에서 예외가 나면 **재고를 되돌리고 402**. 절대 부분 커밋하지 않습니다.
+- 4)와 6) 사이에서 예외가 나면 **재고를 되돌리고 402**. 절대 부분 커밋하지 않습니다.
 - `payment_key` UNIQUE 인덱스(`payment_confirm_example.py` 의 `ensure_columns` 참고)로 **이중 승인**을 막습니다.
 - 승인 성공 후 `dispatch_logs`/`sms_logs` 에 주문 완료 알림을 기록(`sendOrderSms` 3420, 테스트 모드는 `status='test'`).
 
