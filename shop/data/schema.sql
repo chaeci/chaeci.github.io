@@ -27,6 +27,8 @@ CREATE TABLE categories (
   en         TEXT NOT NULL DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0,
   size_codes TEXT NOT NULL DEFAULT '[]',      -- JSON 배열: 카테고리별 사이즈 코드 (예: ["95","100","105","S","M","L","XL"])
+  is_active  INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+                 -- v1.9.8: 사용 여부(0 = 숨김 — 스토어 카테고리 필터에서 빠지고 상품 등록 목록에는 남는다)
   created_at TEXT NOT NULL
 );
 
@@ -141,6 +143,7 @@ CREATE TABLE order_claims (
                   CHECK (status IN ('requested','approved','completed','rejected')),
   stock_restored  INTEGER NOT NULL DEFAULT 0 CHECK (stock_restored IN (0,1)),
                   -- 반품 완료 시 재고 복구를 한 번만 수행하기 위한 플래그
+  admin_memo      TEXT NOT NULL DEFAULT '',                 -- v1.9.8: 관리자 처리 메모(고객 화면 미노출)
   created_at      TEXT NOT NULL,
   updated_at      TEXT NOT NULL,
   UNIQUE (order_id)
