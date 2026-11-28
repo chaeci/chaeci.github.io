@@ -15,7 +15,7 @@ ASSETS = ROOT / "assets"
 DATA = ROOT / "data"
 SRC = ROOT / "src"
 DOWNLOADS = WORKSPACE / "downloads"
-APP_VERSION = "1.9.13"
+APP_VERSION = "1.9.14"
 FREE_SHIPPING = 100000
 SHIPPING_FEE = 3000
 
@@ -969,6 +969,10 @@ SITE_SETTINGS = {
     "shop_eyebrow": "SHOP — NEW ARRIVALS",
     "shop_title": "이번 시즌, 새로 도착한 옷",
     "shop_desc": "단정한 실루엣과 좋은 소재. 유행보다 오래 입는 옷을 제안합니다.",
+    # v1.9.14 — 사이트 타이틀(상단 로고·브라우저 탭 제목)과 푸터 카피라이트 — 관리자 「메인/사이트 → 타이틀/푸터」
+    "site_title": "MONO ATELIER",
+    "page_title": "MONO ATELIER — 모노 아틀리에",
+    "footer_copyright": "© 2026 MONO ATELIER. ALL RIGHTS RESERVED.",
     "company_name": "모노 아뜰리에",
     "company_ceo": "홍길동",
     "company_reg_no": "000-00-00000",
@@ -1021,7 +1025,7 @@ sms_logs = [
 seed = {
     "meta": {
         "app": "MONO ATELIER",
-        "schema_version": 13,
+        "schema_version": 14,
         "generated_at": "2026-11-27T16:10:00+09:00",
         "grades": ["NORMAL", "SILVER", "GOLD", "VIP"],
         "currency": "KRW",
@@ -1564,6 +1568,9 @@ CREATE TABLE site_settings (
   shop_eyebrow         TEXT NOT NULL DEFAULT 'SHOP — NEW ARRIVALS',   -- v1.9.10 상품 섹션 뱃지·영문 문구
   shop_title           TEXT NOT NULL DEFAULT '이번 시즌, 새로 도착한 옷',  -- v1.9.10 상품 섹션 제목
   shop_desc            TEXT NOT NULL DEFAULT '',                -- v1.9.10 상품 섹션 설명(비우면 기본 문구)
+  site_title           TEXT NOT NULL DEFAULT 'MONO ATELIER',    -- v1.9.14 상단 로고 텍스트(헤더·푸터 브랜드명)
+  page_title           TEXT NOT NULL DEFAULT 'MONO ATELIER — 모노 아틀리에',  -- v1.9.14 브라우저 탭 제목(<title>)
+  footer_copyright     TEXT NOT NULL DEFAULT '© 2026 MONO ATELIER. ALL RIGHTS RESERVED.',  -- v1.9.14 푸터 카피라이트
   brand_blurb          TEXT NOT NULL DEFAULT '',                -- 푸터 브랜드 소개
   company_name         TEXT NOT NULL DEFAULT '',                -- 상호
   company_ceo          TEXT NOT NULL DEFAULT '',                -- 대표자

@@ -1,7 +1,7 @@
 {
   "meta": {
     "app": "MONO ATELIER",
-    "schema_version": 13,
+    "schema_version": 14,
     "generated_at": "2026-11-27T16:10:00+09:00",
     "grades": [
       "NORMAL",
@@ -3272,6 +3272,9 @@
     "shop_eyebrow": "SHOP — NEW ARRIVALS",
     "shop_title": "이번 시즌, 새로 도착한 옷",
     "shop_desc": "단정한 실루엣과 좋은 소재. 유행보다 오래 입는 옷을 제안합니다.",
+    "site_title": "MONO ATELIER",
+    "page_title": "MONO ATELIER — 모노 아틀리에",
+    "footer_copyright": "© 2026 MONO ATELIER. ALL RIGHTS RESERVED.",
     "company_name": "모노 아뜰리에",
     "company_ceo": "홍길동",
     "company_reg_no": "000-00-00000",

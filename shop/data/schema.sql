@@ -256,6 +256,9 @@ CREATE TABLE site_settings (
   shop_eyebrow         TEXT NOT NULL DEFAULT 'SHOP — NEW ARRIVALS',   -- v1.9.10 상품 섹션 뱃지·영문 문구
   shop_title           TEXT NOT NULL DEFAULT '이번 시즌, 새로 도착한 옷',  -- v1.9.10 상품 섹션 제목
   shop_desc            TEXT NOT NULL DEFAULT '',                -- v1.9.10 상품 섹션 설명(비우면 기본 문구)
+  site_title           TEXT NOT NULL DEFAULT 'MONO ATELIER',    -- v1.9.14 상단 로고 텍스트(헤더·푸터 브랜드명)
+  page_title           TEXT NOT NULL DEFAULT 'MONO ATELIER — 모노 아틀리에',  -- v1.9.14 브라우저 탭 제목(<title>)
+  footer_copyright     TEXT NOT NULL DEFAULT '© 2026 MONO ATELIER. ALL RIGHTS RESERVED.',  -- v1.9.14 푸터 카피라이트
   brand_blurb          TEXT NOT NULL DEFAULT '',                -- 푸터 브랜드 소개
   company_name         TEXT NOT NULL DEFAULT '',                -- 상호
   company_ceo          TEXT NOT NULL DEFAULT '',                -- 대표자
