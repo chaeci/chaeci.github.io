@@ -2695,6 +2695,10 @@ table.data.rev-table tfoot th, table.data.rev-table tfoot td {
   .table-scroll table.data.admin-grid.admin-orders-table { min-width: 660px; }
   .table-scroll table.data.admin-grid.admin-claims-table { min-width: 700px; }
   .table-scroll table.data.admin-grid.rev-table { min-width: 0; }
+  /* v1.9.13 — 뱃지 관리 표는 412px 에서도 4열이 한 화면에 들어오게 한다 */
+  .table-scroll table.data.admin-grid.badge-grid { min-width: 0; }
+  .table-scroll table.data.admin-grid.badge-grid th { padding: 6px 4px; font-size: 8px; }
+  .table-scroll table.data.admin-grid.badge-grid td { padding: 6px 4px; }
   .table-scroll table.data.admin-grid.rev-table th { padding: 7px 7px; font-size: 8px; }
   .table-scroll table.data.admin-grid.rev-table td { padding: 7px 7px; font-size: 10.5px; }
   .table-scroll table.data.admin-grid thead { display: table-header-group; }
@@ -3256,6 +3260,142 @@ table.data.ap-variants td.na { color: var(--line); }
   display: inline-block; width: 9px; height: 9px; margin-right: 4px;
   border: 1px solid rgba(0,0,0,0.18); border-radius: 50%; vertical-align: -1px;
 }
+
+/* =========================================================================
+   v1.9.13 — 사이트 전용 미디어(히어로·스토리) · 코드 관리(뱃지) · 복합 쿠폰 조건 · 멤버십 기준
+   ========================================================================= */
+/* 리뷰/Q&A 페이징 시 섹션 맨 위로 맞출 때 헤더·여백에 가리지 않도록 */
+#pm-reviews-section, #pm-qna-section { scroll-margin-top: 10px; }
+
+/* ---------- 사이트 전용 미디어 라이브러리 ---------- */
+.site-media { display: flex; flex-direction: column; gap: 10px; }
+.sm-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 8px; padding: 8px; border: 1px solid var(--line-soft); background: #fff;
+}
+.sm-thumb { position: relative; }
+.sm-pick {
+  display: block; width: 100%; padding: 0; border: 1px solid var(--line-soft);
+  background: var(--bg-warm); cursor: pointer; position: relative; overflow: hidden;
+}
+.sm-pick img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+.sm-pick:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.sm-thumb.active .sm-pick { border: 2px solid var(--ink); }
+.sm-thumb.active .sm-pick img { filter: none; }
+.sm-on {
+  position: absolute; left: 0; bottom: 0; right: 0; background: rgba(23,23,15,0.88);
+  color: #fff; font-size: 8.5px; letter-spacing: 0.04em; padding: 2px 0; text-align: center;
+}
+.sm-del {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; line-height: 1;
+  border: 1px solid var(--line); background: #fff; color: var(--ink); font-size: 10px;
+  cursor: pointer; padding: 0;
+}
+.sm-del:hover { background: var(--ink); color: #fff; }
+.sm-name {
+  display: block; margin-top: 3px; font-size: 8.5px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sm-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sm-tools .sm-url {
+  flex: 1 1 140px; min-width: 0; height: 32px; border: 1px solid var(--line);
+  background: #fff; padding: 0 8px; font-size: 11px;
+}
+.sm-tools .sm-count { font-size: 9.5px; color: var(--muted); white-space: nowrap; }
+.sm-select { display: none; }
+.sm-hint { font-size: 9.5px; color: var(--muted); margin: 0; line-height: 1.6; }
+.badge-editor { display: flex; flex-direction: column; gap: 5px; }
+.badge-editor-hint { font-size: 9.5px; color: var(--muted); }
+
+/* ---------- 코드 관리 > 뱃지 관리 ---------- */
+.badge-grid .badge-code-input {
+  width: 100%; min-width: 84px; height: 28px; border: 1px solid var(--line);
+  background: #fff; padding: 0 6px; font-size: 11px; letter-spacing: 0.04em;
+}
+.badge-add { margin-top: 10px; }
+
+/* ---------- 쿠폰 사용 조건(카테고리·뱃지) ---------- */
+.coupon-cond { display: flex; flex-direction: column; gap: 8px; }
+.coupon-cond .cc-row { display: flex; flex-direction: column; gap: 5px; }
+.coupon-cond .cc-label { font-size: 10px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+.coupon-cond .cc-label small { text-transform: none; letter-spacing: 0; }
+.cc-hint { font-size: 9.5px; color: var(--muted); margin: 0; line-height: 1.6; }
+.cond-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cond-chip { position: relative; }
+.cond-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.cond-chip span {
+  display: inline-block; padding: 6px 11px; border: 1px solid var(--line);
+  background: #fff; font-size: 11px; cursor: pointer;
+}
+.cond-chip input:checked + span {
+  border-color: var(--ink); background: var(--ink); color: var(--bg);
+}
+.cond-chip input:checked + span::before { content: "✓ "; }
+.cond-chip input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 1px; }
+.coupon-cond-cell { display: flex; flex-wrap: wrap; gap: 4px; }
+.cond-tag {
+  font-size: 9.5px; border: 1px solid var(--line-soft); padding: 1px 5px; white-space: nowrap;
+}
+.cond-tag.badge { border-color: var(--ink); }
+.coupon-chip .cb-own.cond { margin-left: 4px; }
+
+/* ---------- 멤버십 등급 기준 ---------- */
+.membership-rules .mgr-form {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end;
+  border: 1px solid var(--line-soft); background: #fff; padding: 10px 12px;
+}
+.mgr-field { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--muted); }
+.mgr-field span { min-height: 16px; display: inline-flex; align-items: center; }
+.mgr-field input {
+  width: 96px; height: 32px; border: 1px solid var(--line); background: #fff;
+  padding: 0 8px; font-size: 12px;
+}
+.mgr-field small { font-size: 9px; color: var(--muted); }
+.mgr-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.mgr-count { font-size: 10px; color: var(--muted); }
+.mgr-count b { color: var(--ink); }
+.mgr-dir { font-size: 9.5px; margin-left: 5px; font-style: normal; }
+.mgr-dir.up { color: #1f6b3a; }
+.mgr-dir.down { color: #a3432f; }
+.mgr-empty { font-size: 11px; color: var(--muted); margin: 6px 0 0; }
+table.data.membership-grid td, table.data.membership-grid th { white-space: nowrap; }
+@media (max-width: 720px) {
+  .sm-grid { grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); }
+  .mgr-field { flex: 1 1 40%; }
+  .mgr-field input { width: 100%; }
+}
+/* v1.9.13 — 비밀글 제목 마스킹 */
+.pmq-title .pmq-title-masked { color: var(--muted); font-weight: 500; }
+/* v1.9.13 — 뱃지 관리 표: 코드(순서 포함) · 스토어 표시 · 사용 · 관리 4열 */
+.badge-code-cell { display: flex; align-items: center; gap: 6px; }
+.badge-code-cell .cat-order { flex: none; width: 16px; text-align: center; }
+.badge-preview {
+  display: inline-block; padding: 2px 7px; font-size: 9.5px; letter-spacing: 0.06em;
+  border: 1px solid var(--ink); background: #fff; color: var(--ink); white-space: nowrap;
+}
+.badge-preview.sale { background: var(--ink); color: var(--bg); }
+.badge-preview.new { border-style: dashed; }
+.badge-preview.limited { background: var(--bg-warm); }
+.badge-preview.custom { border-color: var(--line); color: var(--ink-soft); }
+table.data.badge-grid { min-width: 340px; }
+table.data.badge-grid td, table.data.badge-grid th { white-space: nowrap; }
+/* v1.9.13 — 412px 에서도 4열이 한눈에 들어오도록 뱃지 표를 압축한다 */
+table.data.badge-grid { min-width: 0; width: 100%; }
+table.data.badge-grid th, table.data.badge-grid td { padding: 6px 4px; }
+.badge-grid .badge-code-input { width: 84px; min-width: 0; }
+.badge-grid .badge-preview { padding: 2px 5px; font-size: 9px; }
+.badge-grid .row-actions { gap: 2px; flex-wrap: nowrap; }
+.badge-grid .row-actions .icon-btn { width: 20px; min-width: 20px; height: 22px; padding: 0; font-size: 11px; }
+.badge-grid .row-actions .txt-btn { font-size: 9.5px; padding: 0 1px; }
+.badge-grid td[data-label="사용"] { font-size: 10.5px; }
+/* v1.9.13 — 멤버십 기준 폼·대상자 표 정리 (412px 3열) */
+.membership-rules .mgr-form { align-items: flex-end; }
+.mgr-field { flex: 0 1 auto; }
+.mgr-field .grade-badge { align-self: flex-start; }
+.mgr-arrow { margin: 0 4px; font-size: 9.5px; color: var(--muted); }
+.table-scroll table.data.admin-grid.membership-grid { min-width: 0; }
+.membership-grid .grade-badge { font-size: 9.5px; padding: 1px 5px; }
+.membership-grid td[data-label="구매액"] { font-size: 11px; }
 </style>
 </head>
 <body>
@@ -3279,9 +3419,9 @@ table.data.ap-variants td.na { color: var(--line); }
 (function () {
   'use strict';
 
-  var SEED = {"meta":{"app":"MONO ATELIER","schema_version":12,"generated_at":"2026-11-27T16:10:00+09:00","grades":["NORMAL","SILVER","GOLD","VIP"],"currency":"KRW","free_shipping_threshold":100000,"shipping_fee":3000,"claim_return_fee":3000,"claim_exchange_fee":6000,"password_hashing":"sha256('mono-atelier$' + password) — demo only"},"users":[{"id":"u_001","email":"demo@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길동","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","grade":"GOLD","points":4725,"postcode":"05551","created_at":"2026-11-09T10:42:00+09:00"},{"id":"u_002","email":"admin@mono.kr","password_hash":"b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1","name":"관리자","phone":"02-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호 3층","role":"admin","grade":"NORMAL","points":0,"postcode":"05551","created_at":"2026-10-01T09:00:00+09:00"},{"id":"u_003","email":"member1@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길순","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","grade":"SILVER","points":0,"postcode":"05551","created_at":"2026-10-20T10:00:00+09:00"},{"id":"u_004","email":"member2@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길자","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","grade":"NORMAL","points":0,"postcode":"05551","created_at":"2026-10-21T10:00:00+09:00"},{"id":"u_005","email":"member3@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길녀","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","grade":"SILVER","points":0,"postcode":"05551","created_at":"2026-10-22T10:00:00+09:00"}],"categories":[{"id":"outer","label":"아우터","en":"OUTER","sort_order":1,"size_codes":["95","100","105","S","M","L","XL"],"created_at":"2026-10-01T09:00:00+09:00","is_active":true},{"id":"top","label":"상의","en":"TOP","sort_order":2,"size_codes":["95","100","105","S","M","L","XL","FREE"],"created_at":"2026-10-01T09:00:00+09:00","is_active":true},{"id":"bottom","label":"하의","en":"BOTTOM","sort_order":3,"size_codes":["28","30","32","34","S","M","L"],"created_at":"2026-10-01T09:00:00+09:00","is_active":true},{"id":"dress","label":"원피스","en":"DRESS","sort_order":4,"size_codes":["S","M","L"],"created_at":"2026-10-01T09:00:00+09:00","is_active":true},{"id":"acc","label":"잡화","en":"ACC","sort_order":5,"size_codes":["FREE"],"created_at":"2026-10-01T09:00:00+09:00","is_active":true}],"products":[{"id":"p_001","product_code":"MA-0001","name":"울 더블 브레스티드 코트","brand":"MONO ATELIER","category":"outer","price":289000,"original_price":349000,"badge":"BEST","description":"두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.","image":"coat.webp","images":["coat.webp","coat-detail.webp","coat-fabric.webp"],"model_info":"모델 174cm · 54kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-10T09:20:00+09:00","is_active":true},{"id":"p_002","product_code":"MA-0002","name":"캐시미어 리브 니트","brand":"MONO ATELIER","category":"top","price":129000,"original_price":159000,"badge":"NEW","description":"캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.","image":"knit.webp","images":["knit.webp","knit-detail.webp","knit-fabric.webp"],"model_info":"모델 171cm · 52kg · M 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-11-18T11:05:00+09:00","is_active":true},{"id":"p_003","product_code":"MA-0003","name":"와이드 테일러드 트라우저","brand":"MONO ATELIER","category":"bottom","price":149000,"original_price":null,"badge":null,"description":"허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.","image":"pants.webp","images":["pants.webp","pants-detail.webp","pants-fabric.webp"],"model_info":"모델 176cm · 60kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-25T16:30:00+09:00","is_active":true},{"id":"p_004","product_code":"MA-0004","name":"사틴 슬립 미디 드레스","brand":"MONO ATELIER","category":"dress","price":189000,"original_price":220000,"badge":"SALE","description":"빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"model_info":"모델 173cm · 53kg · S 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-02T13:10:00+09:00","is_active":true},{"id":"p_005","product_code":"MA-0005","name":"스무스 레더 숄더백","brand":"MONO ATELIER","category":"acc","price":259000,"original_price":null,"badge":"BEST","description":"이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.","image":"bag.webp","images":["bag.webp","bag-detail.webp","bag-fabric.webp"],"model_info":"모델 172cm 착용 컷","free_shipping_threshold":0,"created_at":"2026-11-08T10:00:00+09:00","is_active":true},{"id":"p_006","product_code":"MA-0006","name":"나일론 봄버 재킷","brand":"MONO ATELIER","category":"outer","price":179000,"original_price":210000,"badge":"NEW","description":"가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.","image":"jacket.webp","images":["jacket.webp","jacket-detail.webp","jacket-fabric.webp"],"model_info":"모델 178cm · 62kg · L 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-20T09:45:00+09:00","is_active":true},{"id":"p_007","product_code":"MA-0007","name":"오버사이즈 코튼 셔츠","brand":"MONO ATELIER","category":"top","price":89000,"original_price":null,"badge":null,"description":"두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.","image":"shirt.webp","images":["shirt.webp","shirt-detail.webp","shirt-fabric.webp"],"model_info":"모델 174cm · 56kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-28T15:20:00+09:00","is_active":true},{"id":"p_008","product_code":"MA-0008","name":"플리츠 미디 스커트","brand":"MONO ATELIER","category":"bottom","price":139000,"original_price":168000,"badge":"SALE","description":"곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.","image":"skirt.webp","images":["skirt.webp","skirt-detail.webp","skirt-fabric.webp"],"model_info":"모델 170cm · 51kg · S 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-20T12:00:00+09:00","is_active":true},{"id":"p_009","product_code":"MA-0009","name":"개버딘 트렌치 코트","brand":"MONO ATELIER","category":"outer","price":319000,"original_price":369000,"badge":"LIMITED","description":"묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.","image":"trench.webp","images":["trench.webp","trench-detail.webp","trench-fabric.webp"],"model_info":"모델 176cm · 58kg · M 사이즈 착용","free_shipping_threshold":0,"created_at":"2026-11-15T10:30:00+09:00","is_active":true},{"id":"p_010","product_code":"MA-0010","name":"울 블렌드 오픈 가디건","brand":"MONO ATELIER","category":"top","price":119000,"original_price":null,"badge":null,"description":"울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.","image":"cardigan.webp","images":["cardigan.webp","cardigan-detail.webp","cardigan-fabric.webp"],"model_info":"모델 169cm · 50kg · S 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-10-15T09:10:00+09:00","is_active":true},{"id":"p_011","product_code":"MA-0011","name":"와이드 데님 팬츠","brand":"MONO ATELIER","category":"bottom","price":109000,"original_price":129000,"badge":"NEW","description":"워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.","image":"denim.webp","images":["denim.webp","denim-detail.webp","denim-fabric.webp"],"model_info":"모델 175cm · 59kg · M 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-11-23T14:00:00+09:00","is_active":true},{"id":"p_012","product_code":"MA-0012","name":"레더 페니 로퍼","brand":"MONO ATELIER","category":"acc","price":219000,"original_price":249000,"badge":null,"description":"블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.","image":"loafers.webp","images":["loafers.webp","loafers-detail.webp","loafers-fabric.webp"],"model_info":"모델 172cm 착용 컷","free_shipping_threshold":0,"created_at":"2026-11-05T11:40:00+09:00","is_active":true},{"id":"p_013","product_code":"MA-0013","name":"실크 크레이프 미디 원피스","brand":"MONO ATELIER","category":"dress","price":209000,"original_price":null,"badge":null,"description":"실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"model_info":"모델 173cm · 53kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-25T17:30:00+09:00","is_active":false}],"product_images":[{"id":"pi_001","product_id":"p_001","image":"coat.webp","alt":"울 더블 브레스티드 코트","sort_order":0},{"id":"pi_002","product_id":"p_001","image":"coat-detail.webp","alt":"울 더블 브레스티드 코트 디테일","sort_order":1},{"id":"pi_003","product_id":"p_001","image":"coat-fabric.webp","alt":"울 더블 브레스티드 코트 소재 클로즈업","sort_order":2},{"id":"pi_004","product_id":"p_002","image":"knit.webp","alt":"캐시미어 리브 니트","sort_order":0},{"id":"pi_005","product_id":"p_002","image":"knit-detail.webp","alt":"캐시미어 리브 니트 디테일","sort_order":1},{"id":"pi_006","product_id":"p_002","image":"knit-fabric.webp","alt":"캐시미어 리브 니트 소재 클로즈업","sort_order":2},{"id":"pi_007","product_id":"p_003","image":"pants.webp","alt":"와이드 테일러드 트라우저","sort_order":0},{"id":"pi_008","product_id":"p_003","image":"pants-detail.webp","alt":"와이드 테일러드 트라우저 디테일","sort_order":1},{"id":"pi_009","product_id":"p_003","image":"pants-fabric.webp","alt":"와이드 테일러드 트라우저 소재 클로즈업","sort_order":2},{"id":"pi_010","product_id":"p_004","image":"dress.webp","alt":"사틴 슬립 미디 드레스","sort_order":0},{"id":"pi_011","product_id":"p_004","image":"dress-detail.webp","alt":"사틴 슬립 미디 드레스 디테일","sort_order":1},{"id":"pi_012","product_id":"p_004","image":"dress-fabric.webp","alt":"사틴 슬립 미디 드레스 소재 클로즈업","sort_order":2},{"id":"pi_013","product_id":"p_005","image":"bag.webp","alt":"스무스 레더 숄더백","sort_order":0},{"id":"pi_014","product_id":"p_005","image":"bag-detail.webp","alt":"스무스 레더 숄더백 디테일","sort_order":1},{"id":"pi_015","product_id":"p_005","image":"bag-fabric.webp","alt":"스무스 레더 숄더백 소재 클로즈업","sort_order":2},{"id":"pi_016","product_id":"p_006","image":"jacket.webp","alt":"나일론 봄버 재킷","sort_order":0},{"id":"pi_017","product_id":"p_006","image":"jacket-detail.webp","alt":"나일론 봄버 재킷 디테일","sort_order":1},{"id":"pi_018","product_id":"p_006","image":"jacket-fabric.webp","alt":"나일론 봄버 재킷 소재 클로즈업","sort_order":2},{"id":"pi_019","product_id":"p_007","image":"shirt.webp","alt":"오버사이즈 코튼 셔츠","sort_order":0},{"id":"pi_020","product_id":"p_007","image":"shirt-detail.webp","alt":"오버사이즈 코튼 셔츠 디테일","sort_order":1},{"id":"pi_021","product_id":"p_007","image":"shirt-fabric.webp","alt":"오버사이즈 코튼 셔츠 소재 클로즈업","sort_order":2},{"id":"pi_022","product_id":"p_008","image":"skirt.webp","alt":"플리츠 미디 스커트","sort_order":0},{"id":"pi_023","product_id":"p_008","image":"skirt-detail.webp","alt":"플리츠 미디 스커트 디테일","sort_order":1},{"id":"pi_024","product_id":"p_008","image":"skirt-fabric.webp","alt":"플리츠 미디 스커트 소재 클로즈업","sort_order":2},{"id":"pi_025","product_id":"p_009","image":"trench.webp","alt":"개버딘 트렌치 코트","sort_order":0},{"id":"pi_026","product_id":"p_009","image":"trench-detail.webp","alt":"개버딘 트렌치 코트 디테일","sort_order":1},{"id":"pi_027","product_id":"p_009","image":"trench-fabric.webp","alt":"개버딘 트렌치 코트 소재 클로즈업","sort_order":2},{"id":"pi_028","product_id":"p_010","image":"cardigan.webp","alt":"울 블렌드 오픈 가디건","sort_order":0},{"id":"pi_029","product_id":"p_010","image":"cardigan-detail.webp","alt":"울 블렌드 오픈 가디건 디테일","sort_order":1},{"id":"pi_030","product_id":"p_010","image":"cardigan-fabric.webp","alt":"울 블렌드 오픈 가디건 소재 클로즈업","sort_order":2},{"id":"pi_031","product_id":"p_011","image":"denim.webp","alt":"와이드 데님 팬츠","sort_order":0},{"id":"pi_032","product_id":"p_011","image":"denim-detail.webp","alt":"와이드 데님 팬츠 디테일","sort_order":1},{"id":"pi_033","product_id":"p_011","image":"denim-fabric.webp","alt":"와이드 데님 팬츠 소재 클로즈업","sort_order":2},{"id":"pi_034","product_id":"p_012","image":"loafers.webp","alt":"레더 페니 로퍼","sort_order":0},{"id":"pi_035","product_id":"p_012","image":"loafers-detail.webp","alt":"레더 페니 로퍼 디테일","sort_order":1},{"id":"pi_036","product_id":"p_012","image":"loafers-fabric.webp","alt":"레더 페니 로퍼 소재 클로즈업","sort_order":2},{"id":"pi_037","product_id":"p_013","image":"dress.webp","alt":"실크 크레이프 미디 원피스","sort_order":0},{"id":"pi_038","product_id":"p_013","image":"dress-detail.webp","alt":"실크 크레이프 미디 원피스 디테일","sort_order":1},{"id":"pi_039","product_id":"p_013","image":"dress-fabric.webp","alt":"실크 크레이프 미디 원피스 소재 클로즈업","sort_order":2}],"product_variants":[{"id":"v_001","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"S","stock":5,"sku":"MA-OUT-001-차콜-S"},{"id":"v_002","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"M","stock":3,"sku":"MA-OUT-001-차콜-M"},{"id":"v_003","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"L","stock":2,"sku":"MA-OUT-001-차콜-L"},{"id":"v_004","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"XL","stock":1,"sku":"MA-OUT-001-차콜-XL"},{"id":"v_005","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"S","stock":4,"sku":"MA-OUT-001-카멜-S"},{"id":"v_006","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"M","stock":6,"sku":"MA-OUT-001-카멜-M"},{"id":"v_007","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"L","stock":3,"sku":"MA-OUT-001-카멜-L"},{"id":"v_008","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"XL","stock":0,"sku":"MA-OUT-001-카멜-XL"},{"id":"v_009","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-001-블랙-S"},{"id":"v_010","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":0,"sku":"MA-OUT-001-블랙-M"},{"id":"v_011","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-OUT-001-블랙-L"},{"id":"v_012","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-OUT-001-블랙-XL"},{"id":"v_013","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"S","stock":8,"sku":"MA-TOP-002-크림-S"},{"id":"v_014","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"M","stock":12,"sku":"MA-TOP-002-크림-M"},{"id":"v_015","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"L","stock":5,"sku":"MA-TOP-002-크림-L"},{"id":"v_016","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"S","stock":3,"sku":"MA-TOP-002-오트-S"},{"id":"v_017","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"M","stock":2,"sku":"MA-TOP-002-오트-M"},{"id":"v_018","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"L","stock":6,"sku":"MA-TOP-002-오트-L"},{"id":"v_019","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"S","stock":4,"sku":"MA-TOP-002-블랙-S"},{"id":"v_020","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"M","stock":1,"sku":"MA-TOP-002-블랙-M"},{"id":"v_021","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"L","stock":0,"sku":"MA-TOP-002-블랙-L"},{"id":"v_022","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":6,"sku":"MA-BTM-003-블랙-S"},{"id":"v_023","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":9,"sku":"MA-BTM-003-블랙-M"},{"id":"v_024","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-BTM-003-블랙-L"},{"id":"v_025","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-BTM-003-블랙-XL"},{"id":"v_026","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":2,"sku":"MA-BTM-003-차콜-S"},{"id":"v_027","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":5,"sku":"MA-BTM-003-차콜-M"},{"id":"v_028","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":7,"sku":"MA-BTM-003-차콜-L"},{"id":"v_029","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"XL","stock":1,"sku":"MA-BTM-003-차콜-XL"},{"id":"v_030","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":3,"sku":"MA-DRS-004-샴페-S"},{"id":"v_031","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":0,"sku":"MA-DRS-004-샴페-M"},{"id":"v_032","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":2,"sku":"MA-DRS-004-샴페-L"},{"id":"v_033","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-DRS-004-블랙-S"},{"id":"v_034","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":5,"sku":"MA-DRS-004-블랙-M"},{"id":"v_035","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-DRS-004-블랙-L"},{"id":"v_036","product_id":"p_005","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":6,"sku":"MA-ACC-005-블랙-FREE"},{"id":"v_037","product_id":"p_005","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":2,"sku":"MA-ACC-005-다크-FREE"},{"id":"v_038","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"M","stock":5,"sku":"MA-OUT-006-올리-M"},{"id":"v_039","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"L","stock":4,"sku":"MA-OUT-006-올리-L"},{"id":"v_040","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"XL","stock":2,"sku":"MA-OUT-006-올리-XL"},{"id":"v_041","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":3,"sku":"MA-OUT-006-블랙-M"},{"id":"v_042","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":0,"sku":"MA-OUT-006-블랙-L"},{"id":"v_043","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":5,"sku":"MA-OUT-006-블랙-XL"},{"id":"v_044","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"M","stock":2,"sku":"MA-OUT-006-샌드-M"},{"id":"v_045","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"L","stock":3,"sku":"MA-OUT-006-샌드-L"},{"id":"v_046","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"XL","stock":1,"sku":"MA-OUT-006-샌드-XL"},{"id":"v_047","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"S","stock":10,"sku":"MA-TOP-007-화이-S"},{"id":"v_048","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"M","stock":14,"sku":"MA-TOP-007-화이-M"},{"id":"v_049","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"L","stock":6,"sku":"MA-TOP-007-화이-L"},{"id":"v_050","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"S","stock":4,"sku":"MA-TOP-007-스카-S"},{"id":"v_051","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"M","stock":3,"sku":"MA-TOP-007-스카-M"},{"id":"v_052","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"L","stock":2,"sku":"MA-TOP-007-스카-L"},{"id":"v_053","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":5,"sku":"MA-BTM-008-차콜-S"},{"id":"v_054","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":3,"sku":"MA-BTM-008-차콜-M"},{"id":"v_055","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":2,"sku":"MA-BTM-008-차콜-L"},{"id":"v_056","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-BTM-008-블랙-S"},{"id":"v_057","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":6,"sku":"MA-BTM-008-블랙-M"},{"id":"v_058","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":1,"sku":"MA-BTM-008-블랙-L"},{"id":"v_059","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"S","stock":0,"sku":"MA-OUT-009-베이-S"},{"id":"v_060","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"M","stock":3,"sku":"MA-OUT-009-베이-M"},{"id":"v_061","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"L","stock":4,"sku":"MA-OUT-009-베이-L"},{"id":"v_062","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"XL","stock":2,"sku":"MA-OUT-009-베이-XL"},{"id":"v_063","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-009-블랙-S"},{"id":"v_064","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":4,"sku":"MA-OUT-009-블랙-M"},{"id":"v_065","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-OUT-009-블랙-L"},{"id":"v_066","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":1,"sku":"MA-OUT-009-블랙-XL"},{"id":"v_067","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"S","stock":4,"sku":"MA-TOP-010-그레-S"},{"id":"v_068","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"M","stock":5,"sku":"MA-TOP-010-그레-M"},{"id":"v_069","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"L","stock":3,"sku":"MA-TOP-010-그레-L"},{"id":"v_070","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"S","stock":2,"sku":"MA-TOP-010-아이-S"},{"id":"v_071","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"M","stock":2,"sku":"MA-TOP-010-아이-M"},{"id":"v_072","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"L","stock":4,"sku":"MA-TOP-010-아이-L"},{"id":"v_073","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"S","stock":6,"sku":"MA-BTM-011-미드-S"},{"id":"v_074","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"M","stock":8,"sku":"MA-BTM-011-미드-M"},{"id":"v_075","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"L","stock":5,"sku":"MA-BTM-011-미드-L"},{"id":"v_076","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"XL","stock":3,"sku":"MA-BTM-011-미드-XL"},{"id":"v_077","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"S","stock":3,"sku":"MA-BTM-011-워시-S"},{"id":"v_078","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"M","stock":4,"sku":"MA-BTM-011-워시-M"},{"id":"v_079","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"L","stock":2,"sku":"MA-BTM-011-워시-L"},{"id":"v_080","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"XL","stock":0,"sku":"MA-BTM-011-워시-XL"},{"id":"v_081","product_id":"p_012","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":0,"sku":"MA-ACC-012-블랙-FREE"},{"id":"v_082","product_id":"p_012","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":0,"sku":"MA-ACC-012-다크-FREE"},{"id":"v_083","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":2,"sku":"MA-DRS-013-샴페-S"},{"id":"v_084","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":2,"sku":"MA-DRS-013-샴페-M"},{"id":"v_085","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":1,"sku":"MA-DRS-013-샴페-L"},{"id":"v_086","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":3,"sku":"MA-DRS-013-블랙-S"},{"id":"v_087","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":2,"sku":"MA-DRS-013-블랙-M"},{"id":"v_088","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":2,"sku":"MA-DRS-013-블랙-L"}],"cart_items":[],"orders":[{"id":"o_001","order_no":"MA20261112-4821","user_id":"u_001","status":"delivered","total_amount":278000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-12T10:24:00+09:00","postcode":"05551","points_used":0},{"id":"o_002","order_no":"MA20261124-3917","user_id":"u_001","status":"paid","total_amount":173000,"shipping_fee":0,"coupon_code":"MONO5000","discount_amount":5000,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-24T15:40:00+09:00","postcode":"05551","points_used":0},{"id":"o_003","order_no":"MA20261125-6042","user_id":"u_001","status":"preparing","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"bank","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-25T09:12:00+09:00","postcode":"05551","points_used":0},{"id":"o_004","order_no":"MA20261114-2288","user_id":"u_001","status":"delivered","total_amount":109000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-14T11:05:00+09:00","postcode":"05551","points_used":0},{"id":"o_005","order_no":"MA20261116-7735","user_id":"u_001","status":"delivered","total_amount":139000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-16T14:30:00+09:00","postcode":"05551","points_used":0},{"id":"o_006","order_no":"MA20261105-1852","user_id":"u_001","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-05T11:20:00+09:00"},{"id":"o_007","order_no":"MA20261029-3311","user_id":"u_003","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-10-29T13:10:00+09:00"},{"id":"o_008","order_no":"MA20261108-4420","user_id":"u_003","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-08T11:25:00+09:00"},{"id":"o_009","order_no":"MA20261113-5527","user_id":"u_004","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길자","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-13T16:40:00+09:00"},{"id":"o_010","order_no":"MA20261119-6634","user_id":"u_004","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길자","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-19T09:55:00+09:00"},{"id":"o_011","order_no":"MA20261123-7741","user_id":"u_005","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길녀","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-23T15:05:00+09:00"},{"id":"o_012","order_no":"MA20261126-8858","user_id":"u_005","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길녀","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-26T10:15:00+09:00"},{"id":"o_013","order_no":"MA20260618-1201","user_id":"u_003","status":"delivered","total_amount":92000,"shipping_fee":3000,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-06-18T11:10:00+09:00"},{"id":"o_014","order_no":"MA20260709-2415","user_id":"u_004","status":"delivered","total_amount":139000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길자","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-07-09T16:05:00+09:00"},{"id":"o_015","order_no":"MA20260821-3372","user_id":"u_005","status":"delivered","total_amount":109000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길녀","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-08-21T10:40:00+09:00"},{"id":"o_016","order_no":"MA20260915-4188","user_id":"u_003","status":"delivered","total_amount":149000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-09-15T14:25:00+09:00"},{"id":"o_017","order_no":"MA20261124-9961","user_id":"u_003","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-24T09:40:00+09:00"},{"id":"o_018","order_no":"MA20261122-7742","user_id":"u_004","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길자","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-22T13:15:00+09:00"},{"id":"o_019","order_no":"MA20261119-6633","user_id":"u_005","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길녀","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-19T18:05:00+09:00"},{"id":"o_020","order_no":"MA20261114-5514","user_id":"u_003","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-14T10:25:00+09:00"},{"id":"o_021","order_no":"MA20261102-4407","user_id":"u_004","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길자","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-02T15:35:00+09:00"}],"order_items":[{"id":"oi_001","order_id":"o_001","variant_id":"v_014","product_name":"캐시미어 리브 니트","color":"크림","size":"M","unit_price":129000,"quantity":1,"confirmed_at":"2026-11-22T10:05:00+09:00","confirm_points":1290,"photo_bonus":1935,"photo_bonus_at":"2026-11-22T10:20:00+09:00","review_attempts":1,"rewrite_used":0},{"id":"oi_002","order_id":"o_001","variant_id":"v_023","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_003","order_id":"o_002","variant_id":"v_047","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":2,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_004","order_id":"o_003","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_005","order_id":"o_004","variant_id":"v_074","product_name":"와이드 데님 팬츠","color":"미드블루","size":"M","unit_price":109000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_006","order_id":"o_005","variant_id":"v_054","product_name":"플리츠 미디 스커트","color":"차콜","size":"M","unit_price":139000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_007","order_id":"o_006","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_008","order_id":"o_007","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_009","order_id":"o_008","variant_id":"v_005","product_name":"울 더블 브레스티드 코트","color":"카멜","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_010","order_id":"o_009","variant_id":"v_006","product_name":"울 더블 브레스티드 코트","color":"카멜","size":"M","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_011","order_id":"o_010","variant_id":"v_010","product_name":"울 더블 브레스티드 코트","color":"블랙","size":"M","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_012","order_id":"o_011","variant_id":"v_003","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"L","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_013","order_id":"o_012","variant_id":"v_012","product_name":"울 더블 브레스티드 코트","color":"블랙","size":"XL","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_014","order_id":"o_013","variant_id":"v_047","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_015","order_id":"o_014","variant_id":"v_054","product_name":"플리츠 미디 스커트","color":"차콜","size":"M","unit_price":139000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_016","order_id":"o_015","variant_id":"v_074","product_name":"와이드 데님 팬츠","color":"미드블루","size":"M","unit_price":109000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_017","order_id":"o_016","variant_id":"v_023","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_018","order_id":"o_017","variant_id":"v_002","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"M","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_019","order_id":"o_018","variant_id":"v_007","product_name":"울 더블 브레스티드 코트","color":"카멜","size":"L","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_020","order_id":"o_019","variant_id":"v_009","product_name":"울 더블 브레스티드 코트","color":"블랙","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_021","order_id":"o_020","variant_id":"v_005","product_name":"울 더블 브레스티드 코트","color":"카멜","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_022","order_id":"o_021","variant_id":"v_011","product_name":"울 더블 브레스티드 코트","color":"블랙","size":"L","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0}],"order_claims":[{"id":"oc_20261119_1001","order_id":"o_004","user_id":"u_001","claim_type":"return","reason_category":"defect","reason_detail":"밑단 박음질이 풀려 있고 오른쪽 무릎 부분에 5cm 정도 올이 나 있습니다.","shipping_fee":0,"payment_status":"free","payment_key":null,"payment_mode":"free","exchange_option":null,"status":"requested","stock_restored":0,"admin_memo":"11/20 수거 택배 접수 · 검수 후 무료 반품 처리 예정","created_at":"2026-11-19T09:20:00+09:00","updated_at":"2026-11-19T09:20:00+09:00"},{"id":"oc_20261121_1002","order_id":"o_005","user_id":"u_001","claim_type":"exchange","reason_category":"size_color","reason_detail":"허리가 조금 커서 S 사이즈로 교환하고 싶습니다.","shipping_fee":6000,"payment_status":"paid","payment_key":"test_claim_seed_6f1c","payment_mode":"test-client","exchange_option":"차콜 / S","status":"approved","stock_restored":0,"admin_memo":"","created_at":"2026-11-21T10:12:00+09:00","updated_at":"2026-11-22T09:00:00+09:00"}],"coupons":[{"id":"c_001","code":"WELCOME10","name":"신규 회원 10% 할인","discount_type":"percent","discount_value":10,"min_order_amount":30000,"expires_at":"2027-12-31T23:59:59+09:00","is_active":true,"target_user_ids":[],"target_grades":[],"created_at":"2026-11-01T10:00:00+09:00"},{"id":"c_002","code":"MONO5000","name":"5,000원 할인 쿠폰","discount_type":"fixed","discount_value":5000,"min_order_amount":50000,"expires_at":"2027-06-30T23:59:59+09:00","is_active":true,"target_user_ids":[],"target_grades":[],"created_at":"2026-11-05T10:00:00+09:00"},{"id":"c_003","code":"VIP15","name":"VIP 회원 전용 15% 할인","discount_type":"percent","discount_value":15,"min_order_amount":50000,"expires_at":"2027-03-31T23:59:59+09:00","is_active":true,"target_user_ids":["u_001"],"target_grades":[],"created_at":"2026-11-20T10:00:00+09:00"}],"product_reviews":[{"id":"rv_001","product_id":"p_002","user_id":"u_001","user_name":"홍길*","order_item_id":"oi_001","rating":5,"content":"캐시미어라 그런지 정말 부드럽고 목선이 답답하지 않아요. 크림 색도 화면과 거의 같고, 코트 안에 입어도 두께감이 부담스럽지 않습니다.","media":[{"type":"image","src":"knit-detail.webp","name":"착용 디테일"},{"type":"image","src":"knit-fabric.webp","name":"소재 클로즈업"}],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-22T10:20:00+09:00","updated_at":null,"attempt":1},{"id":"rv_002","product_id":"p_003","user_id":"u_001","user_name":"홍길*","order_item_id":"oi_002","rating":4,"content":"허리선이 높아서 다리가 길어 보입니다. 기장이 조금 길어 힐을 신어야 하지만 핏은 만족해요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-18T09:10:00+09:00","updated_at":null,"attempt":1},{"id":"rv_003","product_id":"p_001","user_id":"u_001","user_name":"홍길*","order_item_id":"oi_007","rating":5,"content":"무게감이 있지만 어깨가 편하고, 차콜 색이 사진보다 더 깊어 보입니다. 오래 입을 코트로 추천합니다.","media":[{"type":"image","src":"coat-detail.webp","name":"코트 디테일"}],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-12T14:40:00+09:00","updated_at":null,"attempt":1},{"id":"rv_004","product_id":"p_001","user_id":"u_003","user_name":"홍길*","order_item_id":"oi_008","rating":5,"content":"겨울 코트로 정말 따뜻합니다. 차콜 색이 어디에나 어울리고 어깨 패드가 있어서 라인이 깔끔해요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-10-30T09:15:00+09:00","updated_at":null,"attempt":1},{"id":"rv_005","product_id":"p_001","user_id":"u_003","user_name":"홍길*","order_item_id":"oi_009","rating":4,"content":"카멜 색이 사진보다 조금 노랗게 보여서 별 하나 뺐어요. 핏과 소재는 만족합니다.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-09T18:05:00+09:00","updated_at":null,"attempt":1},{"id":"rv_006","product_id":"p_001","user_id":"u_004","user_name":"홍길*","order_item_id":"oi_010","rating":5,"content":"키 178에 M 샀는데 소매가 딱 맞습니다. 두꺼운 니트 위에 입어도 여유가 있어요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-14T11:30:00+09:00","updated_at":null,"attempt":1},{"id":"rv_007","product_id":"p_001","user_id":"u_004","user_name":"홍길*","order_item_id":"oi_011","rating":4,"content":"블랙은 먼지가 조금 붙지만 실루엣이 정말 예쁩니다. 드라이클리닝 한 번 했는데 모양 그대로예요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-20T13:45:00+09:00","updated_at":null,"attempt":1},{"id":"rv_008","product_id":"p_001","user_id":"u_005","user_name":"홍길*","order_item_id":"oi_012","rating":5,"content":"배송이 빠르고 포장도 깔끔했습니다. 차콜 L 사이즈가 저한테 딱이에요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-24T08:20:00+09:00","updated_at":null,"attempt":1},{"id":"rv_009","product_id":"p_001","user_id":"u_005","user_name":"홍길*","order_item_id":"oi_013","rating":5,"content":"XL 사이즈를 남편 선물로 샀는데 아주 좋아합니다. 단추가 묵직해서 고급스러워요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-26T19:10:00+09:00","updated_at":null,"attempt":1},{"id":"rv_010","product_id":"p_001","user_id":"u_003","user_name":"홍길*","order_item_id":"oi_018","rating":5,"content":"출근할 때마다 입는데 차콜 M이 정장 위에도 잘 어울립니다. 안감이 있어서 목이 따뜻하고, 주머니 깊이도 만족스러워요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-26T08:50:00+09:00","updated_at":null,"attempt":1},{"id":"rv_011","product_id":"p_001","user_id":"u_004","user_name":"홍길*","order_item_id":"oi_019","rating":4,"content":"카멜 L을 아내와 같이 입으려고 샀습니다. 색이 은은하고 좋은데 어깨가 조금 넓게 나온 편이라 별 하나 뺐어요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-25T20:10:00+09:00","updated_at":null,"attempt":1},{"id":"rv_012","product_id":"p_001","user_id":"u_005","user_name":"홍길*","order_item_id":"oi_020","rating":5,"content":"블랙 S인데 어깨선이 딱 떨어져서 좋습니다. 무게가 있어 한겨울까지는 충분히 따뜻할 것 같아요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-21T12:30:00+09:00","updated_at":null,"attempt":1},{"id":"rv_013","product_id":"p_001","user_id":"u_003","user_name":"홍길*","order_item_id":"oi_021","rating":5,"content":"카멜 S가 어머니 선물로 딱이었습니다. 포장도 단정하고 단추 마감이 튼튼해서 오래 입을 수 있을 것 같아요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-16T19:05:00+09:00","updated_at":null,"attempt":1},{"id":"rv_014","product_id":"p_001","user_id":"u_004","user_name":"홍길*","order_item_id":"oi_022","rating":3,"content":"블랙 L을 주문했는데 배송이 예정보다 나흘 늦었습니다. 옷 자체는 마음에 들지만 소매가 길어 수선이 필요해요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-04T09:15:00+09:00","updated_at":null,"attempt":1}],"product_qnas":[{"id":"q_001","product_id":"p_001","user_id":"u_001","user_name":"홍길*","qna_type":"product","title":"173cm 62kg이면 M 사이즈 괜찮을까요?","content":"코트 안에 두꺼운 니트를 입고 싶은데 M이 넉넉할지 궁금합니다. 평소 95~100 사이즈를 입습니다.","is_secret":0,"answer":"어깨가 여유 있는 실루엣이라 173cm·62kg 이시면 M 사이즈가 잘 맞습니다. 두꺼운 니트를 입으실 예정이면 L도 여유 있게 잘 어울립니다.","answered_by":"u_002","answered_at":"2026-11-20T10:12:00+09:00","status":"answered","created_at":"2026-11-19T21:40:00+09:00","updated_at":"2026-11-20T10:12:00+09:00"},{"id":"q_002","product_id":"p_001","user_id":"u_003","user_name":"홍길*","qna_type":"delivery","title":"오늘 결제하면 오늘 출고되나요?","content":"내일 외출에 입고 나가려고 하는데 오늘 오후 1시에 결제하면 당일 출고가 가능할까요?","is_secret":0,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-25T12:58:00+09:00","updated_at":null},{"id":"q_003","product_id":"p_002","user_id":"u_001","user_name":"홍길*","qna_type":"product","title":"세탁은 어떻게 해야 하나요?","content":"캐시미어라 드라이클리닝만 해야 하는지, 집에서 손세탁도 괜찮은지 문의드립니다.","is_secret":1,"answer":"캐시미어 20% 혼방이라 드라이클리닝을 권장합니다. 집에서 손세탁하실 때는 찬물에 중성세제로 가볍게 주무르고 평평하게 눕혀 건조해 주세요.","answered_by":"u_002","answered_at":"2026-11-23T09:30:00+09:00","status":"answered","created_at":"2026-11-22T18:20:00+09:00","updated_at":"2026-11-23T09:30:00+09:00"},{"id":"q_004","product_id":"p_002","user_id":"u_004","user_name":"홍길*","qna_type":"claim","title":"받은 니트에 올이 풀린 곳이 있어요","content":"소매 안쪽에 올이 풀린 부분이 있는데 교환하면 재고가 있을까요? 색상은 크림입니다.","is_secret":1,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-27T08:15:00+09:00","updated_at":null},{"id":"q_005","product_id":"p_003","user_id":"u_005","user_name":"홍길*","qna_type":"product","title":"기장 수선이 가능한가요?","content":"와이드 팬츠 기장이 조금 길 것 같아서 수선해서 입으려고 합니다. 밑단 원단 여유가 있는지 궁금합니다.","is_secret":0,"answer":"밑단 안쪽에 3cm 정도 시접 여유가 있어 수선집에서 줄이거나 늘릴 수 있습니다.","answered_by":"u_002","answered_at":"2026-11-21T15:05:00+09:00","status":"answered","created_at":"2026-11-21T11:32:00+09:00","updated_at":"2026-11-21T15:05:00+09:00"},{"id":"q_006","product_id":"p_001","user_id":"u_004","user_name":"홍길*","qna_type":"etc","title":"선물 포장도 가능할까요?","content":"생일 선물로 보내려고 하는데 리본 포장과 메시지 카드를 같이 넣어 주실 수 있는지 문의드립니다.","is_secret":0,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-26T19:44:00+09:00","updated_at":null},{"id":"q_007","product_id":"p_001","user_id":"u_003","user_name":"홍길*","qna_type":"product","title":"소매 기장이 많이 길까요?","content":"173cm인데 소매가 손등을 덮을 정도로 길게 나오는지 궁금합니다. 수선 없이 입고 싶습니다.","is_secret":0,"answer":"173cm 기준으로 소매 끝이 손목 뼈를 살짝 덮는 정도입니다. 손등까지 오지는 않아 수선 없이 입으시는 분이 많습니다.","answered_by":"u_002","answered_at":"2026-11-24T10:40:00+09:00","status":"answered","created_at":"2026-11-23T21:15:00+09:00","updated_at":"2026-11-24T10:40:00+09:00"},{"id":"q_008","product_id":"p_001","user_id":"u_004","user_name":"홍길*","qna_type":"delivery","title":"주말에 주문하면 월요일 출고인가요?","content":"토요일 오전에 결제하면 주말에는 출고가 안 되는지, 월요일에 바로 나가는지 궁금합니다.","is_secret":0,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-27T10:20:00+09:00","updated_at":null},{"id":"q_009","product_id":"p_001","user_id":"u_005","user_name":"홍길*","qna_type":"product","title":"차콜과 블랙 중 먼지가 덜 붙는 색은?","content":"검정 계열 코트는 먼지가 잘 보인다고 해서 고민입니다. 두 색 중 어떤 쪽이 관리하기 편한가요?","is_secret":0,"answer":"블랙은 먼지·털이 조금 더 잘 보입니다. 차콜은 같은 검정 계열이라도 결이 있어서 관리가 조금 수월합니다.","answered_by":"u_002","answered_at":"2026-11-22T09:05:00+09:00","status":"answered","created_at":"2026-11-21T18:40:00+09:00","updated_at":"2026-11-22T09:05:00+09:00"},{"id":"q_010","product_id":"p_001","user_id":"u_003","user_name":"홍길*","qna_type":"claim","title":"단추 하나가 흔들려서 왔어요","content":"받은 코트의 두 번째 단추가 흔들립니다. 교환 없이 단추만 다시 달아 주실 수 있을까요?","is_secret":1,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-26T13:05:00+09:00","updated_at":null},{"id":"q_011","product_id":"p_001","user_id":"u_004","user_name":"홍길*","qna_type":"product","title":"175cm 70kg이면 L 사이즈가 맞을까요?","content":"평소 100 사이즈를 입습니다. 니트 위에 입을 생각인데 L이 넉넉할지 문의드립니다.","is_secret":0,"answer":"175cm·70kg에 100 사이즈를 입으시면 L이 잘 맞습니다. 두꺼운 니트 위에도 여유가 있습니다.","answered_by":"u_002","answered_at":"2026-11-20T11:20:00+09:00","status":"answered","created_at":"2026-11-19T22:10:00+09:00","updated_at":"2026-11-20T11:20:00+09:00"},{"id":"q_012","product_id":"p_001","user_id":"u_005","user_name":"홍길*","qna_type":"etc","title":"카멜 XL 재입고 예정이 있나요?","content":"카멜 XL이 품절로 보이는데 재입고 계획이 있는지 궁금합니다.","is_secret":0,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-25T08:35:00+09:00","updated_at":null},{"id":"q_013","product_id":"p_001","user_id":"u_003","user_name":"홍길*","qna_type":"product","title":"안감이 있는 코트인가요?","content":"목이 따가운 소재를 못 입어서요. 안감 재질과 두께를 알려 주시면 감사하겠습니다.","is_secret":0,"answer":"폴리에스터 안감이 등판까지 들어가 있습니다. 목에 닿는 부분은 울 원단이 아니라 안감이 닿도록 마감되어 있습니다.","answered_by":"u_002","answered_at":"2026-11-17T15:45:00+09:00","status":"answered","created_at":"2026-11-16T12:00:00+09:00","updated_at":"2026-11-17T15:45:00+09:00"},{"id":"q_014","product_id":"p_001","user_id":"u_004","user_name":"홍길*","qna_type":"delivery","title":"제주도도 배송되나요?","content":"제주에 계신 부모님께 보내려고 합니다. 도서산간 추가 배송비가 있는지 궁금합니다.","is_secret":1,"answer":"제주도 배송 가능하며 도서산간 추가 배송비 3,000원이 있습니다. 주문서 작성 시 자동으로 합산됩니다.","answered_by":"u_002","answered_at":"2026-11-13T09:50:00+09:00","status":"answered","created_at":"2026-11-12T20:25:00+09:00","updated_at":"2026-11-13T09:50:00+09:00"},{"id":"q_015","product_id":"p_001","user_id":"u_005","user_name":"홍길*","qna_type":"product","title":"세탁 후에 털이 많이 빠지나요?","content":"드라이클리닝을 맡기면 털 빠짐이 심한지, 집에서 관리할 때 주의할 점이 있는지 문의드립니다.","is_secret":0,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-18T09:10:00+09:00","updated_at":null}],"review_votes":[{"id":"rvv_001","review_id":"rv_001","user_id":"u_003","vote":"up","created_at":"2026-11-22T12:00:00+09:00"},{"id":"rvv_002","review_id":"rv_001","user_id":"u_004","vote":"up","created_at":"2026-11-22T15:10:00+09:00"},{"id":"rvv_003","review_id":"rv_003","user_id":"u_003","vote":"up","created_at":"2026-11-13T09:00:00+09:00"},{"id":"rvv_004","review_id":"rv_003","user_id":"u_004","vote":"up","created_at":"2026-11-14T10:20:00+09:00"},{"id":"rvv_005","review_id":"rv_003","user_id":"u_005","vote":"up","created_at":"2026-11-15T19:40:00+09:00"},{"id":"rvv_006","review_id":"rv_004","user_id":"u_001","vote":"up","created_at":"2026-10-31T08:30:00+09:00"},{"id":"rvv_007","review_id":"rv_004","user_id":"u_004","vote":"up","created_at":"2026-11-01T13:05:00+09:00"},{"id":"rvv_008","review_id":"rv_004","user_id":"u_005","vote":"down","created_at":"2026-11-02T17:25:00+09:00"},{"id":"rvv_009","review_id":"rv_005","user_id":"u_001","vote":"down","created_at":"2026-11-10T09:15:00+09:00"},{"id":"rvv_010","review_id":"rv_005","user_id":"u_004","vote":"down","created_at":"2026-11-11T11:45:00+09:00"},{"id":"rvv_011","review_id":"rv_006","user_id":"u_001","vote":"up","created_at":"2026-11-15T10:00:00+09:00"},{"id":"rvv_012","review_id":"rv_006","user_id":"u_003","vote":"up","created_at":"2026-11-16T12:30:00+09:00"},{"id":"rvv_013","review_id":"rv_007","user_id":"u_005","vote":"up","created_at":"2026-11-21T09:50:00+09:00"},{"id":"rvv_014","review_id":"rv_008","user_id":"u_001","vote":"up","created_at":"2026-11-25T08:10:00+09:00"},{"id":"rvv_015","review_id":"rv_002","user_id":"u_005","vote":"up","created_at":"2026-11-19T14:00:00+09:00"},{"id":"rvv_016","review_id":"rv_010","user_id":"u_001","vote":"up","created_at":"2026-11-26T11:20:00+09:00"},{"id":"rvv_017","review_id":"rv_010","user_id":"u_005","vote":"up","created_at":"2026-11-26T15:05:00+09:00"},{"id":"rvv_018","review_id":"rv_011","user_id":"u_003","vote":"up","created_at":"2026-11-26T09:40:00+09:00"},{"id":"rvv_019","review_id":"rv_012","user_id":"u_004","vote":"up","created_at":"2026-11-22T08:30:00+09:00"},{"id":"rvv_020","review_id":"rv_014","user_id":"u_001","vote":"down","created_at":"2026-11-05T10:10:00+09:00"},{"id":"rvv_021","review_id":"rv_014","user_id":"u_005","vote":"down","created_at":"2026-11-06T19:35:00+09:00"}],"point_policies":[{"grade":"NORMAL","confirm_rate":0.5,"photo_rate":1.0,"updated_at":"2026-11-27T08:30:00+09:00"},{"grade":"SILVER","confirm_rate":0.7,"photo_rate":1.2,"updated_at":"2026-11-27T08:30:00+09:00"},{"grade":"GOLD","confirm_rate":1.0,"photo_rate":1.5,"updated_at":"2026-11-27T08:30:00+09:00"},{"grade":"VIP","confirm_rate":1.5,"photo_rate":2.0,"updated_at":"2026-11-27T08:30:00+09:00"}],"point_logs":[{"id":"pl_001","user_id":"u_001","type":"signup","amount":2000,"base_amount":0,"rate":0,"order_id":null,"order_item_id":null,"review_id":null,"description":"가입 축하 포인트","created_at":"2026-11-09T10:42:00+09:00"},{"id":"pl_002","user_id":"u_001","type":"use","amount":-500,"base_amount":0,"rate":0,"order_id":"o_005","order_item_id":null,"review_id":null,"description":"주문 결제에 포인트 사용","created_at":"2026-11-16T14:30:00+09:00"},{"id":"pl_003","user_id":"u_001","type":"confirm","amount":1290,"base_amount":129000,"rate":1.0,"order_id":"o_001","order_item_id":"oi_001","review_id":null,"description":"구매확정 적립 (골드 1.0%)","created_at":"2026-11-22T10:05:00+09:00"},{"id":"pl_004","user_id":"u_001","type":"photo_review","amount":1935,"base_amount":129000,"rate":1.5,"order_id":"o_001","order_item_id":"oi_001","review_id":"rv_001","description":"포토·영상 리뷰 추가 적립 (골드 1.5%)","created_at":"2026-11-22T10:20:00+09:00"}],"faqs":[{"id":"faq_001","category":"배송","question":"배송은 얼마나 걸리나요?","answer":"평일 오후 2시 이전 결제 건은 당일 출고됩니다. 수도권은 출고 후 1~2일, 지방은 2~3일 정도 소요되며 제주·도서산간은 하루 더 걸릴 수 있습니다.","sort_order":1,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_002","category":"배송","question":"무료배송 기준은 어떻게 되나요?","answer":"기본 100,000원 이상 구매 시 무료배송입니다. 상품에 별도 기준이 있는 경우 상품 상세의 배송 안내를 확인해 주세요(0원 = 무조건 무료배송).","sort_order":2,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_003","category":"주문/결제","question":"쿠폰과 포인트를 같이 사용할 수 있나요?","answer":"네. 결제 화면에서 쿠폰을 적용한 뒤 보유 포인트를 원하는 만큼 입력해 사용할 수 있습니다. 포인트는 결제 금액을 넘지 않게 사용되며, 남은 금액만 결제됩니다.","sort_order":3,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_004","category":"주문/결제","question":"주문 취소는 언제까지 가능한가요?","answer":"상품 준비 단계까지 마이페이지 > 주문 내역에서 직접 취소할 수 있습니다. 배송이 시작된 뒤에는 취소할 수 없으며 교환·반품으로 접수해 주세요. 취소 시 사용한 포인트는 다시 적립됩니다.","sort_order":4,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_005","category":"교환/반품","question":"교환·반품 배송비는 얼마인가요?","answer":"제품 하자·오배송은 판매자 귀책으로 무료입니다. 단순 변심·사이즈/색상 변경은 반품 3,000원, 교환(왕복) 6,000원입니다. 수령 후 7일 이내 신청해 주세요.","sort_order":5,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_006","category":"회원/포인트","question":"포인트는 어떻게 적립되나요?","answer":"구매확정 시 결제 금액의 등급별 적립률(일반 0.5% · 실버 0.7% · 골드 1.0% · VIP 1.5%)만큼 적립됩니다. 사진이나 동영상을 첨부한 리뷰를 등록하면 등급별 추가 적립률(1.0~2.0%)이 한 번 더 지급됩니다.","sort_order":6,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_007","category":"회원/포인트","question":"구매확정을 누르면 무엇이 바뀌나요?","answer":"구매확정한 주문 상품은 적립 포인트가 즉시 지급되고, 같은 상품에 리뷰를 작성할 수 있습니다. 한 번 확정한 상품은 다시 확정할 수 없어 포인트가 중복 지급되지 않습니다.","sort_order":7,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_008","category":"상품","question":"사이즈는 어떻게 고르면 좋나요?","answer":"상품 상세의 실측 사이즈와 모델 착용 정보(키·몸무게·착용 사이즈)를 참고해 주세요. 평소 착용 사이즈와 실측 단면을 비교하면 가장 정확합니다.","sort_order":8,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"}],"sms_logs":[{"id":"sms_001","order_id":"o_001","user_id":"u_001","phone":"010-0000-0000","message":"[MONO ATELIER] 홍길동님 주문이 접수되었습니다. MA20261112-4821 · 캐시미어 리브 니트 외 1건 · 결제 278,000원. 배송은 준비 후 순차적으로 진행됩니다.","kind":"order_created","status":"test","mode":"test","sender":"02-0000-0000","api_url":"","created_at":"2026-11-12T10:24:00+09:00"}],"dispatch_logs":[{"id":"dsp_001","channel":"sms","to":"010-0000-0000","kind":"order_created","summary":"[MONO ATELIER] 홍길동님 주문이 접수되었습니다. MA20261112-4821 · 캐시미어 리브 니트 외 1건 · 결제 278,000원. 배송은 준비 후 순차적으로 진행됩니다.","status":"test","mode":"test","order_id":"o_001","created_at":"2026-11-12T10:24:00+09:00"},{"id":"dsp_002","channel":"email","to":"signup-test@mono.kr","kind":"email_otp","summary":"[MONO ATELIER] 회원가입 이메일 인증번호 발송 (6자리, 5분 유효)","status":"test","mode":"test","order_id":null,"created_at":"2026-11-26T21:14:00+09:00"},{"id":"dsp_003","channel":"email","to":"signup-test@mono.kr","kind":"email_otp","summary":"인증번호 재발송 차단 — 쿨다운 41초 남음","status":"blocked","mode":"test","order_id":null,"created_at":"2026-11-26T21:14:19+09:00"}],"site_settings":{"id":"default","top_banner_text":"FALL / WINTER 2026 — 10만 원 이상 무료배송","top_banner_sub":"평일 오후 2시 이전 당일 출고","top_banner_enabled":true,"hero_image":"hero.webp","hero_eyebrow":"FALL / WINTER 2026 — THE QUIET COLLECTION","hero_title":"Quiet luxury,\nfor every day.","hero_subtitle":"매일 손이 가는 단정한 실루엣.\n좋은 소재만 골라 만든 모노 아뜰리에의 가을·겨울.","hero_cta_label":"컬렉션 보기","hero_cta2_label":"브랜드 스토리","hero_effect":"zoom","hero_overlay":42,"brand_blurb":"단정한 실루엣, 좋은 소재. 서울에서 만드는 모던 컨템포러리 브랜드입니다.","story_image":"coat.webp","story_eyebrow":"ATELIER NOTE 01","story_title":"옷장은 계절이 아니라,\n태도로 채워집니다.","story_subtitle":"MONO ATELIER가 옷을 만드는 기준","story_body":"한 벌의 코트가 계절을 견디는 방식은 화려함이 아니라 균형에 있습니다. 어깨선, 소매의 길이, 단추 하나의 간격까지.\n\n우리는 사진보다 실물에서 더 좋아 보이는 옷을 만듭니다. 유행을 따라가기보다 오래 입을 수 있는 실루엣을 고르고, 피부에 닿는 소재부터 확인합니다.","story_tags":["좋은 소재","단정한 실루엣","오래 입는 옷","서울 제작"],"brand_story_enabled":true,"shop_eyebrow":"SHOP — NEW ARRIVALS","shop_title":"이번 시즌, 새로 도착한 옷","shop_desc":"단정한 실루엣과 좋은 소재. 유행보다 오래 입는 옷을 제안합니다.","company_name":"모노 아뜰리에","company_ceo":"홍길동","company_reg_no":"000-00-00000","company_mail_order_no":"제2026-서울송파-0000호","company_address":"서울특별시 송파구 올림픽로 300 101동 1203호","company_phone":"02-0000-0000","company_email":"help@mono.kr","email_auth_mode":"test","email_api_url":"","sms_enabled":true,"sms_mode":"test","sms_api_url":"","sms_sender":"02-0000-0000","faq_categories":["배송","주문/결제","교환/반품","회원/포인트","상품","기타"],"updated_at":"2026-11-27T08:20:00+09:00"},"help_topics":[{"id":"help_delivery","title":"배송 안내","sort_order":1,"body":"평일 오후 2시 이전 결제 시 당일 출고됩니다.\n100,000원 이상 구매 시 무료배송이며, 미만은 배송비 3,000원입니다.\n제주·도서산간 지역은 추가 배송비가 발생할 수 있습니다."},{"id":"help_exchange","title":"교환·반품 안내","sort_order":2,"body":"수령 후 7일 이내 교환·반품 신청이 가능합니다.\n제품 하자·오배송은 판매자 귀책으로 배송비가 무료이며, 단순 변심은 반품 3,000원 · 교환(왕복) 6,000원입니다.\n교환·반품은 마이페이지 → 주문 내역에서 신청할 수 있습니다."},{"id":"help_faq","title":"고객센터","sort_order":3,"body":"고객센터 운영 시간: 평일 10:00 – 17:00\n점심 12:30 – 13:30, 주말·공휴일 휴무\n전화 02-0000-0000 · 이메일 help@mono.kr\n자주 묻는 질문은 홈 HELP 4칸의 「FAQ」에서 확인할 수 있습니다."}]};
+  var SEED = {"meta":{"app":"MONO ATELIER","schema_version":13,"generated_at":"2026-11-27T16:10:00+09:00","grades":["NORMAL","SILVER","GOLD","VIP"],"currency":"KRW","free_shipping_threshold":100000,"shipping_fee":3000,"claim_return_fee":3000,"claim_exchange_fee":6000,"password_hashing":"sha256('mono-atelier$' + password) — demo only"},"users":[{"id":"u_001","email":"demo@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길동","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","grade":"GOLD","points":4725,"postcode":"05551","created_at":"2026-11-09T10:42:00+09:00"},{"id":"u_002","email":"admin@mono.kr","password_hash":"b0e3f001ee11b5d2ef886844736f78bce525acae12e42887bc5f9354ef037db1","name":"관리자","phone":"02-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호 3층","role":"admin","grade":"NORMAL","points":0,"postcode":"05551","created_at":"2026-10-01T09:00:00+09:00"},{"id":"u_003","email":"member1@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길순","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","grade":"SILVER","points":0,"postcode":"05551","created_at":"2026-10-20T10:00:00+09:00"},{"id":"u_004","email":"member2@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길자","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","grade":"NORMAL","points":0,"postcode":"05551","created_at":"2026-10-21T10:00:00+09:00"},{"id":"u_005","email":"member3@mono.kr","password_hash":"3828b0d17e14f2e75b50958546d618c9ad65183673850c9b9429142fc43a1deb","name":"홍길녀","phone":"010-0000-0000","address":"서울특별시 송파구 올림픽로 300 101동 1203호","role":"customer","grade":"SILVER","points":0,"postcode":"05551","created_at":"2026-10-22T10:00:00+09:00"}],"categories":[{"id":"outer","label":"아우터","en":"OUTER","sort_order":1,"size_codes":["95","100","105","S","M","L","XL"],"created_at":"2026-10-01T09:00:00+09:00","is_active":true},{"id":"top","label":"상의","en":"TOP","sort_order":2,"size_codes":["95","100","105","S","M","L","XL","FREE"],"created_at":"2026-10-01T09:00:00+09:00","is_active":true},{"id":"bottom","label":"하의","en":"BOTTOM","sort_order":3,"size_codes":["28","30","32","34","S","M","L"],"created_at":"2026-10-01T09:00:00+09:00","is_active":true},{"id":"dress","label":"원피스","en":"DRESS","sort_order":4,"size_codes":["S","M","L"],"created_at":"2026-10-01T09:00:00+09:00","is_active":true},{"id":"acc","label":"잡화","en":"ACC","sort_order":5,"size_codes":["FREE"],"created_at":"2026-10-01T09:00:00+09:00","is_active":true}],"products":[{"id":"p_001","product_code":"MA-0001","name":"울 더블 브레스티드 코트","brand":"MONO ATELIER","category":"outer","price":289000,"original_price":349000,"badge":"BEST","description":"두 겹의 울 소재로 지은 더블 브레스티드 코트. 어깨선은 단정하게, 기장은 무릎 아래로 떨어지는 클래식한 실루엣입니다.","image":"coat.webp","images":["coat.webp","coat-detail.webp","coat-fabric.webp"],"model_info":"모델 174cm · 54kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-10T09:20:00+09:00","is_active":true},{"id":"p_002","product_code":"MA-0002","name":"캐시미어 리브 니트","brand":"MONO ATELIER","category":"top","price":129000,"original_price":159000,"badge":"NEW","description":"캐시미어 혼방의 부드러운 촉감. 목선은 여유 있게, 소매는 살짝 길게 떨어지는 데일리 니트입니다.","image":"knit.webp","images":["knit.webp","knit-detail.webp","knit-fabric.webp"],"model_info":"모델 171cm · 52kg · M 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-11-18T11:05:00+09:00","is_active":true},{"id":"p_003","product_code":"MA-0003","name":"와이드 테일러드 트라우저","brand":"MONO ATELIER","category":"bottom","price":149000,"original_price":null,"badge":null,"description":"허리선을 높여 다리를 길게 보이게 만든 와이드 슬랙스. 힘을 뺀 핏이 하루 종일 편안합니다.","image":"pants.webp","images":["pants.webp","pants-detail.webp","pants-fabric.webp"],"model_info":"모델 176cm · 60kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-25T16:30:00+09:00","is_active":true},{"id":"p_004","product_code":"MA-0004","name":"사틴 슬립 미디 드레스","brand":"MONO ATELIER","category":"dress","price":189000,"original_price":220000,"badge":"SALE","description":"빛을 따라 흐르는 사틴 소재의 미디 드레스. 슬립 실루엣 위에 오버사이즈 니트를 걸쳐 입기 좋습니다.","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"model_info":"모델 173cm · 53kg · S 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-02T13:10:00+09:00","is_active":true},{"id":"p_005","product_code":"MA-0005","name":"스무스 레더 숄더백","brand":"MONO ATELIER","category":"acc","price":259000,"original_price":null,"badge":"BEST","description":"이탈리아산 소프트 카프레더. 실버 클래스프 하나로 마무리한 미니멀한 숄더백입니다.","image":"bag.webp","images":["bag.webp","bag-detail.webp","bag-fabric.webp"],"model_info":"모델 172cm 착용 컷","free_shipping_threshold":0,"created_at":"2026-11-08T10:00:00+09:00","is_active":true},{"id":"p_006","product_code":"MA-0006","name":"나일론 봄버 재킷","brand":"MONO ATELIER","category":"outer","price":179000,"original_price":210000,"badge":"NEW","description":"가벼운 나일론에 광택을 낮춘 봄버 재킷. 리브 소매와 밴딩 밑단으로 담백하게 완성했습니다.","image":"jacket.webp","images":["jacket.webp","jacket-detail.webp","jacket-fabric.webp"],"model_info":"모델 178cm · 62kg · L 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-20T09:45:00+09:00","is_active":true},{"id":"p_007","product_code":"MA-0007","name":"오버사이즈 코튼 셔츠","brand":"MONO ATELIER","category":"top","price":89000,"original_price":null,"badge":null,"description":"두 겹의 코튼 포플린으로 만든 오버사이즈 셔츠. 떨어지는 어깨선이 여유로운 분위기를 만듭니다.","image":"shirt.webp","images":["shirt.webp","shirt-detail.webp","shirt-fabric.webp"],"model_info":"모델 174cm · 56kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-28T15:20:00+09:00","is_active":true},{"id":"p_008","product_code":"MA-0008","name":"플리츠 미디 스커트","brand":"MONO ATELIER","category":"bottom","price":139000,"original_price":168000,"badge":"SALE","description":"곱게 잡힌 주름이 움직임마다 다른 표정을 만드는 미디 스커트. 허리 밴딩으로 편안하게 착용됩니다.","image":"skirt.webp","images":["skirt.webp","skirt-detail.webp","skirt-fabric.webp"],"model_info":"모델 170cm · 51kg · S 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-10-20T12:00:00+09:00","is_active":true},{"id":"p_009","product_code":"MA-0009","name":"개버딘 트렌치 코트","brand":"MONO ATELIER","category":"outer","price":319000,"original_price":369000,"badge":"LIMITED","description":"묵직한 코튼 개버딘으로 지은 트렌치 코트. 벨트를 묶거나 풀어 두 가지 실루엣으로 입을 수 있습니다.","image":"trench.webp","images":["trench.webp","trench-detail.webp","trench-fabric.webp"],"model_info":"모델 176cm · 58kg · M 사이즈 착용","free_shipping_threshold":0,"created_at":"2026-11-15T10:30:00+09:00","is_active":true},{"id":"p_010","product_code":"MA-0010","name":"울 블렌드 오픈 가디건","brand":"MONO ATELIER","category":"top","price":119000,"original_price":null,"badge":null,"description":"울 혼방의 도톰한 가디건. 티셔츠 위에 걸치기 좋은 기장과 단추 없는 오픈 디자인입니다.","image":"cardigan.webp","images":["cardigan.webp","cardigan-detail.webp","cardigan-fabric.webp"],"model_info":"모델 169cm · 50kg · S 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-10-15T09:10:00+09:00","is_active":true},{"id":"p_011","product_code":"MA-0011","name":"와이드 데님 팬츠","brand":"MONO ATELIER","category":"bottom","price":109000,"original_price":129000,"badge":"NEW","description":"워싱을 최소화한 진한 인디고 데님. 넓게 떨어지는 다리선과 높은 허리로 비율을 잡아 줍니다.","image":"denim.webp","images":["denim.webp","denim-detail.webp","denim-fabric.webp"],"model_info":"모델 175cm · 59kg · M 사이즈 착용","free_shipping_threshold":50000,"created_at":"2026-11-23T14:00:00+09:00","is_active":true},{"id":"p_012","product_code":"MA-0012","name":"레더 페니 로퍼","brand":"MONO ATELIER","category":"acc","price":219000,"original_price":249000,"badge":null,"description":"블랙 카프레더 페니 로퍼. 2.5cm의 낮은 굽으로 하루 종일 편안하게 신을 수 있습니다.","image":"loafers.webp","images":["loafers.webp","loafers-detail.webp","loafers-fabric.webp"],"model_info":"모델 172cm 착용 컷","free_shipping_threshold":0,"created_at":"2026-11-05T11:40:00+09:00","is_active":true},{"id":"p_013","product_code":"MA-0013","name":"실크 크레이프 미디 원피스","brand":"MONO ATELIER","category":"dress","price":209000,"original_price":null,"badge":null,"description":"실크 크레이프가 몸의 선을 따라 흐르는 미디 원피스. (관리자 숨김 상태 데모 상품)","image":"dress.webp","images":["dress.webp","dress-detail.webp","dress-fabric.webp"],"model_info":"모델 173cm · 53kg · M 사이즈 착용","free_shipping_threshold":null,"created_at":"2026-11-25T17:30:00+09:00","is_active":false}],"product_images":[{"id":"pi_001","product_id":"p_001","image":"coat.webp","alt":"울 더블 브레스티드 코트","sort_order":0},{"id":"pi_002","product_id":"p_001","image":"coat-detail.webp","alt":"울 더블 브레스티드 코트 디테일","sort_order":1},{"id":"pi_003","product_id":"p_001","image":"coat-fabric.webp","alt":"울 더블 브레스티드 코트 소재 클로즈업","sort_order":2},{"id":"pi_004","product_id":"p_002","image":"knit.webp","alt":"캐시미어 리브 니트","sort_order":0},{"id":"pi_005","product_id":"p_002","image":"knit-detail.webp","alt":"캐시미어 리브 니트 디테일","sort_order":1},{"id":"pi_006","product_id":"p_002","image":"knit-fabric.webp","alt":"캐시미어 리브 니트 소재 클로즈업","sort_order":2},{"id":"pi_007","product_id":"p_003","image":"pants.webp","alt":"와이드 테일러드 트라우저","sort_order":0},{"id":"pi_008","product_id":"p_003","image":"pants-detail.webp","alt":"와이드 테일러드 트라우저 디테일","sort_order":1},{"id":"pi_009","product_id":"p_003","image":"pants-fabric.webp","alt":"와이드 테일러드 트라우저 소재 클로즈업","sort_order":2},{"id":"pi_010","product_id":"p_004","image":"dress.webp","alt":"사틴 슬립 미디 드레스","sort_order":0},{"id":"pi_011","product_id":"p_004","image":"dress-detail.webp","alt":"사틴 슬립 미디 드레스 디테일","sort_order":1},{"id":"pi_012","product_id":"p_004","image":"dress-fabric.webp","alt":"사틴 슬립 미디 드레스 소재 클로즈업","sort_order":2},{"id":"pi_013","product_id":"p_005","image":"bag.webp","alt":"스무스 레더 숄더백","sort_order":0},{"id":"pi_014","product_id":"p_005","image":"bag-detail.webp","alt":"스무스 레더 숄더백 디테일","sort_order":1},{"id":"pi_015","product_id":"p_005","image":"bag-fabric.webp","alt":"스무스 레더 숄더백 소재 클로즈업","sort_order":2},{"id":"pi_016","product_id":"p_006","image":"jacket.webp","alt":"나일론 봄버 재킷","sort_order":0},{"id":"pi_017","product_id":"p_006","image":"jacket-detail.webp","alt":"나일론 봄버 재킷 디테일","sort_order":1},{"id":"pi_018","product_id":"p_006","image":"jacket-fabric.webp","alt":"나일론 봄버 재킷 소재 클로즈업","sort_order":2},{"id":"pi_019","product_id":"p_007","image":"shirt.webp","alt":"오버사이즈 코튼 셔츠","sort_order":0},{"id":"pi_020","product_id":"p_007","image":"shirt-detail.webp","alt":"오버사이즈 코튼 셔츠 디테일","sort_order":1},{"id":"pi_021","product_id":"p_007","image":"shirt-fabric.webp","alt":"오버사이즈 코튼 셔츠 소재 클로즈업","sort_order":2},{"id":"pi_022","product_id":"p_008","image":"skirt.webp","alt":"플리츠 미디 스커트","sort_order":0},{"id":"pi_023","product_id":"p_008","image":"skirt-detail.webp","alt":"플리츠 미디 스커트 디테일","sort_order":1},{"id":"pi_024","product_id":"p_008","image":"skirt-fabric.webp","alt":"플리츠 미디 스커트 소재 클로즈업","sort_order":2},{"id":"pi_025","product_id":"p_009","image":"trench.webp","alt":"개버딘 트렌치 코트","sort_order":0},{"id":"pi_026","product_id":"p_009","image":"trench-detail.webp","alt":"개버딘 트렌치 코트 디테일","sort_order":1},{"id":"pi_027","product_id":"p_009","image":"trench-fabric.webp","alt":"개버딘 트렌치 코트 소재 클로즈업","sort_order":2},{"id":"pi_028","product_id":"p_010","image":"cardigan.webp","alt":"울 블렌드 오픈 가디건","sort_order":0},{"id":"pi_029","product_id":"p_010","image":"cardigan-detail.webp","alt":"울 블렌드 오픈 가디건 디테일","sort_order":1},{"id":"pi_030","product_id":"p_010","image":"cardigan-fabric.webp","alt":"울 블렌드 오픈 가디건 소재 클로즈업","sort_order":2},{"id":"pi_031","product_id":"p_011","image":"denim.webp","alt":"와이드 데님 팬츠","sort_order":0},{"id":"pi_032","product_id":"p_011","image":"denim-detail.webp","alt":"와이드 데님 팬츠 디테일","sort_order":1},{"id":"pi_033","product_id":"p_011","image":"denim-fabric.webp","alt":"와이드 데님 팬츠 소재 클로즈업","sort_order":2},{"id":"pi_034","product_id":"p_012","image":"loafers.webp","alt":"레더 페니 로퍼","sort_order":0},{"id":"pi_035","product_id":"p_012","image":"loafers-detail.webp","alt":"레더 페니 로퍼 디테일","sort_order":1},{"id":"pi_036","product_id":"p_012","image":"loafers-fabric.webp","alt":"레더 페니 로퍼 소재 클로즈업","sort_order":2},{"id":"pi_037","product_id":"p_013","image":"dress.webp","alt":"실크 크레이프 미디 원피스","sort_order":0},{"id":"pi_038","product_id":"p_013","image":"dress-detail.webp","alt":"실크 크레이프 미디 원피스 디테일","sort_order":1},{"id":"pi_039","product_id":"p_013","image":"dress-fabric.webp","alt":"실크 크레이프 미디 원피스 소재 클로즈업","sort_order":2}],"product_variants":[{"id":"v_001","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"S","stock":5,"sku":"MA-OUT-001-차콜-S"},{"id":"v_002","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"M","stock":3,"sku":"MA-OUT-001-차콜-M"},{"id":"v_003","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"L","stock":2,"sku":"MA-OUT-001-차콜-L"},{"id":"v_004","product_id":"p_001","color":"차콜","color_hex":"#35353A","size":"XL","stock":1,"sku":"MA-OUT-001-차콜-XL"},{"id":"v_005","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"S","stock":4,"sku":"MA-OUT-001-카멜-S"},{"id":"v_006","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"M","stock":6,"sku":"MA-OUT-001-카멜-M"},{"id":"v_007","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"L","stock":3,"sku":"MA-OUT-001-카멜-L"},{"id":"v_008","product_id":"p_001","color":"카멜","color_hex":"#B08A5E","size":"XL","stock":0,"sku":"MA-OUT-001-카멜-XL"},{"id":"v_009","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-001-블랙-S"},{"id":"v_010","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":0,"sku":"MA-OUT-001-블랙-M"},{"id":"v_011","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-OUT-001-블랙-L"},{"id":"v_012","product_id":"p_001","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-OUT-001-블랙-XL"},{"id":"v_013","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"S","stock":8,"sku":"MA-TOP-002-크림-S"},{"id":"v_014","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"M","stock":12,"sku":"MA-TOP-002-크림-M"},{"id":"v_015","product_id":"p_002","color":"크림","color_hex":"#EFE7D9","size":"L","stock":5,"sku":"MA-TOP-002-크림-L"},{"id":"v_016","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"S","stock":3,"sku":"MA-TOP-002-오트-S"},{"id":"v_017","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"M","stock":2,"sku":"MA-TOP-002-오트-M"},{"id":"v_018","product_id":"p_002","color":"오트밀","color_hex":"#D9CBB5","size":"L","stock":6,"sku":"MA-TOP-002-오트-L"},{"id":"v_019","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"S","stock":4,"sku":"MA-TOP-002-블랙-S"},{"id":"v_020","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"M","stock":1,"sku":"MA-TOP-002-블랙-M"},{"id":"v_021","product_id":"p_002","color":"블랙","color_hex":"#262626","size":"L","stock":0,"sku":"MA-TOP-002-블랙-L"},{"id":"v_022","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":6,"sku":"MA-BTM-003-블랙-S"},{"id":"v_023","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":9,"sku":"MA-BTM-003-블랙-M"},{"id":"v_024","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":4,"sku":"MA-BTM-003-블랙-L"},{"id":"v_025","product_id":"p_003","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":2,"sku":"MA-BTM-003-블랙-XL"},{"id":"v_026","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":2,"sku":"MA-BTM-003-차콜-S"},{"id":"v_027","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":5,"sku":"MA-BTM-003-차콜-M"},{"id":"v_028","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":7,"sku":"MA-BTM-003-차콜-L"},{"id":"v_029","product_id":"p_003","color":"차콜","color_hex":"#3B3B3F","size":"XL","stock":1,"sku":"MA-BTM-003-차콜-XL"},{"id":"v_030","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":3,"sku":"MA-DRS-004-샴페-S"},{"id":"v_031","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":0,"sku":"MA-DRS-004-샴페-M"},{"id":"v_032","product_id":"p_004","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":2,"sku":"MA-DRS-004-샴페-L"},{"id":"v_033","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-DRS-004-블랙-S"},{"id":"v_034","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":5,"sku":"MA-DRS-004-블랙-M"},{"id":"v_035","product_id":"p_004","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-DRS-004-블랙-L"},{"id":"v_036","product_id":"p_005","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":6,"sku":"MA-ACC-005-블랙-FREE"},{"id":"v_037","product_id":"p_005","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":2,"sku":"MA-ACC-005-다크-FREE"},{"id":"v_038","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"M","stock":5,"sku":"MA-OUT-006-올리-M"},{"id":"v_039","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"L","stock":4,"sku":"MA-OUT-006-올리-L"},{"id":"v_040","product_id":"p_006","color":"올리브","color_hex":"#5A6247","size":"XL","stock":2,"sku":"MA-OUT-006-올리-XL"},{"id":"v_041","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":3,"sku":"MA-OUT-006-블랙-M"},{"id":"v_042","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":0,"sku":"MA-OUT-006-블랙-L"},{"id":"v_043","product_id":"p_006","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":5,"sku":"MA-OUT-006-블랙-XL"},{"id":"v_044","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"M","stock":2,"sku":"MA-OUT-006-샌드-M"},{"id":"v_045","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"L","stock":3,"sku":"MA-OUT-006-샌드-L"},{"id":"v_046","product_id":"p_006","color":"샌드","color_hex":"#C9B79C","size":"XL","stock":1,"sku":"MA-OUT-006-샌드-XL"},{"id":"v_047","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"S","stock":10,"sku":"MA-TOP-007-화이-S"},{"id":"v_048","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"M","stock":14,"sku":"MA-TOP-007-화이-M"},{"id":"v_049","product_id":"p_007","color":"화이트","color_hex":"#F7F5F0","size":"L","stock":6,"sku":"MA-TOP-007-화이-L"},{"id":"v_050","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"S","stock":4,"sku":"MA-TOP-007-스카-S"},{"id":"v_051","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"M","stock":3,"sku":"MA-TOP-007-스카-M"},{"id":"v_052","product_id":"p_007","color":"스카이","color_hex":"#C9D8E4","size":"L","stock":2,"sku":"MA-TOP-007-스카-L"},{"id":"v_053","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"S","stock":5,"sku":"MA-BTM-008-차콜-S"},{"id":"v_054","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"M","stock":3,"sku":"MA-BTM-008-차콜-M"},{"id":"v_055","product_id":"p_008","color":"차콜","color_hex":"#3B3B3F","size":"L","stock":2,"sku":"MA-BTM-008-차콜-L"},{"id":"v_056","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":4,"sku":"MA-BTM-008-블랙-S"},{"id":"v_057","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":6,"sku":"MA-BTM-008-블랙-M"},{"id":"v_058","product_id":"p_008","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":1,"sku":"MA-BTM-008-블랙-L"},{"id":"v_059","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"S","stock":0,"sku":"MA-OUT-009-베이-S"},{"id":"v_060","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"M","stock":3,"sku":"MA-OUT-009-베이-M"},{"id":"v_061","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"L","stock":4,"sku":"MA-OUT-009-베이-L"},{"id":"v_062","product_id":"p_009","color":"베이지","color_hex":"#C9B48F","size":"XL","stock":2,"sku":"MA-OUT-009-베이-XL"},{"id":"v_063","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":2,"sku":"MA-OUT-009-블랙-S"},{"id":"v_064","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":4,"sku":"MA-OUT-009-블랙-M"},{"id":"v_065","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":3,"sku":"MA-OUT-009-블랙-L"},{"id":"v_066","product_id":"p_009","color":"블랙","color_hex":"#1B1B1D","size":"XL","stock":1,"sku":"MA-OUT-009-블랙-XL"},{"id":"v_067","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"S","stock":4,"sku":"MA-TOP-010-그레-S"},{"id":"v_068","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"M","stock":5,"sku":"MA-TOP-010-그레-M"},{"id":"v_069","product_id":"p_010","color":"그레이","color_hex":"#B9B7B1","size":"L","stock":3,"sku":"MA-TOP-010-그레-L"},{"id":"v_070","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"S","stock":2,"sku":"MA-TOP-010-아이-S"},{"id":"v_071","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"M","stock":2,"sku":"MA-TOP-010-아이-M"},{"id":"v_072","product_id":"p_010","color":"아이보리","color_hex":"#EEE8DA","size":"L","stock":4,"sku":"MA-TOP-010-아이-L"},{"id":"v_073","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"S","stock":6,"sku":"MA-BTM-011-미드-S"},{"id":"v_074","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"M","stock":8,"sku":"MA-BTM-011-미드-M"},{"id":"v_075","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"L","stock":5,"sku":"MA-BTM-011-미드-L"},{"id":"v_076","product_id":"p_011","color":"미드블루","color_hex":"#5C7CA6","size":"XL","stock":3,"sku":"MA-BTM-011-미드-XL"},{"id":"v_077","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"S","stock":3,"sku":"MA-BTM-011-워시-S"},{"id":"v_078","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"M","stock":4,"sku":"MA-BTM-011-워시-M"},{"id":"v_079","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"L","stock":2,"sku":"MA-BTM-011-워시-L"},{"id":"v_080","product_id":"p_011","color":"워시드 블랙","color_hex":"#3A3A3E","size":"XL","stock":0,"sku":"MA-BTM-011-워시-XL"},{"id":"v_081","product_id":"p_012","color":"블랙","color_hex":"#1B1B1D","size":"FREE","stock":0,"sku":"MA-ACC-012-블랙-FREE"},{"id":"v_082","product_id":"p_012","color":"다크브라운","color_hex":"#4A3628","size":"FREE","stock":0,"sku":"MA-ACC-012-다크-FREE"},{"id":"v_083","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"S","stock":2,"sku":"MA-DRS-013-샴페-S"},{"id":"v_084","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"M","stock":2,"sku":"MA-DRS-013-샴페-M"},{"id":"v_085","product_id":"p_013","color":"샴페인","color_hex":"#D9C3A8","size":"L","stock":1,"sku":"MA-DRS-013-샴페-L"},{"id":"v_086","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"S","stock":3,"sku":"MA-DRS-013-블랙-S"},{"id":"v_087","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"M","stock":2,"sku":"MA-DRS-013-블랙-M"},{"id":"v_088","product_id":"p_013","color":"블랙","color_hex":"#1B1B1D","size":"L","stock":2,"sku":"MA-DRS-013-블랙-L"}],"cart_items":[],"orders":[{"id":"o_001","order_no":"MA20261112-4821","user_id":"u_001","status":"delivered","total_amount":278000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-12T10:24:00+09:00","postcode":"05551","points_used":0},{"id":"o_002","order_no":"MA20261124-3917","user_id":"u_001","status":"paid","total_amount":173000,"shipping_fee":0,"coupon_code":"MONO5000","discount_amount":5000,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-24T15:40:00+09:00","postcode":"05551","points_used":0},{"id":"o_003","order_no":"MA20261125-6042","user_id":"u_001","status":"preparing","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"bank","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-25T09:12:00+09:00","postcode":"05551","points_used":0},{"id":"o_004","order_no":"MA20261114-2288","user_id":"u_001","status":"delivered","total_amount":109000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-14T11:05:00+09:00","postcode":"05551","points_used":0},{"id":"o_005","order_no":"MA20261116-7735","user_id":"u_001","status":"delivered","total_amount":139000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","payment_method":"easypay","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-16T14:30:00+09:00","postcode":"05551","points_used":0},{"id":"o_006","order_no":"MA20261105-1852","user_id":"u_001","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길동","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-05T11:20:00+09:00"},{"id":"o_007","order_no":"MA20261029-3311","user_id":"u_003","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-10-29T13:10:00+09:00"},{"id":"o_008","order_no":"MA20261108-4420","user_id":"u_003","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-08T11:25:00+09:00"},{"id":"o_009","order_no":"MA20261113-5527","user_id":"u_004","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길자","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-13T16:40:00+09:00"},{"id":"o_010","order_no":"MA20261119-6634","user_id":"u_004","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길자","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-19T09:55:00+09:00"},{"id":"o_011","order_no":"MA20261123-7741","user_id":"u_005","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길녀","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-23T15:05:00+09:00"},{"id":"o_012","order_no":"MA20261126-8858","user_id":"u_005","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길녀","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-26T10:15:00+09:00"},{"id":"o_013","order_no":"MA20260618-1201","user_id":"u_003","status":"delivered","total_amount":92000,"shipping_fee":3000,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-06-18T11:10:00+09:00"},{"id":"o_014","order_no":"MA20260709-2415","user_id":"u_004","status":"delivered","total_amount":139000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길자","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-07-09T16:05:00+09:00"},{"id":"o_015","order_no":"MA20260821-3372","user_id":"u_005","status":"delivered","total_amount":109000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길녀","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-08-21T10:40:00+09:00"},{"id":"o_016","order_no":"MA20260915-4188","user_id":"u_003","status":"delivered","total_amount":149000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-09-15T14:25:00+09:00"},{"id":"o_017","order_no":"MA20261124-9961","user_id":"u_003","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-24T09:40:00+09:00"},{"id":"o_018","order_no":"MA20261122-7742","user_id":"u_004","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길자","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-22T13:15:00+09:00"},{"id":"o_019","order_no":"MA20261119-6633","user_id":"u_005","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길녀","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-19T18:05:00+09:00"},{"id":"o_020","order_no":"MA20261114-5514","user_id":"u_003","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길순","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-14T10:25:00+09:00"},{"id":"o_021","order_no":"MA20261102-4407","user_id":"u_004","status":"delivered","total_amount":289000,"shipping_fee":0,"coupon_code":null,"discount_amount":0,"recipient_name":"홍길자","recipient_phone":"010-0000-0000","shipping_address":"서울특별시 송파구 올림픽로 300 101동 1203호","postcode":"05551","points_used":0,"payment_method":"card","payment_provider":"demo","payment_key":null,"payment_mode":"demo","created_at":"2026-11-02T15:35:00+09:00"}],"order_items":[{"id":"oi_001","order_id":"o_001","variant_id":"v_014","product_name":"캐시미어 리브 니트","color":"크림","size":"M","unit_price":129000,"quantity":1,"confirmed_at":"2026-11-22T10:05:00+09:00","confirm_points":1290,"photo_bonus":1935,"photo_bonus_at":"2026-11-22T10:20:00+09:00","review_attempts":1,"rewrite_used":0},{"id":"oi_002","order_id":"o_001","variant_id":"v_023","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_003","order_id":"o_002","variant_id":"v_047","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":2,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_004","order_id":"o_003","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_005","order_id":"o_004","variant_id":"v_074","product_name":"와이드 데님 팬츠","color":"미드블루","size":"M","unit_price":109000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_006","order_id":"o_005","variant_id":"v_054","product_name":"플리츠 미디 스커트","color":"차콜","size":"M","unit_price":139000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_007","order_id":"o_006","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_008","order_id":"o_007","variant_id":"v_001","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_009","order_id":"o_008","variant_id":"v_005","product_name":"울 더블 브레스티드 코트","color":"카멜","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_010","order_id":"o_009","variant_id":"v_006","product_name":"울 더블 브레스티드 코트","color":"카멜","size":"M","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_011","order_id":"o_010","variant_id":"v_010","product_name":"울 더블 브레스티드 코트","color":"블랙","size":"M","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_012","order_id":"o_011","variant_id":"v_003","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"L","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_013","order_id":"o_012","variant_id":"v_012","product_name":"울 더블 브레스티드 코트","color":"블랙","size":"XL","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_014","order_id":"o_013","variant_id":"v_047","product_name":"오버사이즈 코튼 셔츠","color":"화이트","size":"S","unit_price":89000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_015","order_id":"o_014","variant_id":"v_054","product_name":"플리츠 미디 스커트","color":"차콜","size":"M","unit_price":139000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_016","order_id":"o_015","variant_id":"v_074","product_name":"와이드 데님 팬츠","color":"미드블루","size":"M","unit_price":109000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_017","order_id":"o_016","variant_id":"v_023","product_name":"와이드 테일러드 트라우저","color":"블랙","size":"M","unit_price":149000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":0,"rewrite_used":0},{"id":"oi_018","order_id":"o_017","variant_id":"v_002","product_name":"울 더블 브레스티드 코트","color":"차콜","size":"M","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_019","order_id":"o_018","variant_id":"v_007","product_name":"울 더블 브레스티드 코트","color":"카멜","size":"L","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_020","order_id":"o_019","variant_id":"v_009","product_name":"울 더블 브레스티드 코트","color":"블랙","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_021","order_id":"o_020","variant_id":"v_005","product_name":"울 더블 브레스티드 코트","color":"카멜","size":"S","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0},{"id":"oi_022","order_id":"o_021","variant_id":"v_011","product_name":"울 더블 브레스티드 코트","color":"블랙","size":"L","unit_price":289000,"quantity":1,"confirmed_at":null,"confirm_points":0,"photo_bonus":0,"photo_bonus_at":null,"review_attempts":1,"rewrite_used":0}],"order_claims":[{"id":"oc_20261119_1001","order_id":"o_004","user_id":"u_001","claim_type":"return","reason_category":"defect","reason_detail":"밑단 박음질이 풀려 있고 오른쪽 무릎 부분에 5cm 정도 올이 나 있습니다.","shipping_fee":0,"payment_status":"free","payment_key":null,"payment_mode":"free","exchange_option":null,"status":"requested","stock_restored":0,"admin_memo":"11/20 수거 택배 접수 · 검수 후 무료 반품 처리 예정","created_at":"2026-11-19T09:20:00+09:00","updated_at":"2026-11-19T09:20:00+09:00"},{"id":"oc_20261121_1002","order_id":"o_005","user_id":"u_001","claim_type":"exchange","reason_category":"size_color","reason_detail":"허리가 조금 커서 S 사이즈로 교환하고 싶습니다.","shipping_fee":6000,"payment_status":"paid","payment_key":"test_claim_seed_6f1c","payment_mode":"test-client","exchange_option":"차콜 / S","status":"approved","stock_restored":0,"admin_memo":"","created_at":"2026-11-21T10:12:00+09:00","updated_at":"2026-11-22T09:00:00+09:00"}],"coupons":[{"id":"c_001","code":"WELCOME10","name":"신규 회원 10% 할인","discount_type":"percent","discount_value":10,"min_order_amount":30000,"expires_at":"2027-12-31T23:59:59+09:00","is_active":true,"target_user_ids":[],"target_grades":[],"target_categories":[],"target_badges":[],"created_at":"2026-11-01T10:00:00+09:00"},{"id":"c_002","code":"MONO5000","name":"5,000원 할인 쿠폰","discount_type":"fixed","discount_value":5000,"min_order_amount":50000,"expires_at":"2027-06-30T23:59:59+09:00","is_active":true,"target_user_ids":[],"target_grades":[],"target_categories":[],"target_badges":[],"created_at":"2026-11-05T10:00:00+09:00"},{"id":"c_003","code":"VIP15","name":"VIP 회원 전용 15% 할인","discount_type":"percent","discount_value":15,"min_order_amount":50000,"expires_at":"2027-03-31T23:59:59+09:00","is_active":true,"target_user_ids":["u_001"],"target_grades":[],"target_categories":[],"target_badges":[],"created_at":"2026-11-20T10:00:00+09:00"},{"id":"c_004","code":"GOLD20","name":"골드 전용 20% — 잡의·야우터 BEST","discount_type":"percent","discount_value":20,"min_order_amount":100000,"expires_at":"2027-06-30T23:59:59+09:00","is_active":true,"target_user_ids":[],"target_grades":["GOLD"],"target_categories":["acc","outer"],"target_badges":["BEST"],"created_at":"2026-11-28T09:00:00+09:00"}],"product_reviews":[{"id":"rv_001","product_id":"p_002","user_id":"u_001","user_name":"홍길*","order_item_id":"oi_001","rating":5,"content":"캐시미어라 그런지 정말 부드럽고 목선이 답답하지 않아요. 크림 색도 화면과 거의 같고, 코트 안에 입어도 두께감이 부담스럽지 않습니다.","media":[{"type":"image","src":"knit-detail.webp","name":"착용 디테일"},{"type":"image","src":"knit-fabric.webp","name":"소재 클로즈업"}],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-22T10:20:00+09:00","updated_at":null,"attempt":1},{"id":"rv_002","product_id":"p_003","user_id":"u_001","user_name":"홍길*","order_item_id":"oi_002","rating":4,"content":"허리선이 높아서 다리가 길어 보입니다. 기장이 조금 길어 힐을 신어야 하지만 핏은 만족해요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-18T09:10:00+09:00","updated_at":null,"attempt":1},{"id":"rv_003","product_id":"p_001","user_id":"u_001","user_name":"홍길*","order_item_id":"oi_007","rating":5,"content":"무게감이 있지만 어깨가 편하고, 차콜 색이 사진보다 더 깊어 보입니다. 오래 입을 코트로 추천합니다.","media":[{"type":"image","src":"coat-detail.webp","name":"코트 디테일"}],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-12T14:40:00+09:00","updated_at":null,"attempt":1},{"id":"rv_004","product_id":"p_001","user_id":"u_003","user_name":"홍길*","order_item_id":"oi_008","rating":5,"content":"겨울 코트로 정말 따뜻합니다. 차콜 색이 어디에나 어울리고 어깨 패드가 있어서 라인이 깔끔해요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-10-30T09:15:00+09:00","updated_at":null,"attempt":1},{"id":"rv_005","product_id":"p_001","user_id":"u_003","user_name":"홍길*","order_item_id":"oi_009","rating":4,"content":"카멜 색이 사진보다 조금 노랗게 보여서 별 하나 뺐어요. 핏과 소재는 만족합니다.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-09T18:05:00+09:00","updated_at":null,"attempt":1},{"id":"rv_006","product_id":"p_001","user_id":"u_004","user_name":"홍길*","order_item_id":"oi_010","rating":5,"content":"키 178에 M 샀는데 소매가 딱 맞습니다. 두꺼운 니트 위에 입어도 여유가 있어요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-14T11:30:00+09:00","updated_at":null,"attempt":1},{"id":"rv_007","product_id":"p_001","user_id":"u_004","user_name":"홍길*","order_item_id":"oi_011","rating":4,"content":"블랙은 먼지가 조금 붙지만 실루엣이 정말 예쁩니다. 드라이클리닝 한 번 했는데 모양 그대로예요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-20T13:45:00+09:00","updated_at":null,"attempt":1},{"id":"rv_008","product_id":"p_001","user_id":"u_005","user_name":"홍길*","order_item_id":"oi_012","rating":5,"content":"배송이 빠르고 포장도 깔끔했습니다. 차콜 L 사이즈가 저한테 딱이에요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-24T08:20:00+09:00","updated_at":null,"attempt":1},{"id":"rv_009","product_id":"p_001","user_id":"u_005","user_name":"홍길*","order_item_id":"oi_013","rating":5,"content":"XL 사이즈를 남편 선물로 샀는데 아주 좋아합니다. 단추가 묵직해서 고급스러워요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-26T19:10:00+09:00","updated_at":null,"attempt":1},{"id":"rv_010","product_id":"p_001","user_id":"u_003","user_name":"홍길*","order_item_id":"oi_018","rating":5,"content":"출근할 때마다 입는데 차콜 M이 정장 위에도 잘 어울립니다. 안감이 있어서 목이 따뜻하고, 주머니 깊이도 만족스러워요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-26T08:50:00+09:00","updated_at":null,"attempt":1},{"id":"rv_011","product_id":"p_001","user_id":"u_004","user_name":"홍길*","order_item_id":"oi_019","rating":4,"content":"카멜 L을 아내와 같이 입으려고 샀습니다. 색이 은은하고 좋은데 어깨가 조금 넓게 나온 편이라 별 하나 뺐어요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-25T20:10:00+09:00","updated_at":null,"attempt":1},{"id":"rv_012","product_id":"p_001","user_id":"u_005","user_name":"홍길*","order_item_id":"oi_020","rating":5,"content":"블랙 S인데 어깨선이 딱 떨어져서 좋습니다. 무게가 있어 한겨울까지는 충분히 따뜻할 것 같아요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-21T12:30:00+09:00","updated_at":null,"attempt":1},{"id":"rv_013","product_id":"p_001","user_id":"u_003","user_name":"홍길*","order_item_id":"oi_021","rating":5,"content":"카멜 S가 어머니 선물로 딱이었습니다. 포장도 단정하고 단추 마감이 튼튼해서 오래 입을 수 있을 것 같아요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-16T19:05:00+09:00","updated_at":null,"attempt":1},{"id":"rv_014","product_id":"p_001","user_id":"u_004","user_name":"홍길*","order_item_id":"oi_022","rating":3,"content":"블랙 L을 주문했는데 배송이 예정보다 나흘 늦었습니다. 옷 자체는 마음에 들지만 소매가 길어 수선이 필요해요.","media":[],"status":"published","rejected_reason":null,"reclaimed_points":0,"rejected_at":null,"created_at":"2026-11-04T09:15:00+09:00","updated_at":null,"attempt":1}],"product_qnas":[{"id":"q_001","product_id":"p_001","user_id":"u_001","user_name":"홍길*","qna_type":"product","title":"173cm 62kg이면 M 사이즈 괜찮을까요?","content":"코트 안에 두꺼운 니트를 입고 싶은데 M이 넉넉할지 궁금합니다. 평소 95~100 사이즈를 입습니다.","is_secret":0,"answer":"어깨가 여유 있는 실루엣이라 173cm·62kg 이시면 M 사이즈가 잘 맞습니다. 두꺼운 니트를 입으실 예정이면 L도 여유 있게 잘 어울립니다.","answered_by":"u_002","answered_at":"2026-11-20T10:12:00+09:00","status":"answered","created_at":"2026-11-19T21:40:00+09:00","updated_at":"2026-11-20T10:12:00+09:00"},{"id":"q_002","product_id":"p_001","user_id":"u_003","user_name":"홍길*","qna_type":"delivery","title":"오늘 결제하면 오늘 출고되나요?","content":"내일 외출에 입고 나가려고 하는데 오늘 오후 1시에 결제하면 당일 출고가 가능할까요?","is_secret":0,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-25T12:58:00+09:00","updated_at":null},{"id":"q_003","product_id":"p_002","user_id":"u_001","user_name":"홍길*","qna_type":"product","title":"세탁은 어떻게 해야 하나요?","content":"캐시미어라 드라이클리닝만 해야 하는지, 집에서 손세탁도 괜찮은지 문의드립니다.","is_secret":1,"answer":"캐시미어 20% 혼방이라 드라이클리닝을 권장합니다. 집에서 손세탁하실 때는 찬물에 중성세제로 가볍게 주무르고 평평하게 눕혀 건조해 주세요.","answered_by":"u_002","answered_at":"2026-11-23T09:30:00+09:00","status":"answered","created_at":"2026-11-22T18:20:00+09:00","updated_at":"2026-11-23T09:30:00+09:00"},{"id":"q_004","product_id":"p_002","user_id":"u_004","user_name":"홍길*","qna_type":"claim","title":"받은 니트에 올이 풀린 곳이 있어요","content":"소매 안쪽에 올이 풀린 부분이 있는데 교환하면 재고가 있을까요? 색상은 크림입니다.","is_secret":1,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-27T08:15:00+09:00","updated_at":null},{"id":"q_005","product_id":"p_003","user_id":"u_005","user_name":"홍길*","qna_type":"product","title":"기장 수선이 가능한가요?","content":"와이드 팬츠 기장이 조금 길 것 같아서 수선해서 입으려고 합니다. 밑단 원단 여유가 있는지 궁금합니다.","is_secret":0,"answer":"밑단 안쪽에 3cm 정도 시접 여유가 있어 수선집에서 줄이거나 늘릴 수 있습니다.","answered_by":"u_002","answered_at":"2026-11-21T15:05:00+09:00","status":"answered","created_at":"2026-11-21T11:32:00+09:00","updated_at":"2026-11-21T15:05:00+09:00"},{"id":"q_006","product_id":"p_001","user_id":"u_004","user_name":"홍길*","qna_type":"etc","title":"선물 포장도 가능할까요?","content":"생일 선물로 보내려고 하는데 리본 포장과 메시지 카드를 같이 넣어 주실 수 있는지 문의드립니다.","is_secret":0,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-26T19:44:00+09:00","updated_at":null},{"id":"q_007","product_id":"p_001","user_id":"u_003","user_name":"홍길*","qna_type":"product","title":"소매 기장이 많이 길까요?","content":"173cm인데 소매가 손등을 덮을 정도로 길게 나오는지 궁금합니다. 수선 없이 입고 싶습니다.","is_secret":0,"answer":"173cm 기준으로 소매 끝이 손목 뼈를 살짝 덮는 정도입니다. 손등까지 오지는 않아 수선 없이 입으시는 분이 많습니다.","answered_by":"u_002","answered_at":"2026-11-24T10:40:00+09:00","status":"answered","created_at":"2026-11-23T21:15:00+09:00","updated_at":"2026-11-24T10:40:00+09:00"},{"id":"q_008","product_id":"p_001","user_id":"u_004","user_name":"홍길*","qna_type":"delivery","title":"주말에 주문하면 월요일 출고인가요?","content":"토요일 오전에 결제하면 주말에는 출고가 안 되는지, 월요일에 바로 나가는지 궁금합니다.","is_secret":0,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-27T10:20:00+09:00","updated_at":null},{"id":"q_009","product_id":"p_001","user_id":"u_005","user_name":"홍길*","qna_type":"product","title":"차콜과 블랙 중 먼지가 덜 붙는 색은?","content":"검정 계열 코트는 먼지가 잘 보인다고 해서 고민입니다. 두 색 중 어떤 쪽이 관리하기 편한가요?","is_secret":0,"answer":"블랙은 먼지·털이 조금 더 잘 보입니다. 차콜은 같은 검정 계열이라도 결이 있어서 관리가 조금 수월합니다.","answered_by":"u_002","answered_at":"2026-11-22T09:05:00+09:00","status":"answered","created_at":"2026-11-21T18:40:00+09:00","updated_at":"2026-11-22T09:05:00+09:00"},{"id":"q_010","product_id":"p_001","user_id":"u_003","user_name":"홍길*","qna_type":"claim","title":"단추 하나가 흔들려서 왔어요","content":"받은 코트의 두 번째 단추가 흔들립니다. 교환 없이 단추만 다시 달아 주실 수 있을까요?","is_secret":1,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-26T13:05:00+09:00","updated_at":null},{"id":"q_011","product_id":"p_001","user_id":"u_004","user_name":"홍길*","qna_type":"product","title":"175cm 70kg이면 L 사이즈가 맞을까요?","content":"평소 100 사이즈를 입습니다. 니트 위에 입을 생각인데 L이 넉넉할지 문의드립니다.","is_secret":0,"answer":"175cm·70kg에 100 사이즈를 입으시면 L이 잘 맞습니다. 두꺼운 니트 위에도 여유가 있습니다.","answered_by":"u_002","answered_at":"2026-11-20T11:20:00+09:00","status":"answered","created_at":"2026-11-19T22:10:00+09:00","updated_at":"2026-11-20T11:20:00+09:00"},{"id":"q_012","product_id":"p_001","user_id":"u_005","user_name":"홍길*","qna_type":"etc","title":"카멜 XL 재입고 예정이 있나요?","content":"카멜 XL이 품절로 보이는데 재입고 계획이 있는지 궁금합니다.","is_secret":0,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-25T08:35:00+09:00","updated_at":null},{"id":"q_013","product_id":"p_001","user_id":"u_003","user_name":"홍길*","qna_type":"product","title":"안감이 있는 코트인가요?","content":"목이 따가운 소재를 못 입어서요. 안감 재질과 두께를 알려 주시면 감사하겠습니다.","is_secret":0,"answer":"폴리에스터 안감이 등판까지 들어가 있습니다. 목에 닿는 부분은 울 원단이 아니라 안감이 닿도록 마감되어 있습니다.","answered_by":"u_002","answered_at":"2026-11-17T15:45:00+09:00","status":"answered","created_at":"2026-11-16T12:00:00+09:00","updated_at":"2026-11-17T15:45:00+09:00"},{"id":"q_014","product_id":"p_001","user_id":"u_004","user_name":"홍길*","qna_type":"delivery","title":"제주도도 배송되나요?","content":"제주에 계신 부모님께 보내려고 합니다. 도서산간 추가 배송비가 있는지 궁금합니다.","is_secret":1,"answer":"제주도 배송 가능하며 도서산간 추가 배송비 3,000원이 있습니다. 주문서 작성 시 자동으로 합산됩니다.","answered_by":"u_002","answered_at":"2026-11-13T09:50:00+09:00","status":"answered","created_at":"2026-11-12T20:25:00+09:00","updated_at":"2026-11-13T09:50:00+09:00"},{"id":"q_015","product_id":"p_001","user_id":"u_005","user_name":"홍길*","qna_type":"product","title":"세탁 후에 털이 많이 빠지나요?","content":"드라이클리닝을 맡기면 털 빠짐이 심한지, 집에서 관리할 때 주의할 점이 있는지 문의드립니다.","is_secret":0,"answer":"","answered_by":null,"answered_at":null,"status":"pending","created_at":"2026-11-18T09:10:00+09:00","updated_at":null}],"review_votes":[{"id":"rvv_001","review_id":"rv_001","user_id":"u_003","vote":"up","created_at":"2026-11-22T12:00:00+09:00"},{"id":"rvv_002","review_id":"rv_001","user_id":"u_004","vote":"up","created_at":"2026-11-22T15:10:00+09:00"},{"id":"rvv_003","review_id":"rv_003","user_id":"u_003","vote":"up","created_at":"2026-11-13T09:00:00+09:00"},{"id":"rvv_004","review_id":"rv_003","user_id":"u_004","vote":"up","created_at":"2026-11-14T10:20:00+09:00"},{"id":"rvv_005","review_id":"rv_003","user_id":"u_005","vote":"up","created_at":"2026-11-15T19:40:00+09:00"},{"id":"rvv_006","review_id":"rv_004","user_id":"u_001","vote":"up","created_at":"2026-10-31T08:30:00+09:00"},{"id":"rvv_007","review_id":"rv_004","user_id":"u_004","vote":"up","created_at":"2026-11-01T13:05:00+09:00"},{"id":"rvv_008","review_id":"rv_004","user_id":"u_005","vote":"down","created_at":"2026-11-02T17:25:00+09:00"},{"id":"rvv_009","review_id":"rv_005","user_id":"u_001","vote":"down","created_at":"2026-11-10T09:15:00+09:00"},{"id":"rvv_010","review_id":"rv_005","user_id":"u_004","vote":"down","created_at":"2026-11-11T11:45:00+09:00"},{"id":"rvv_011","review_id":"rv_006","user_id":"u_001","vote":"up","created_at":"2026-11-15T10:00:00+09:00"},{"id":"rvv_012","review_id":"rv_006","user_id":"u_003","vote":"up","created_at":"2026-11-16T12:30:00+09:00"},{"id":"rvv_013","review_id":"rv_007","user_id":"u_005","vote":"up","created_at":"2026-11-21T09:50:00+09:00"},{"id":"rvv_014","review_id":"rv_008","user_id":"u_001","vote":"up","created_at":"2026-11-25T08:10:00+09:00"},{"id":"rvv_015","review_id":"rv_002","user_id":"u_005","vote":"up","created_at":"2026-11-19T14:00:00+09:00"},{"id":"rvv_016","review_id":"rv_010","user_id":"u_001","vote":"up","created_at":"2026-11-26T11:20:00+09:00"},{"id":"rvv_017","review_id":"rv_010","user_id":"u_005","vote":"up","created_at":"2026-11-26T15:05:00+09:00"},{"id":"rvv_018","review_id":"rv_011","user_id":"u_003","vote":"up","created_at":"2026-11-26T09:40:00+09:00"},{"id":"rvv_019","review_id":"rv_012","user_id":"u_004","vote":"up","created_at":"2026-11-22T08:30:00+09:00"},{"id":"rvv_020","review_id":"rv_014","user_id":"u_001","vote":"down","created_at":"2026-11-05T10:10:00+09:00"},{"id":"rvv_021","review_id":"rv_014","user_id":"u_005","vote":"down","created_at":"2026-11-06T19:35:00+09:00"}],"point_policies":[{"grade":"NORMAL","confirm_rate":0.5,"photo_rate":1.0,"updated_at":"2026-11-27T08:30:00+09:00"},{"grade":"SILVER","confirm_rate":0.7,"photo_rate":1.2,"updated_at":"2026-11-27T08:30:00+09:00"},{"grade":"GOLD","confirm_rate":1.0,"photo_rate":1.5,"updated_at":"2026-11-27T08:30:00+09:00"},{"grade":"VIP","confirm_rate":1.5,"photo_rate":2.0,"updated_at":"2026-11-27T08:30:00+09:00"}],"point_logs":[{"id":"pl_001","user_id":"u_001","type":"signup","amount":2000,"base_amount":0,"rate":0,"order_id":null,"order_item_id":null,"review_id":null,"description":"가입 축하 포인트","created_at":"2026-11-09T10:42:00+09:00"},{"id":"pl_002","user_id":"u_001","type":"use","amount":-500,"base_amount":0,"rate":0,"order_id":"o_005","order_item_id":null,"review_id":null,"description":"주문 결제에 포인트 사용","created_at":"2026-11-16T14:30:00+09:00"},{"id":"pl_003","user_id":"u_001","type":"confirm","amount":1290,"base_amount":129000,"rate":1.0,"order_id":"o_001","order_item_id":"oi_001","review_id":null,"description":"구매확정 적립 (골드 1.0%)","created_at":"2026-11-22T10:05:00+09:00"},{"id":"pl_004","user_id":"u_001","type":"photo_review","amount":1935,"base_amount":129000,"rate":1.5,"order_id":"o_001","order_item_id":"oi_001","review_id":"rv_001","description":"포토·영상 리뷰 추가 적립 (골드 1.5%)","created_at":"2026-11-22T10:20:00+09:00"}],"faqs":[{"id":"faq_001","category":"배송","question":"배송은 얼마나 걸리나요?","answer":"평일 오후 2시 이전 결제 건은 당일 출고됩니다. 수도권은 출고 후 1~2일, 지방은 2~3일 정도 소요되며 제주·도서산간은 하루 더 걸릴 수 있습니다.","sort_order":1,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_002","category":"배송","question":"무료배송 기준은 어떻게 되나요?","answer":"기본 100,000원 이상 구매 시 무료배송입니다. 상품에 별도 기준이 있는 경우 상품 상세의 배송 안내를 확인해 주세요(0원 = 무조건 무료배송).","sort_order":2,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_003","category":"주문/결제","question":"쿠폰과 포인트를 같이 사용할 수 있나요?","answer":"네. 결제 화면에서 쿠폰을 적용한 뒤 보유 포인트를 원하는 만큼 입력해 사용할 수 있습니다. 포인트는 결제 금액을 넘지 않게 사용되며, 남은 금액만 결제됩니다.","sort_order":3,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_004","category":"주문/결제","question":"주문 취소는 언제까지 가능한가요?","answer":"상품 준비 단계까지 마이페이지 > 주문 내역에서 직접 취소할 수 있습니다. 배송이 시작된 뒤에는 취소할 수 없으며 교환·반품으로 접수해 주세요. 취소 시 사용한 포인트는 다시 적립됩니다.","sort_order":4,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_005","category":"교환/반품","question":"교환·반품 배송비는 얼마인가요?","answer":"제품 하자·오배송은 판매자 귀책으로 무료입니다. 단순 변심·사이즈/색상 변경은 반품 3,000원, 교환(왕복) 6,000원입니다. 수령 후 7일 이내 신청해 주세요.","sort_order":5,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_006","category":"회원/포인트","question":"포인트는 어떻게 적립되나요?","answer":"구매확정 시 결제 금액의 등급별 적립률(일반 0.5% · 실버 0.7% · 골드 1.0% · VIP 1.5%)만큼 적립됩니다. 사진이나 동영상을 첨부한 리뷰를 등록하면 등급별 추가 적립률(1.0~2.0%)이 한 번 더 지급됩니다.","sort_order":6,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_007","category":"회원/포인트","question":"구매확정을 누르면 무엇이 바뀌나요?","answer":"구매확정한 주문 상품은 적립 포인트가 즉시 지급되고, 같은 상품에 리뷰를 작성할 수 있습니다. 한 번 확정한 상품은 다시 확정할 수 없어 포인트가 중복 지급되지 않습니다.","sort_order":7,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"},{"id":"faq_008","category":"상품","question":"사이즈는 어떻게 고르면 좋나요?","answer":"상품 상세의 실측 사이즈와 모델 착용 정보(키·몸무게·착용 사이즈)를 참고해 주세요. 평소 착용 사이즈와 실측 단면을 비교하면 가장 정확합니다.","sort_order":8,"is_active":true,"created_at":"2026-11-27T08:30:00+09:00"}],"sms_logs":[{"id":"sms_001","order_id":"o_001","user_id":"u_001","phone":"010-0000-0000","message":"[MONO ATELIER] 홍길동님 주문이 접수되었습니다. MA20261112-4821 · 캐시미어 리브 니트 외 1건 · 결제 278,000원. 배송은 준비 후 순차적으로 진행됩니다.","kind":"order_created","status":"test","mode":"test","sender":"02-0000-0000","api_url":"","created_at":"2026-11-12T10:24:00+09:00"}],"dispatch_logs":[{"id":"dsp_001","channel":"sms","to":"010-0000-0000","kind":"order_created","summary":"[MONO ATELIER] 홍길동님 주문이 접수되었습니다. MA20261112-4821 · 캐시미어 리브 니트 외 1건 · 결제 278,000원. 배송은 준비 후 순차적으로 진행됩니다.","status":"test","mode":"test","order_id":"o_001","created_at":"2026-11-12T10:24:00+09:00"},{"id":"dsp_002","channel":"email","to":"signup-test@mono.kr","kind":"email_otp","summary":"[MONO ATELIER] 회원가입 이메일 인증번호 발송 (6자리, 5분 유효)","status":"test","mode":"test","order_id":null,"created_at":"2026-11-26T21:14:00+09:00"},{"id":"dsp_003","channel":"email","to":"signup-test@mono.kr","kind":"email_otp","summary":"인증번호 재발송 차단 — 쿨다운 41초 남음","status":"blocked","mode":"test","order_id":null,"created_at":"2026-11-26T21:14:19+09:00"}],"site_settings":{"id":"default","top_banner_text":"FALL / WINTER 2026 — 10만 원 이상 무료배송","top_banner_sub":"평일 오후 2시 이전 당일 출고","top_banner_enabled":true,"hero_image":"hero.webp","hero_eyebrow":"FALL / WINTER 2026 — THE QUIET COLLECTION","hero_title":"Quiet luxury,\nfor every day.","hero_subtitle":"매일 손이 가는 단정한 실루엣.\n좋은 소재만 골라 만든 모노 아뜰리에의 가을·겨울.","hero_cta_label":"컬렉션 보기","hero_cta2_label":"브랜드 스토리","hero_effect":"zoom","hero_overlay":42,"brand_blurb":"단정한 실루엣, 좋은 소재. 서울에서 만드는 모던 컨템포러리 브랜드입니다.","story_image":"coat.webp","story_eyebrow":"ATELIER NOTE 01","story_title":"옷장은 계절이 아니라,\n태도로 채워집니다.","story_subtitle":"MONO ATELIER가 옷을 만드는 기준","story_body":"한 벌의 코트가 계절을 견디는 방식은 화려함이 아니라 균형에 있습니다. 어깨선, 소매의 길이, 단추 하나의 간격까지.\n\n우리는 사진보다 실물에서 더 좋아 보이는 옷을 만듭니다. 유행을 따라가기보다 오래 입을 수 있는 실루엣을 고르고, 피부에 닿는 소재부터 확인합니다.","story_tags":["좋은 소재","단정한 실루엣","오래 입는 옷","서울 제작"],"brand_story_enabled":true,"shop_eyebrow":"SHOP — NEW ARRIVALS","shop_title":"이번 시즌, 새로 도착한 옷","shop_desc":"단정한 실루엣과 좋은 소재. 유행보다 오래 입는 옷을 제안합니다.","company_name":"모노 아뜰리에","company_ceo":"홍길동","company_reg_no":"000-00-00000","company_mail_order_no":"제2026-서울송파-0000호","company_address":"서울특별시 송파구 올림픽로 300 101동 1203호","company_phone":"02-0000-0000","company_email":"help@mono.kr","email_auth_mode":"test","email_api_url":"","sms_enabled":true,"sms_mode":"test","sms_api_url":"","sms_sender":"02-0000-0000","faq_categories":["배송","주문/결제","교환/반품","회원/포인트","상품","기타"],"product_badges":["BEST","NEW","SALE","LIMITED"],"hero_images":["hero.webp","coat.webp","knit.webp","trench.webp"],"story_images":["coat.webp","coat-fabric.webp","knit-detail.webp","trench.webp"],"member_grade_rules":{"months":6,"thresholds":{"NORMAL":0,"SILVER":200000,"GOLD":400000,"VIP":800000}},"updated_at":"2026-11-28T09:00:00+09:00"},"help_topics":[{"id":"help_delivery","title":"배송 안내","sort_order":1,"body":"평일 오후 2시 이전 결제 시 당일 출고됩니다.\n100,000원 이상 구매 시 무료배송이며, 미만은 배송비 3,000원입니다.\n제주·도서산간 지역은 추가 배송비가 발생할 수 있습니다."},{"id":"help_exchange","title":"교환·반품 안내","sort_order":2,"body":"수령 후 7일 이내 교환·반품 신청이 가능합니다.\n제품 하자·오배송은 판매자 귀책으로 배송비가 무료이며, 단순 변심은 반품 3,000원 · 교환(왕복) 6,000원입니다.\n교환·반품은 마이페이지 → 주문 내역에서 신청할 수 있습니다."},{"id":"help_faq","title":"고객센터","sort_order":3,"body":"고객센터 운영 시간: 평일 10:00 – 17:00\n점심 12:30 – 13:30, 주말·공휴일 휴무\n전화 02-0000-0000 · 이메일 help@mono.kr\n자주 묻는 질문은 홈 HELP 4칸의 「FAQ」에서 확인할 수 있습니다."}]};
   var EMBEDDED = {};
-  var APP_VERSION = '1.9.12';
+  var APP_VERSION = '1.9.13';
 
   var LS_DB = 'mono_atelier_db_v1';
   var LS_SESSION = 'mono_atelier_session_v1';
@@ -3296,8 +3436,19 @@ table.data.ap-variants td.na { color: var(--line); }
   var UPLOAD_MAX_SIDE = 900;       // 긴 변 최대 px
   var UPLOAD_QUALITY = 0.82;       // JPEG 품질
   var UPLOAD_MAX_COUNT = 6;        // 상품당 업로드 이미지 수 상한
+  /* v1.9.13 — 뱃지 코드는 관리자 「코드 관리 > 뱃지 관리」에서 추가·수정·삭제·순서를 관리한다.
+     BADGE_PRESETS 는 시드 기본값(저장 값이 없을 때만 쓰는 fallback)이다. */
   var BADGE_PRESETS = ['BEST', 'NEW', 'SALE', 'LIMITED'];
   var BADGE_CUSTOM_MAX = 16;
+  /* v1.9.13 — 사이트 전용 미디어(히어로·스토리) 기본 시드. 상품 사진 풀(ALL_IMAGES)과 분리해 관리한다. */
+  var DEFAULT_HERO_MEDIA = ['hero.webp', 'coat.webp', 'knit.webp', 'trench.webp'];
+  var DEFAULT_STORY_MEDIA = ['coat.webp', 'coat-fabric.webp', 'knit-detail.webp', 'trench.webp'];
+  var SITE_MEDIA_MAX = 24;
+  /* v1.9.13 — 최근 N개월 구매금액 기준 멤버십 등급 기본값(원) */
+  var DEFAULT_GRADE_RULES = {
+    months: 6,
+    thresholds: { NORMAL: 0, SILVER: 200000, GOLD: 400000, VIP: 800000 }
+  };
   var DB_TABLES = ['users', 'categories', 'products', 'product_images', 'product_variants', 'cart_items', 'orders', 'order_items', 'order_claims', 'coupons', 'product_reviews', 'product_qnas', 'review_votes', 'point_policies', 'point_logs', 'faqs', 'sms_logs', 'dispatch_logs'];
   /* v1.9.8 — 단일 테이블 레지스트리
      「데이터 관리 > 테이블 현황」의 테이블 목록·건수와 「JSON 다운로드」가 내보내는
@@ -3835,6 +3986,7 @@ table.data.ap-variants td.na { color: var(--line); }
   function imgSrc(name) {
     if (!name) return '';
     if (/^data:image\//i.test(name)) return name;   // 관리자가 업로드한 Data URL
+    if (/^https?:\/\//i.test(name)) return name;    // v1.9.13 사이트 미디어 URL 직접 추가
     if (EMBEDDED && EMBEDDED[name]) return EMBEDDED[name];
     return 'assets/' + name;
   }
@@ -4046,6 +4198,15 @@ table.data.ap-variants td.na { color: var(--line); }
       if (!Array.isArray(c.target_grades)) c.target_grades = [];
       c.target_grades = c.target_grades.filter(function (g) { return !!GRADES[String(g).toUpperCase()]; })
         .map(function (g) { return String(g).toUpperCase(); });
+    });
+    // v1.9.13 — 쿠폰 사용 조건(카테고리·뱃지) 보충
+    parsed.coupons.forEach(function (c) {
+      if (!Array.isArray(c.target_categories)) c.target_categories = [];
+      c.target_categories = c.target_categories.filter(function (id) {
+        return parsed.categories.some(function (x) { return x.id === id; });
+      });
+      if (!Array.isArray(c.target_badges)) c.target_badges = [];
+      c.target_badges = normalizeBadgeList(c.target_badges);
     });
     // v1.3: 뱃지는 짧은 문구면 자유롭게 쓸 수 있다 (길이만 제한)
     parsed.products.forEach(function (p) {
@@ -4442,6 +4603,45 @@ table.data.ap-variants td.na { color: var(--line); }
       .filter(function (g) { return !!GRADES[g]; });
   }
   function couponIsPublic(c) { return couponTargets(c).length === 0 && couponTargetGrades(c).length === 0; }
+  /* v1.9.13 — 쿠폰 사용 조건(상품 카테고리·뱃지). 빈 배열 = 조건 없음 */
+  function couponTargetCategories(c) {
+    if (!c || !Array.isArray(c.target_categories)) return [];
+    var out = [];
+    c.target_categories.forEach(function (id) {
+      var v = String(id || '').trim();
+      if (v && out.indexOf(v) < 0) out.push(v);
+    });
+    return out;
+  }
+  function couponTargetBadges(c) {
+    if (!c || !Array.isArray(c.target_badges)) return [];
+    return normalizeBadgeList(c.target_badges);
+  }
+  function couponHasItemConditions(c) {
+    return couponTargetCategories(c).length > 0 || couponTargetBadges(c).length > 0;
+  }
+  function couponConditionLabel(c) {
+    var cats = couponTargetCategories(c), badges = couponTargetBadges(c), parts = [];
+    if (cats.length) parts.push(cats.map(catLabel).join('·'));
+    if (badges.length) parts.push(badges.join('·'));
+    return parts.join(' · ');
+  }
+  /* 장바구니 행 중 카테고리·뱃지 조건을 모두 만족하는 상품 금액 합계 (조건 없음 = 전체 금액) */
+  function couponEligibleBase(c, rows, subtotal) {
+    var all = Number(subtotal) || 0;
+    if (!c || !couponHasItemConditions(c)) return all;
+    var cats = couponTargetCategories(c), badges = couponTargetBadges(c);
+    return (rows || []).reduce(function (sum, r) {
+      var p = r && r.product;
+      if (!p) return sum;
+      if (cats.length && cats.indexOf(p.category) < 0) return sum;
+      if (badges.length) {
+        var b = String(p.badge || '').trim().toUpperCase();
+        if (badges.indexOf(b) < 0) return sum;
+      }
+      return sum + (Number(p.price) || 0) * (Number(r.item && r.item.quantity) || 0);
+    }, 0);
+  }
   function couponAudienceKind(c) {
     if (couponIsPublic(c)) return 'all';
     if (couponTargetGrades(c).length && !couponTargets(c).length) return 'grade';
@@ -4482,7 +4682,7 @@ table.data.ap-variants td.na { color: var(--line); }
     return Math.max(0, Math.min(d, subtotal));
   }
   /* 사용할 수 없는 이유를 함께 돌려준다(체크아웃·장바구니 안내에 그대로 사용) */
-  function couponCheck(c, subtotal, user) {
+  function couponCheck(c, subtotal, user, rows) {
     if (!c) return { ok: false, message: '쿠폰 코드를 찾을 수 없습니다.' };
     if (!c.is_active) return { ok: false, message: '사용이 중지된 쿠폰입니다.', coupon: c };
     if (couponExpired(c)) return { ok: false, message: '사용 기간이 만료된 쿠폰입니다.', coupon: c };
@@ -4493,16 +4693,32 @@ table.data.ap-variants td.na { color: var(--line); }
     if (subtotal < (Number(c.min_order_amount) || 0)) {
       return { ok: false, message: '최소 주문금액 ' + won(c.min_order_amount) + ' 이상일 때 사용할 수 있습니다.', coupon: c };
     }
+    /* v1.9.13 — 카테고리·뱃지 조건(AND)을 만족하는 상품이 없으면 구체적 사유를 돌려준다 */
+    if (couponHasItemConditions(c)) {
+      var base = couponEligibleBase(c, rows || activeRows(), subtotal);
+      if (base <= 0) {
+        return {
+          ok: false, coupon: c, noEligible: true,
+          message: '사용 조건(' + couponConditionLabel(c) + ')에 해당하는 상품이 장바구니에 없습니다.'
+        };
+      }
+    }
     return { ok: true, coupon: c };
   }
-  function couponUsable(c, subtotal) {
+  function couponUsable(c, subtotal, rows) {
     if (!c) return null;
-    return couponCheck(c, subtotal).ok ? c : null;
+    return couponCheck(c, subtotal, undefined, rows).ok ? c : null;
   }
-  function couponHintOf(c, subtotal) {
+  function couponHintOf(c, subtotal, rows) {
     if (!c) return '';
     var min = Number(c.min_order_amount) || 0;
-    return min > 0 ? won(min) + ' 이상 구매 시' : '금액 제한 없음';
+    var parts = [];
+    if (min > 0) parts.push(won(min) + ' 이상 구매 시');
+    if (couponHasItemConditions(c)) {
+      var base = Number(subtotal) > 0 ? won(couponEligibleBase(c, rows || [], subtotal)) + '분' : '';
+      parts.push(couponConditionLabel(c) + ' 상품' + (base ? ' · ' + base : ''));
+    }
+    return parts.length ? parts.join(' · ') : '금액 제한 없음';
   }
 
   function cartRows() {
@@ -4529,8 +4745,8 @@ table.data.ap-variants td.na { color: var(--line); }
       return s + (r.product.original_price || r.product.price) * r.item.quantity;
     }, 0);
     var ship = shippingOf(rows);
-    var c = couponUsable(coupon, subtotal);
-    var discount = c ? couponDiscount(c, subtotal) : 0;
+    var c = couponUsable(coupon, subtotal, rows);
+    var discount = c ? couponDiscount(c, couponEligibleBase(c, rows, subtotal)) : 0;
     var total = Math.max(0, subtotal - discount + ship.fee);
     return {
       subtotal: subtotal,
@@ -6100,6 +6316,60 @@ table.data.ap-variants td.na { color: var(--line); }
   };
   var FOOTER_TEXT_KEYS = ['brand_blurb', 'company_name', 'company_ceo', 'company_reg_no',
     'company_mail_order_no', 'company_address', 'company_phone', 'company_email'];
+  /* ============================================ v1.9.13 사이트 미디어·코드·멤버십 기준
+     · 히어로/브랜드 스토리 사진은 상품 사진(ALL_IMAGES)과 분리된 전용 목록으로 관리한다
+     · 뱃지 코드 목록·멤버십 등급 기준은 site_settings 에 저장하고 관리자 화면과 공유한다 */
+  function normalizeBadgeCode(v) {
+    var s = String(v == null ? '' : v).trim().replace(/\s+/g, ' ').toUpperCase();
+    return s ? s.slice(0, BADGE_CUSTOM_MAX) : '';
+  }
+  function normalizeBadgeList(v) {
+    var out = [];
+    (Array.isArray(v) ? v : []).forEach(function (x) {
+      var c = normalizeBadgeCode(x);
+      if (c && out.indexOf(c) < 0) out.push(c);
+    });
+    return out;
+  }
+  /* 관리자 「뱃지 관리」 목록(저장 값 → 기본값) */
+  function badgeList() {
+    var s = siteSettings();
+    var list = normalizeBadgeList(s.product_badges);
+    return list.length ? list : BADGE_PRESETS.slice();
+  }
+  function normalizeGradeRules(v) {
+    var out = { months: DEFAULT_GRADE_RULES.months, thresholds: clone(DEFAULT_GRADE_RULES.thresholds) };
+    var src = v && typeof v === 'object' ? v : {};
+    var m = parseInt(src.months, 10);
+    if (isFinite(m) && m >= 1 && m <= 60) out.months = m;
+    var t = (src.thresholds && typeof src.thresholds === 'object') ? src.thresholds : src;
+    GRADE_ORDER.forEach(function (g) {
+      var n = parseInt(t[g], 10);
+      out.thresholds[g] = (isFinite(n) && n >= 0) ? n : DEFAULT_GRADE_RULES.thresholds[g];
+    });
+    return out;
+  }
+  function gradeRules() { return normalizeGradeRules(siteSettings().member_grade_rules); }
+  /* 사이트 전용 미디어 목록 — 현재 적용 사진은 반드시 목록에 포함한다 */
+  function siteMediaListOf(kind, s) {
+    var st = s || siteSettings();
+    var src = kind === 'hero' ? st.hero_images : st.story_images;
+    var def = kind === 'hero' ? DEFAULT_HERO_MEDIA : DEFAULT_STORY_MEDIA;
+    var cur = kind === 'hero' ? st.hero_image : st.story_image;
+    var out = [];
+    (Array.isArray(src) && src.length ? src : def).forEach(function (x) {
+      var v = String(x || '').trim();
+      if (v && out.indexOf(v) < 0) out.push(v);
+    });
+    if (!out.length) out = def.slice();
+    if (cur && out.indexOf(cur) < 0) out.unshift(cur);
+    return out.slice(0, SITE_MEDIA_MAX);
+  }
+  function siteMediaLabel(v) {
+    if (isDataImage(v)) return '업로드 사진';
+    if (/^https?:\/\//i.test(String(v || ''))) return String(v).replace(/^https?:\/\//i, '').slice(0, 40);
+    return String(v || '');
+  }
   function siteSettings() {
     var base = (SEED && SEED.site_settings) || {};
     var cur = db.site_settings || {};
@@ -6115,6 +6385,12 @@ table.data.ap-variants td.na { color: var(--line); }
     SHOP_TEXT_KEYS.forEach(function (k) {
       if (out[k] == null || String(out[k]) === '') out[k] = SHOP_TEXT_DEFAULTS[k];
     });
+    /* v1.9.13 — 뱃지 코드 목록 · 사이트 전용 미디어 · 멤버십 등급 기준을 항상 정상형으로 돌려준다 */
+    out.product_badges = normalizeBadgeList(out.product_badges);
+    if (!out.product_badges.length) out.product_badges = BADGE_PRESETS.slice();
+    out.member_grade_rules = normalizeGradeRules(out.member_grade_rules);
+    out.hero_images = siteMediaListOf('hero', out);
+    out.story_images = siteMediaListOf('story', out);
     return out;
   }
   /* v1.9.9 — 사이트 설정 스위치(1/0 · true/false · 'on'/'off')를 불리언으로 읽는다 */
@@ -6178,6 +6454,24 @@ table.data.ap-variants td.na { color: var(--line); }
       }
     });
     if (shopChanged) changed = true;
+    /* v1.9.13 — 뱃지 코드 목록 · 사이트 전용 미디어 · 멤버십 기준이 없던 저장소는 시드 기본값으로 한 번 채운다 */
+    var v1913Changed = false;
+    if (!Array.isArray(db.site_settings.product_badges) || !db.site_settings.product_badges.length) {
+      db.site_settings.product_badges = badgeList().slice();
+      v1913Changed = true;
+    }
+    ['hero', 'story'].forEach(function (kind) {
+      var key = kind + '_images';
+      if (!Array.isArray(db.site_settings[key]) || !db.site_settings[key].length) {
+        db.site_settings[key] = siteMediaListOf(kind);
+        v1913Changed = true;
+      }
+    });
+    if (!db.site_settings.member_grade_rules || typeof db.site_settings.member_grade_rules !== 'object') {
+      db.site_settings.member_grade_rules = clone(DEFAULT_GRADE_RULES);
+      v1913Changed = true;
+    }
+    if (v1913Changed) changed = true;
     if (changed || !db.meta.site_settings_v18) {
       db.meta.site_settings_v18 = true;
       save();
@@ -7820,7 +8114,7 @@ table.data.ap-variants td.na { color: var(--line); }
       (u && !can && list.length ? '<p class="pmr-note">리뷰는 배송완료 후 구매확정한 주문을 구매한 회원만 작성할 수 있습니다.</p>' : '');
   }
   function productReviewsBlockHTML(p, m) {
-    return '<div class="pm-reviews" data-hook="pm-reviews" data-pid="' + p.id + '">' + productReviewsInnerHTML(p) + '</div>';
+    return '<div class="pm-reviews" id="pm-reviews-section" data-hook="pm-reviews" data-pid="' + p.id + '">' + productReviewsInnerHTML(p) + '</div>';
   }
   /* ========================================================== v1.9.11 상품 Q&A
      · 상품 상세에서 리뷰 아래에 붙는 상품별 Q&A (5건씩 페이징, 최신순)
@@ -7861,10 +8155,14 @@ table.data.ap-variants td.na { color: var(--line); }
     var readable = qnaCanRead(q);
     var u = currentUser();
     var mine = !!u && q.user_id === u.id;
-    return '<article class="pmq-item" data-qna="' + esc(q.id) + '" data-qna-state="' + st + '">' +
+    /* v1.9.13 — 비밀글은 작성자·관리자 외에는 제목까지 마스킹한다(제목으로 내용을 유추하지 못하게) */
+    var titleHTML = readable
+      ? esc(q.title)
+      : '<span class="pmq-title-masked" data-hook="qna-title-masked">비밀글입니다</span>';
+    return '<article class="pmq-item" data-qna="' + esc(q.id) + '" data-qna-state="' + st + '" data-secret="' + (q.is_secret ? '1' : '0') + '">' +
       '<div class="pmq-top">' +
         '<span class="pmq-type">' + esc(qnaTypeLabel(q.qna_type)) + '</span>' +
-        '<b class="pmq-title">' + (q.is_secret ? '<span class="pmq-lock" aria-label="비밀글" title="비밀글">🔒</span>' : '') + esc(q.title) + '</b>' +
+        '<b class="pmq-title">' + (q.is_secret ? '<span class="pmq-lock" aria-label="비밀글" title="비밀글">🔒</span> ' : '') + titleHTML + '</b>' +
         '<span class="pmq-badge ' + st + '" data-hook="qna-status">' + (st === 'answered' ? '답변완료' : '미답변') + '</span>' +
         '<span class="pmq-date">' + esc(q.user_name || '고객') + ' · ' + fmtDate(q.created_at) + '</span>' +
         (mine ? '<span class="pmq-mine">내 문의</span>' : '') +
@@ -7924,7 +8222,7 @@ table.data.ap-variants td.na { color: var(--line); }
       qnaPagerHTML(page, pages, list.length);
   }
   function productQnaBlockHTML(p) {
-    return '<div class="pm-qna" data-hook="pm-qna" data-pid="' + p.id + '">' + productQnaInnerHTML(p) + '</div>';
+    return '<div class="pm-qna" id="pm-qna-section" data-hook="pm-qna" data-pid="' + p.id + '">' + productQnaInnerHTML(p) + '</div>';
   }
   /* 문의 등록 — 로그인한 회원만. 제목·내용 필수, 비밀글 옵션 */
   function submitQna(pid, input) {
@@ -8047,6 +8345,14 @@ table.data.ap-variants td.na { color: var(--line); }
       if (el && el.scrollTop > 0) out[sel] = el.scrollTop;
     });
     return out;
+  }
+  /* v1.9.13 — 상품 상세 모달 안의 섹션(리뷰·Q&A)을 맨 위로 부드럽게 맞춘다.
+     페이징을 바꿔 내용이 줄어들면 브라우저가 스크롤을 아래에 붙잡아 두던 문제를 없앤다. */
+  function scrollToModalSection(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    try { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+    catch (e) { try { el.scrollIntoView(); } catch (e2) {} }
   }
   function restoreModalScroll(state) {
     if (!state) return;
@@ -8521,7 +8827,7 @@ table.data.ap-variants td.na { color: var(--line); }
   function couponBoxHTML(rows) {
     var t = totalsOf(rows, null);
     var applied = ui.coupon;
-    var chk = applied ? couponCheck(applied, t.subtotal) : null;
+    var chk = applied ? couponCheck(applied, t.subtotal, undefined, rows) : null;
     var me = currentUser();
     // 현재 로그인한 사용자가 쓸 수 있는 쿠폰만 노출한다(공용 + 본인 전용). 타인 전용 쿠폰은 절대 보이지 않는다.
     var list = couponsForUser(me);
@@ -8538,12 +8844,14 @@ table.data.ap-variants td.na { color: var(--line); }
       (ui.couponMessage && applied && chk && chk.ok ? '<div class="coupon-msg ok">' + esc(ui.couponMessage) + '</div>' : '') +
       (list.length
         ? '<div class="coupon-chips">' + list.map(function (c) {
-            var off = t.subtotal < (Number(c.min_order_amount) || 0);
+            var chkC = couponCheck(c, t.subtotal, me, rows);
+            var off = !chkC.ok;
             var on = applied && applied.code === c.code;
-            return '<button class="coupon-chip' + (on ? ' active' : '') + (off ? ' off' : '') + '" data-action="use-coupon" data-code="' + esc(c.code) + '" title="' + esc(c.name) + '">' +
+            return '<button class="coupon-chip' + (on ? ' active' : '') + (off ? ' off' : '') + '" data-action="use-coupon" data-code="' + esc(c.code) + '" title="' + esc(c.name + (off ? ' — ' + chkC.message : '')) + '">' +
               '<b>' + esc(c.code) + '</b> ' + esc(couponValueLabel(c)) +
-              (couponIsPublic(c) ? '' : '<span class="cb-own">내 전용</span>') +
-              '<small>' + esc(couponHintOf(c, t.subtotal)) + '</small></button>';
+              (couponIsPublic(c) ? '' : '<span class="cb-own">' + (couponTargets(c).length ? '내 전용' : '등급 전용') + '</span>') +
+              (couponHasItemConditions(c) ? '<span class="cb-own cond">' + esc(couponConditionLabel(c)) + '</span>' : '') +
+              '<small>' + esc(couponHintOf(c, t.subtotal, rows)) + '</small></button>';
           }).join('') + '</div>'
         : '<div class="coupon-msg">' + (me ? '사용 가능한 쿠폰이 없습니다.' : '로그인하면 보유 쿠폰을 사용할 수 있습니다.') + '</div>') +
       '</div>';
@@ -8553,7 +8861,7 @@ table.data.ap-variants td.na { color: var(--line); }
     ui.couponCode = String(code || '').trim().toUpperCase();
     ui.couponMessage = '';
     var t = totalsOf(rows || [], null);
-    var chk = couponCheck(c, t.subtotal);
+    var chk = couponCheck(c, t.subtotal, undefined, rows || []);
     if (!chk.ok) {
       ui.coupon = null;
       ui.couponError = chk.message;
@@ -9366,7 +9674,7 @@ table.data.ap-variants td.na { color: var(--line); }
         '<button data-action="admin-tab" data-tab="reviews" class="' + (ui.adminTab === 'reviews' ? 'active' : '') + '">리뷰 관리</button>' +
         '<button data-action="admin-tab" data-tab="qnas" class="' + (ui.adminTab === 'qnas' ? 'active' : '') + '">Q&A 관리' +
           (openQnas ? '<span class="tab-badge">' + openQnas + '</span>' : '') + '</button>' +
-        '<button data-action="admin-tab" data-tab="categories" class="' + (ui.adminTab === 'categories' ? 'active' : '') + '">카테고리</button>' +
+        '<button data-action="admin-tab" data-tab="categories" class="' + (ui.adminTab === 'categories' ? 'active' : '') + '">코드 관리</button>' +
         '<button data-action="admin-tab" data-tab="site" class="' + (ui.adminTab === 'site' ? 'active' : '') + '">메인/사이트</button>' +
         '<button data-action="admin-tab" data-tab="faqs" class="' + (ui.adminTab === 'faqs' ? 'active' : '') + '">FAQ 관리</button>' +
         '<button data-action="admin-tab" data-tab="logs" class="' + (ui.adminTab === 'logs' ? 'active' : '') + '">발송 로그</button>' +
@@ -9381,7 +9689,7 @@ table.data.ap-variants td.na { color: var(--line); }
         : ui.adminTab === 'members' ? adminMembersHTML()
         : ui.adminTab === 'reviews' ? adminReviewsHTML()
         : ui.adminTab === 'qnas' ? adminQnasHTML()
-        : ui.adminTab === 'categories' ? adminCategoriesHTML()
+        : ui.adminTab === 'categories' ? adminCodeHTML()
         : ui.adminTab === 'site' ? adminSiteHTML()
         : ui.adminTab === 'faqs' ? adminFaqsHTML()
         : ui.adminTab === 'logs' ? adminLogsHTML()
@@ -9489,23 +9797,120 @@ table.data.ap-variants td.na { color: var(--line); }
     if (isDataImage(v)) return '업로드한 사진';
     return v;
   }
+  /* ---------------------------------------- v1.9.13 사이트 전용 미디어 라이브러리
+     상품 사진(ALL_IMAGES)과 분리된 히어로/스토리 전용 목록을 썸네일 그리드로 보여준다.
+     사진을 누르면 = 그 사진을 적용하고 바로 저장 / ✕ = 목록에서 삭제 / 업로드·URL 로 추가 */
+  function siteMediaThumbsHTML(kind) {
+    var st = siteSettings();
+    var list = siteMediaListOf(kind, st);
+    var cur = kind === 'hero' ? st.hero_image : st.story_image;
+    return list.map(function (src) {
+      var on = src === cur;
+      return '<div class="sm-thumb' + (on ? ' active' : '') + '" data-sm-thumb="' + esc(src) + '" data-on="' + (on ? '1' : '0') + '">' +
+        '<button type="button" class="sm-pick" data-action="site-media-pick" data-kind="' + kind + '" data-src="' + esc(src) + '"' +
+          ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(siteMediaLabel(src)) + ' 사진 적용">' +
+          '<img src="' + imgSrc(src) + '" alt="" loading="lazy">' +
+          (on ? '<span class="sm-on">적용 중</span>' : '') +
+        '</button>' +
+        '<button type="button" class="sm-del" data-action="site-media-delete" data-kind="' + kind + '" data-src="' + esc(src) + '"' +
+          ' aria-label="' + esc(siteMediaLabel(src)) + ' 사진 삭제">✕</button>' +
+        '<span class="sm-name">' + esc(siteMediaLabel(src)) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+  function siteMediaEditorHTML(kind, s) {
+    var st = s || siteSettings();
+    var cur = kind === 'hero' ? st.hero_image : st.story_image;
+    var list = siteMediaListOf(kind, st);
+    return '<div class="site-media" data-site-media="' + kind + '">' +
+      '<div class="sm-grid" data-hook="' + kind + '-media-grid">' + siteMediaThumbsHTML(kind) + '</div>' +
+      '<div class="sm-tools">' +
+        '<input id="site-' + kind + '-url" class="sm-url" type="text" maxlength="300" placeholder="이미지 URL 추가 (https://…)" ' +
+          'aria-label="' + (kind === 'hero' ? '히어로' : '스토리') + ' 사진 URL" autocomplete="off">' +
+        '<button type="button" class="btn ghost small" data-action="site-media-add-url" data-kind="' + kind + '">URL 추가</button>' +
+        '<label class="btn ghost small upload-btn site-upload"><span class="up-ico" aria-hidden="true">📷</span><span class="up-txt">사진 업로드</span>' +
+          '<input type="file" id="site-' + kind + '-upload" accept="image/*" aria-label="' + (kind === 'hero' ? '히어로' : '스토리') + ' 사진 업로드"></label>' +
+        '<span class="sm-count">' + list.length + ' / ' + SITE_MEDIA_MAX + '장</span>' +
+      '</div>' +
+      '<select id="site-' + kind + '-image" class="sm-select" data-hook="' + kind + '-image-pick" aria-hidden="true" tabindex="-1">' +
+        list.map(function (v) {
+          return '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(siteMediaLabel(v)) + '</option>';
+        }).join('') +
+      '</select>' +
+      '<p class="sm-hint">사진을 누르면 <b>바로 적용·저장</b>됩니다. 상품 사진(보유 이미지)과 분리된 사이트 전용 목록입니다.</p>' +
+    '</div>';
+  }
+  function paintSiteMedia(kind) {
+    var host = $('[data-hook=' + kind + '-media-grid]');
+    if (host) host.innerHTML = siteMediaThumbsHTML(kind);
+    var sel = $('#site-' + kind + '-image');
+    var st = siteSettings();
+    var cur = kind === 'hero' ? st.hero_image : st.story_image;
+    if (sel) {
+      sel.innerHTML = siteMediaListOf(kind).map(function (v) {
+        return '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(siteMediaLabel(v)) + '</option>';
+      }).join('');
+      sel.value = cur;
+    }
+    var prev = $('[data-hook=' + kind + '-preview]');
+    if (prev) prev.src = imgSrc(cur);
+    var cnt = $('[data-site-media=' + kind + '] .sm-count');
+    if (cnt) cnt.textContent = siteMediaListOf(kind).length + ' / ' + SITE_MEDIA_MAX + '장';
+  }
+  function siteMediaKeyOf(kind) { return kind === 'hero' ? 'hero_images' : 'story_images'; }
+  function addSiteMedia(kind, src) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 사진을 추가할 수 있습니다.' };
+    var v = String(src || '').trim();
+    if (!v) return { ok: false, message: '사진 URL을 입력해 주세요.' };
+    if (!(isDataImage(v) || /^https?:\/\//i.test(v) || /^[\w.-]+\.(webp|jpg|jpeg|png)$/i.test(v))) {
+      return { ok: false, message: '이미지 주소(https://…)나 파일명(예: hero.webp)으로 입력해 주세요.' };
+    }
+    var list = siteMediaListOf(kind);
+    if (list.indexOf(v) >= 0) return { ok: true, added: false, list: list };
+    if (list.length >= SITE_MEDIA_MAX) return { ok: false, message: '사진은 ' + SITE_MEDIA_MAX + '장까지 보관할 수 있습니다.' };
+    var st = siteSettings();
+    st[siteMediaKeyOf(kind)] = list.concat([v]);
+    db.site_settings = st;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, added: true, list: siteMediaListOf(kind) };
+  }
+  function removeSiteMedia(kind, src) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 사진을 삭제할 수 있습니다.' };
+    var st = siteSettings();
+    var cur = kind === 'hero' ? st.hero_image : st.story_image;
+    if (String(src) === String(cur)) {
+      return { ok: false, message: '지금 적용 중인 사진은 삭제할 수 없습니다. 다른 사진을 먼저 적용해 주세요.' };
+    }
+    var list = siteMediaListOf(kind).filter(function (v) { return v !== String(src); });
+    if (!list.length) return { ok: false, message: '사진은 1장 이상 필요합니다.' };
+    st[siteMediaKeyOf(kind)] = list;
+    db.site_settings = st;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, list: siteMediaListOf(kind) };
+  }
+  /* 썸네일 클릭 = 바로 적용 + 저장 */
+  function selectSiteMedia(kind, src) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 사진을 바꿀 수 있습니다.' };
+    var v = String(src || '').trim();
+    var list = siteMediaListOf(kind);
+    if (list.indexOf(v) < 0) return { ok: false, message: '목록에 없는 사진입니다.' };
+    var st = siteSettings();
+    if (kind === 'hero') st.hero_image = v; else st.story_image = v;
+    st[siteMediaKeyOf(kind)] = list;
+    st.updated_at = nowISO();
+    db.site_settings = st;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, src: v };
+  }
   function siteHeroPanelHTML(s) {
-    var imgList = ALL_IMAGES.slice();
-    if (s.hero_image && imgList.indexOf(s.hero_image) < 0) imgList.unshift(s.hero_image);
     return '<div class="panel" data-site-hero="1">' +
       '<div class="panel-head"><h2>메인 히어로 배너</h2><span class="sub">저장하면 스토어 첫 화면에 바로 반영됩니다</span></div>' +
       '<div class="site-hero-grid">' +
         '<div class="site-hero-preview"><img data-hook="hero-preview" src="' + imgSrc(s.hero_image) + '" alt="히어로 배너 미리보기">' +
           '<span class="shp-badge" data-hook="hero-effect-badge">' + esc(HERO_EFFECTS[s.hero_effect]) + ' · 오버레이 ' + s.hero_overlay + '%</span></div>' +
         '<div class="site-hero-form">' +
-          '<div class="field"><label>배너 사진</label>' +
-            '<select id="site-hero-image" data-hook="hero-image-pick">' +
-              imgList.map(function (v) {
-                return '<option value="' + esc(v) + '"' + (v === s.hero_image ? ' selected' : '') + '>' + esc(siteHeroImageLabel(v).slice(0, 60)) + '</option>';
-              }).join('') +
-            '</select>' +
-            '<label class="btn ghost small upload-btn site-upload"><span class="up-ico" aria-hidden="true">📷</span><span class="up-txt">사진 업로드</span>' +
-              '<input type="file" id="site-hero-upload" accept="image/*" aria-label="히어로 배너 사진 업로드"></label>' +
+          '<div class="field"><label>배너 사진 <small>상품 사진과 분리된 사이트 전용 사진</small></label>' +
+            siteMediaEditorHTML('hero', s) +
           '</div>' +
           '<div class="field"><label>뱃지 문구</label><input id="site-hero-eyebrow" maxlength="60" value="' + esc(s.hero_eyebrow) + '" placeholder="예: FALL / WINTER 2026 — THE QUIET COLLECTION"></div>' +
           '<div class="field"><label>메인 타이틀 <small>줄바꿈은 그대로 표시됩니다</small></label><textarea id="site-hero-title" rows="2" maxlength="120">' + esc(s.hero_title) + '</textarea></div>' +
@@ -9672,8 +10077,6 @@ table.data.ap-variants td.na { color: var(--line); }
   }
   /* 브랜드 스토리 — 히어로와 같은 방식(사진·문구·태그)으로 관리 */
   function storyPanelHTML(s) {
-    var imgList = ALL_IMAGES.slice();
-    if (s.story_image && imgList.indexOf(s.story_image) < 0) imgList.unshift(s.story_image);
     var on = brandStoryEnabled(s);
     return '<div class="panel" data-site-story="1">' +
       '<div class="panel-head"><h2>브랜드 스토리</h2><span class="sub">저장하면 홈의 스토리 영역에 바로 반영됩니다</span></div>' +
@@ -9692,13 +10095,8 @@ table.data.ap-variants td.na { color: var(--line); }
         '<div class="site-hero-preview"><img data-hook="story-preview" src="' + imgSrc(s.story_image || 'coat.webp') + '" alt="브랜드 스토리 미리보기">' +
           '<span class="shp-badge">' + esc((s.story_eyebrow || 'STORY').slice(0, 40)) + '</span></div>' +
         '<div class="site-hero-form">' +
-          '<div class="field"><label>스토리 사진</label>' +
-            '<select id="site-story-image" data-hook="story-image-pick">' +
-              imgList.map(function (v) {
-                return '<option value="' + esc(v) + '"' + (v === s.story_image ? ' selected' : '') + '>' + esc(siteHeroImageLabel(v).slice(0, 60)) + '</option>';
-              }).join('') + '</select>' +
-            '<label class="btn ghost small upload-btn site-upload"><span class="up-ico" aria-hidden="true">📷</span><span class="up-txt">사진 업로드</span>' +
-              '<input type="file" id="site-story-upload" accept="image/*" aria-label="브랜드 스토리 사진 업로드"></label>' +
+          '<div class="field"><label>스토리 사진 <small>상품 사진과 분리된 사이트 전용 사진</small></label>' +
+            siteMediaEditorHTML('story', s) +
           '</div>' +
           '<div class="field"><label>뱃지 문구</label><input id="site-story-eyebrow" maxlength="60" value="' + esc(s.story_eyebrow) + '" placeholder="예: ATELIER NOTE 01"></div>' +
           '<div class="field"><label>제목 <small>줄바꿈은 그대로 표시</small></label><textarea id="site-story-title" rows="2" maxlength="120">' + esc(s.story_title) + '</textarea></div>' +
@@ -10301,10 +10699,128 @@ table.data.ap-variants td.na { color: var(--line); }
       '<td data-label="관리"><button type="button" class="btn ghost small" data-action="open-member" data-uid="' + esc(u.id) + '">상세</button></td>' +
     '</tr>';
   }
+  /* ============================================ v1.9.13 멤버십 등급 자동 산정
+     · 최근 N개월(기본 6) 실구매 금액(취소 제외 주문 합계) 으로 등급 기준을 정한다
+     · 「대상자 조회」로 현재 등급 ≠ 산정 등급 회원을 모아 「일괄 자동 적용」한다 */
+  function monthsAgoTime(months) {
+    var d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setMonth(d.getMonth() - months);
+    return d.getTime();
+  }
+  function memberRecentSpend(u, months) {
+    var m = months || gradeRules().months;
+    var since = monthsAgoTime(m);
+    return memberOrders(u.id).filter(function (o) {
+      return o.status !== 'cancelled' && timeOf(o.created_at) >= since;
+    }).reduce(function (s, o) { return s + (Number(o.total_amount) || 0); }, 0);
+  }
+  function gradeForSpend(amount) {
+    var t = gradeRules().thresholds;
+    var g = 'NORMAL';
+    GRADE_ORDER.forEach(function (k) { if ((Number(amount) || 0) >= (Number(t[k]) || 0)) g = k; });
+    return g;
+  }
+  /* 대상자 = 관리자 계정을 뺀 회원 중 현재 등급과 산정 등급이 다른 사람 */
+  function membershipTargets() {
+    var r = gradeRules();
+    return memberList().filter(function (u) { return u.role !== 'admin'; }).map(function (u) {
+      var spend = memberRecentSpend(u, r.months);
+      var cur = gradeOf(u), next = gradeForSpend(spend);
+      return { uid: u.id, name: u.name, email: u.email, spend: spend, cur: cur, next: next };
+    }).filter(function (t) { return t.cur !== t.next; })
+      .sort(function (a, b) { return b.spend - a.spend; });
+  }
+  function saveGradeRulesFromForm() {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var months = parseInt(($('#mgr-months') || {}).value, 10);
+    if (!isFinite(months) || months < 1 || months > 60) {
+      return { ok: false, message: '기준 기간은 1~60개월 사이로 입력해 주세요.' };
+    }
+    var thresholds = {};
+    for (var i = 0; i < GRADE_ORDER.length; i++) {
+      var g = GRADE_ORDER[i];
+      var n = parseInt(($('#mgr-' + g.toLowerCase()) || {}).value, 10);
+      if (!isFinite(n) || n < 0) return { ok: false, message: GRADES[g].label + ' 등급 기준 금액을 0 이상으로 입력해 주세요.' };
+      thresholds[g] = n;
+    }
+    for (var j = 1; j < GRADE_ORDER.length; j++) {
+      if (thresholds[GRADE_ORDER[j]] <= thresholds[GRADE_ORDER[j - 1]]) {
+        return { ok: false, message: '등급 기준 금액은 ' + GRADES[GRADE_ORDER[j - 1]].label + ' < ' + GRADES[GRADE_ORDER[j]].label + ' 순으로 커져야 합니다.' };
+      }
+    }
+    if (thresholds.NORMAL !== 0) return { ok: false, message: '일반 등급 기준은 0원으로 두세요.' };
+    var next = siteSettings();
+    next.member_grade_rules = { months: months, thresholds: thresholds };
+    next.updated_at = nowISO();
+    db.site_settings = next;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, rules: gradeRules() };
+  }
+  function applyMembershipTargets() {
+    if (!isAdmin()) return { ok: false, message: '관리자만 적용할 수 있습니다.' };
+    var list = ui.memberTargets || membershipTargets();
+    var changed = 0;
+    list.forEach(function (t) {
+      var u = currentUserById(t.uid);
+      if (!u) return;
+      var next = gradeForSpend(memberRecentSpend(u));
+      if (gradeOf(u) === next) return;
+      u.grade = next;
+      changed++;
+    });
+    if (changed && !save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, changed: changed };
+  }
+  function membershipPanelHTML() {
+    var r = gradeRules();
+    var targets = ui.memberTargets;
+    var list = Array.isArray(targets) ? targets : null;
+    var up = list ? list.filter(function (t) { return GRADE_ORDER.indexOf(t.next) > GRADE_ORDER.indexOf(t.cur); }).length : 0;
+    var down = list ? list.length - up : 0;
+    return '<div class="data-card membership-rules" data-membership-rules="1">' +
+      '<h3>멤버십 등급 기준 <small class="data-h3-sub">최근 ' + r.months + '개월 구매금액 기준</small></h3>' +
+      '<p>최근 <b>N개월</b> 실구매 금액(취소 제외 주문 합계)으로 등급을 정합니다. ' +
+        '「대상자 조회」로 지금 등급과 산정 등급이 다른 회원을 확인한 뒤 <b>「일괄 자동 적용」</b>으로 한 번에 바꿉니다.</p>' +
+      '<div class="mgr-form" data-hook="mgr-form">' +
+        '<label class="mgr-field"><span>기준 기간</span>' +
+          '<input id="mgr-months" type="number" min="1" max="60" step="1" value="' + r.months + '" aria-label="멤버십 기준 기간(개월)"><small>개월</small></label>' +
+        GRADE_ORDER.map(function (g) {
+          return '<label class="mgr-field"><span class="grade-badge ' + GRADES[g].cls + '">' + GRADES[g].label + '</span>' +
+            '<input id="mgr-' + g.toLowerCase() + '" type="number" min="0" step="10000" value="' + (Number(r.thresholds[g]) || 0) + '" aria-label="' + GRADES[g].label + ' 등급 기준 금액"><small>원 이상</small></label>';
+        }).join('') +
+        '<button class="btn small" data-action="save-grade-rules">기준 저장</button>' +
+      '</div>' +
+      '<div class="mgr-actions">' +
+        '<button class="btn ghost small" data-action="membership-scan">대상자 조회</button>' +
+        '<button class="btn small" data-action="membership-apply"' + (list && list.length ? '' : ' disabled') + '>일괄 자동 적용' +
+          (list && list.length ? ' (' + list.length + '명)' : '') + '</button>' +
+        (list ? '<span class="mgr-count">대상 <b>' + list.length + '</b>명 · 상향 ' + up + ' · 하향 ' + down + '</span>' : '<span class="mgr-count">「대상자 조회」를 누르면 변경 예정 등급이 나옵니다</span>') +
+      '</div>' +
+      (list
+        ? (list.length
+          ? '<div class="table-wrap table-scroll" data-hook="membership-targets"><table class="data membership-grid admin-grid">' +
+              '<thead><tr><th>회원</th><th>최근 ' + r.months + '개월 구매액</th><th>등급 (현재 → 예정)</th></tr></thead><tbody>' +
+              list.map(function (t) {
+                var dir = GRADE_ORDER.indexOf(t.next) > GRADE_ORDER.indexOf(t.cur) ? 'up' : 'down';
+                return '<tr data-target="' + esc(t.uid) + '" data-dir="' + dir + '">' +
+                  '<td data-label="회원"><b>' + esc(t.name) + '</b><div class="m">' + esc(t.email) + '</div></td>' +
+                  '<td data-label="구매액"><b>' + won(t.spend) + '</b></td>' +
+                  '<td data-label="등급 변경"><span class="grade-badge ' + GRADES[t.cur].cls + '">' + GRADES[t.cur].label + '</span>' +
+                    '<span class="mgr-arrow" aria-hidden="true">→</span>' +
+                    '<span class="grade-badge ' + GRADES[t.next].cls + '">' + GRADES[t.next].label + '</span>' +
+                    '<em class="mgr-dir ' + dir + '">' + (dir === 'up' ? '↑ 상향' : '↓ 하향') + '</em></td>' +
+                '</tr>';
+              }).join('') + '</tbody></table></div>'
+          : '<p class="mgr-empty" data-hook="membership-targets">변경할 회원이 없습니다. 모든 회원이 기준에 맞습니다.</p>')
+        : '') +
+    '</div>';
+  }
   function adminMembersHTML() {
     var list = memberList();
     var totalPoints = list.reduce(function (s, u) { return s + userPoints(u); }, 0);
     return '<div class="admin-members" data-admin-members="1">' +
+      membershipPanelHTML() +
       '<div class="data-card" data-member-grid="1">' +
         '<h3>회원 관리 <small class="data-h3-sub">' + list.length + '명 · 보유 포인트 합계 ' + totalPoints.toLocaleString('ko-KR') + 'P</small></h3>' +
         '<p>행을 누르면 회원 상세에서 주문·리뷰 요약을 보고 <b>포인트 지급/차감</b>과 <b>회원 등급</b>을 바로 조정할 수 있습니다.</p>' +
@@ -10652,6 +11168,37 @@ table.data.ap-variants td.na { color: var(--line); }
         '<span class="grade-badge ' + GRADES[g].cls + '">' + GRADES[g].label + '</span></label>';
     }).join('');
   }
+  /* v1.9.13 — 쿠폰 사용 조건 칩(상품 카테고리·뱃지). 뱃지는 「코드 관리 > 뱃지 관리」 목록과 연동된다. */
+  function catChipsHTML(prefix, selected) {
+    var sel = selected || [];
+    return categoriesSorted().map(function (c) {
+      return '<label class="cond-chip' + (sel.indexOf(c.id) >= 0 ? ' on' : '') + '">' +
+        '<input type="checkbox" name="' + prefix + '-cat" value="' + esc(c.id) + '"' + (sel.indexOf(c.id) >= 0 ? ' checked' : '') + '>' +
+        '<span>' + esc(c.label) + '</span></label>';
+    }).join('');
+  }
+  function badgeChipsHTML(prefix, selected) {
+    var sel = normalizeBadgeList(selected || []);
+    return badgeList().map(function (b) {
+      return '<label class="cond-chip badge' + (sel.indexOf(b) >= 0 ? ' on' : '') + '">' +
+        '<input type="checkbox" name="' + prefix + '-badge" value="' + esc(b) + '"' + (sel.indexOf(b) >= 0 ? ' checked' : '') + '>' +
+        '<span>' + esc(b) + '</span></label>';
+    }).join('');
+  }
+  function couponConditionChipsHTML(prefix, cats, badges) {
+    return '<div class="coupon-cond" data-hook="' + prefix + '-cond">' +
+      '<div class="cc-row"><span class="cc-label">상품 카테고리 <small>비우면 전체</small></span>' +
+        '<div class="cond-chips" data-hook="' + prefix + '-cats">' + catChipsHTML(prefix, cats) + '</div></div>' +
+      '<div class="cc-row"><span class="cc-label">상품 뱃지 <small>비우면 전체</small></span>' +
+        '<div class="cond-chips" data-hook="' + prefix + '-badges">' + badgeChipsHTML(prefix, badges) + '</div></div>' +
+      '<p class="cc-hint">카테고리·뱃지를 고르면 <b>두 조건을 모두 만족하는 상품 금액</b>에만 할인이 적용됩니다(회원 등급·회원 지정 조건과 AND).</p>' +
+    '</div>';
+  }
+  function readCouponConditions(prefix) {
+    var cats = $$('[data-hook=' + prefix + '-cats] input[type=checkbox]:checked').map(function (i) { return i.value; });
+    var badges = $$('[data-hook=' + prefix + '-badges] input[type=checkbox]:checked').map(function (i) { return i.value; });
+    return { target_categories: cats, target_badges: normalizeBadgeList(badges) };
+  }
   function memberPickerHTML(prefix, members, selected) {
     var sel = selected || [];
     return '<div class="member-picker">' +
@@ -10718,7 +11265,7 @@ table.data.ap-variants td.na { color: var(--line); }
     return '<div class="data-card coupon-form" data-coupon-form>' +
         '<h3>새 쿠폰 발행</h3>' +
         '<p>코드는 영문·숫자 3~20자. 정률은 %, 정액은 원 단위로 입력합니다. 만료일을 비우면 무기한입니다. ' +
-          '<b>발급 대상</b>은 전체 공용·회원 등급별·특정 회원 지정 중에서 고를 수 있습니다.</p>' +
+          '<b>발급 대상</b>(회원 등급·특정 회원)과 <b>사용 조건</b>(상품 카테고리·뱃지)은 함께 걸 수 있으며, 실제 적용 시에는 모든 조건을 모두 만족해야 합니다.</p>' +
         (ui.couponFormError ? '<div class="form-error">' + esc(ui.couponFormError) + '</div>' : '') +
         '<div class="form-grid coupon-grid">' +
           '<div class="field"><label>쿠폰 코드</label><input id="cf-code" placeholder="WELCOME10" autocomplete="off" style="text-transform:uppercase"></div>' +
@@ -10727,23 +11274,33 @@ table.data.ap-variants td.na { color: var(--line); }
           '<div class="field"><label>할인 값</label><input id="cf-value" type="number" min="1" step="1" placeholder="10"></div>' +
           '<div class="field"><label>최소 주문금액 (원)</label><input id="cf-min" type="number" min="0" step="1000" value="0"></div>' +
           '<div class="field"><label>만료일 (선택)</label><input id="cf-expires" type="date"></div>' +
-          '<div class="field span2"><label>발급 대상</label>' +
+          '<div class="field span2"><label>발급 대상 (회원 등급 · 특정 회원)</label>' +
             targetPickerHTML('cf', { mode: ui.couponTargetMode || 'all', grades: ui.couponTargetGrades || [], users: ui.couponTargetSel || [] }) +
+          '</div>' +
+          '<div class="field span2"><label>사용 조건 (상품 카테고리 · 뱃지)</label>' +
+            couponConditionChipsHTML('cf', ui.couponTargetCats || [], ui.couponTargetBadges || []) +
           '</div>' +
         '</div>' +
         '<div class="form-actions" style="border:0;padding-top:4px"><button class="btn small" data-action="create-coupon">쿠폰 발행</button></div>' +
       '</div>' +
       '<div class="coupon-stat">사용 가능 <b>' + live + '</b>장 · 전체 ' + rows.length + '장</div>' +
       '<div class="table-wrap table-scroll"><table class="data coupons coupons-table admin-grid">' +
-        '<thead><tr><th>쿠폰</th><th>할인</th><th>발급 대상</th><th>최소 주문</th><th>만료</th><th>사용</th><th>상태</th><th>관리</th></tr></thead><tbody>' +
+        '<thead><tr><th>쿠폰</th><th>할인</th><th>발급 대상</th><th>사용 조건</th><th>최소 주문</th><th>만료</th><th>사용</th><th>상태</th><th>관리</th></tr></thead><tbody>' +
         (rows.length ? rows.map(function (c) {
           var used = db.orders.filter(function (o) { return o.coupon_code === c.code && o.status !== 'cancelled'; }).length;
           var state = !c.is_active ? '<span class="stock-pill zero">중지</span>'
             : couponExpired(c) ? '<span class="stock-pill zero">만료</span>' : '<span class="stock-pill">사용중</span>';
+          var cond = couponHasItemConditions(c)
+            ? '<div class="coupon-cond-cell">' +
+                (couponTargetCategories(c).length ? '<span class="cond-tag">' + esc(couponTargetCategories(c).map(catLabel).join('·')) + '</span>' : '') +
+                (couponTargetBadges(c).length ? '<span class="cond-tag badge">' + esc(couponTargetBadges(c).join('·')) + '</span>' : '') +
+              '</div>'
+            : '<span class="m">제한 없음</span>';
           return '<tr data-coupon="' + esc(c.code) + '" data-cid="' + esc(c.id) + '" data-public="' + (couponIsPublic(c) ? '1' : '0') + '">' +
             '<td data-label="쿠폰"><div class="coupon-cell"><b>' + esc(c.code) + '</b><div class="m">' + esc(c.name) + '</div></div></td>' +
             '<td data-label="할인">' + esc(couponValueLabel(c)) + '</td>' +
             '<td data-label="발급 대상"><div class="coupon-target">' + couponAudienceCellHTML(c) + '</div></td>' +
+            '<td data-label="사용 조건">' + cond + '</td>' +
             '<td data-label="최소 주문">' + (Number(c.min_order_amount) ? won(c.min_order_amount) : '제한 없음') + '</td>' +
             '<td data-label="만료">' + (c.expires_at ? fmtDate(c.expires_at) : '무기한') + '</td>' +
             '<td data-label="사용">' + used + '건</td>' +
@@ -10753,7 +11310,7 @@ table.data.ap-variants td.na { color: var(--line); }
               '<button class="txt-btn" data-action="toggle-coupon" data-cid="' + c.id + '">' + (c.is_active ? '사용 중지' : '사용 재개') + '</button>' +
             '</div></td>' +
           '</tr>';
-        }).join('') : '<tr><td colspan="8" class="empty-cell">발행된 쿠폰이 없습니다.</td></tr>') +
+        }).join('') : '<tr><td colspan="9" class="empty-cell">발행된 쿠폰이 없습니다.</td></tr>') +
         '</tbody></table></div>';
   }
   function couponInputFrom(input) {
@@ -10771,6 +11328,13 @@ table.data.ap-variants td.na { color: var(--line); }
       var gv = String(g).toUpperCase();
       if (GRADES[gv] && grades.indexOf(gv) < 0) grades.push(gv);
     });
+    /* v1.9.13 — 사용 조건(카테고리·뱃지) 정규화 */
+    var cats = [];
+    (Array.isArray(input.target_categories) ? input.target_categories : []).forEach(function (id) {
+      var v = String(id || '').trim();
+      if (v && db.categories.some(function (c) { return c.id === v; }) && cats.indexOf(v) < 0) cats.push(v);
+    });
+    var badges = normalizeBadgeList(input.target_badges);
     if (!name) return { ok: false, message: '쿠폰명을 입력해 주세요.' };
     if (!(value > 0)) return { ok: false, message: '할인 값을 1 이상으로 입력해 주세요.' };
     if (type === 'percent' && value > 100) return { ok: false, message: '정률 할인은 100%를 넘을 수 없습니다.' };
@@ -10790,7 +11354,8 @@ table.data.ap-variants td.na { color: var(--line); }
     return {
       ok: true,
       fields: { code: code, name: name, discount_type: type, discount_value: value,
-                min_order_amount: min, expires_at: expires, target_user_ids: targets, target_grades: grades }
+                min_order_amount: min, expires_at: expires, target_user_ids: targets, target_grades: grades,
+                target_categories: cats, target_badges: badges }
     };
   }
   function createCoupon(input) {
@@ -10803,7 +11368,8 @@ table.data.ap-variants td.na { color: var(--line); }
     var c = {
       id: newId('c'), code: f.code, name: f.name, discount_type: f.discount_type, discount_value: f.discount_value,
       min_order_amount: f.min_order_amount, expires_at: f.expires_at, is_active: true, created_at: nowISO(),
-      target_user_ids: f.target_user_ids, target_grades: f.target_grades
+      target_user_ids: f.target_user_ids, target_grades: f.target_grades,
+      target_categories: f.target_categories, target_badges: f.target_badges
     };
     db.coupons.push(c);
     save();
@@ -10823,6 +11389,8 @@ table.data.ap-variants td.na { color: var(--line); }
     c.expires_at = f.expires_at;
     c.target_user_ids = f.target_user_ids;
     c.target_grades = f.target_grades;
+    c.target_categories = f.target_categories;
+    c.target_badges = f.target_badges;
     c.updated_at = nowISO();
     if (ui.coupon && ui.coupon.id === c.id) {
       // 사용 중인 쿠폰이 바뀌면 적용 상태를 다시 검사한다
@@ -10857,8 +11425,11 @@ table.data.ap-variants td.na { color: var(--line); }
           '<div class="field"><label>할인 값</label><input id="ce-value" type="number" min="1" step="1" value="' + esc(c.discount_value) + '"></div>' +
           '<div class="field"><label>최소 주문금액 (원)</label><input id="ce-min" type="number" min="0" step="1000" value="' + esc(c.min_order_amount) + '"></div>' +
           '<div class="field"><label>만료일 (선택)</label><input id="ce-expires" type="date" value="' + (c.expires_at ? String(c.expires_at).slice(0, 10) : '') + '"></div>' +
-          '<div class="field span2"><label>발급 대상</label>' +
+          '<div class="field span2"><label>발급 대상 (회원 등급 · 특정 회원)</label>' +
             targetPickerHTML('ce', { mode: mode, grades: couponTargetGrades(c), users: couponTargets(c) }) +
+          '</div>' +
+          '<div class="field span2"><label>사용 조건 (상품 카테고리 · 뱃지)</label>' +
+            couponConditionChipsHTML('ce', couponTargetCategories(c), couponTargetBadges(c)) +
           '</div>' +
         '</div>' +
         '<div class="form-actions">' +
@@ -11121,6 +11692,126 @@ table.data.ap-variants td.na { color: var(--line); }
         '<input id="cat-new-en" placeholder="영문 코드 (선택)" maxlength="16" aria-label="새 카테고리 영문 코드">' +
         '<button class="btn small" data-action="category-add">+ 카테고리 추가</button>' +
       '</div>' +
+    '</div>';
+  }
+
+  /* ======================================================== v1.9.13 코드 관리
+     「카테고리」 탭을 「코드 관리」로 바꾸고 카테고리 관리 | 뱃지 관리 서브탭으로 나눴다.
+     뱃지 코드는 site_settings.product_badges 에 저장되며
+     · 상품 등록/수정의 뱃지 선택 · 쿠폰 사용 조건(뱃지) · 스토어 카드 뱃지가 같은 목록을 본다. */
+  function badgeUsageCount(code) {
+    return db.products.filter(function (p) { return String(p.badge || '').trim().toUpperCase() === code; }).length;
+  }
+  function badgeCouponCount(code) {
+    return db.coupons.filter(function (c) { return couponTargetBadges(c).indexOf(code) >= 0; }).length;
+  }
+  function saveBadgeList(list) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 수정할 수 있습니다.' };
+    var next = normalizeBadgeList(list).slice(0, 24);
+    if (!next.length) return { ok: false, message: '뱃지 코드는 1개 이상 필요합니다.' };
+    var all = siteSettings();
+    all.product_badges = next;
+    db.site_settings = all;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, badges: next.slice() };
+  }
+  function addBadge(code) {
+    var c = normalizeBadgeCode(code);
+    if (!c) return { ok: false, message: '뱃지 코드를 입력해 주세요.' };
+    if (!/^[A-Z0-9가-힣+_-]{1,16}$/.test(c)) return { ok: false, message: '뱃지 코드는 영문·숫자·한글 1~16자로 입력해 주세요.' };
+    var list = badgeList();
+    if (list.indexOf(c) >= 0) return { ok: false, message: '이미 등록된 뱃지 코드입니다.' };
+    var res = saveBadgeList(list.concat([c]));
+    return res.ok ? { ok: true, badge: c, badges: res.badges } : res;
+  }
+  /* 코드를 바꾸면 그 뱃지를 쓰던 상품과 쿠폰 사용 조건도 함께 바뀐다 */
+  function renameBadge(oldCode, nextCode) {
+    var oldC = normalizeBadgeCode(oldCode), newC = normalizeBadgeCode(nextCode);
+    var list = badgeList();
+    if (list.indexOf(oldC) < 0) return { ok: false, message: '뱃지를 찾을 수 없습니다.' };
+    if (!newC) return { ok: false, message: '뱃지 코드를 입력해 주세요.' };
+    if (!/^[A-Z0-9가-힣+_-]{1,16}$/.test(newC)) return { ok: false, message: '뱃지 코드는 영문·숫자·한글 1~16자로 입력해 주세요.' };
+    if (newC === oldC) return { ok: true, unchanged: true, badges: list };
+    if (list.indexOf(newC) >= 0) return { ok: false, message: '이미 등록된 뱃지 코드입니다.' };
+    var res = saveBadgeList(list.map(function (b) { return b === oldC ? newC : b; }));
+    if (!res.ok) return res;
+    db.products.forEach(function (p) {
+      if (String(p.badge || '').trim().toUpperCase() === oldC) p.badge = newC;
+    });
+    db.coupons.forEach(function (c) {
+      if (Array.isArray(c.target_badges) && couponTargetBadges(c).indexOf(oldC) >= 0) {
+        c.target_badges = couponTargetBadges(c).map(function (b) { return b === oldC ? newC : b; });
+      }
+    });
+    save();
+    return { ok: true, badges: res.badges, changedProducts: badgeUsageCount(newC) };
+  }
+  function deleteBadge(code) {
+    var c = normalizeBadgeCode(code);
+    var list = badgeList();
+    if (list.indexOf(c) < 0) return { ok: false, message: '뱃지를 찾을 수 없습니다.' };
+    if (list.length <= 1) return { ok: false, message: '뱃지는 1개 이상 필요합니다.' };
+    var used = badgeUsageCount(c);
+    if (used) return { ok: false, message: '이 뱃지를 쓰는 상품이 ' + used + '개 있어 삭제할 수 없습니다. 상품 뱃지를 먼저 바꿔 주세요.' };
+    var inCoupon = badgeCouponCount(c);
+    if (inCoupon) return { ok: false, message: '이 뱃지를 사용 조건으로 쓰는 쿠폰이 ' + inCoupon + '장 있어 삭제할 수 없습니다.' };
+    var res = saveBadgeList(list.filter(function (b) { return b !== c; }));
+    return res.ok ? { ok: true, badges: res.badges } : res;
+  }
+  function moveBadge(code, dir) {
+    var c = normalizeBadgeCode(code);
+    var list = badgeList();
+    var i = list.indexOf(c);
+    if (i < 0) return { ok: false, message: '뱃지를 찾을 수 없습니다.' };
+    var j = i + (dir === 'up' ? -1 : 1);
+    if (j < 0 || j >= list.length) return { ok: true, moved: false };
+    var t = list[i]; list[i] = list[j]; list[j] = t;
+    var res = saveBadgeList(list);
+    return res.ok ? { ok: true, moved: true, badges: res.badges } : res;
+  }
+  function adminBadgesHTML() {
+    var list = badgeList();
+    return '<div class="data-card badge-admin" data-badge-admin="1">' +
+      '<h3>뱃지 관리 <small class="data-h3-sub">' + list.length + '종</small></h3>' +
+      '<p>상품 뱃지 코드를 <b>추가·이름 수정·삭제·순서 변경</b>합니다. 여기서 정한 목록이 ' +
+        '<b>상품 등록/수정의 뱃지 선택</b>(직접 입력 없음)과 <b>쿠폰 사용 조건(뱃지)</b>에 그대로 쓰입니다. ' +
+        '이름을 바꾸면 그 뱃지를 쓰던 상품·쿠폰도 함께 바뀌고, <b>상품이 연결된 뱃지는 삭제할 수 없습니다</b>.</p>' +
+      '<div class="table-wrap table-scroll" data-hook="badge-table"><table class="data badge-grid admin-grid">' +
+        '<thead><tr><th>뱃지 코드</th><th>스토어 표시</th><th>사용</th><th>관리</th></tr></thead><tbody>' +
+        (list.length ? list.map(function (b, i) {
+          var used = badgeUsageCount(b), inCoupon = badgeCouponCount(b);
+          return '<tr data-badge-row="' + esc(b) + '">' +
+            '<td data-label="뱃지 코드"><div class="badge-code-cell">' +
+              '<span class="cat-order">' + (i + 1) + '</span>' +
+              '<input class="badge-code-input" id="badge-code-' + i + '" data-hook="badge-code-input" maxlength="16" value="' + esc(b) + '" aria-label="' + esc(b) + ' 뱃지 코드">' +
+            '</div></td>' +
+            '<td data-label="스토어 표시"><span class="badge-preview ' + badgeClass(b) + '">' + esc(b) + '</span></td>' +
+            '<td data-label="사용"><b>' + used + '</b>개<div class="m">쿠폰 ' + inCoupon + '장</div></td>' +
+            '<td data-label="관리"><div class="row-actions">' +
+              '<button class="icon-btn" data-action="badge-move" data-code="' + esc(b) + '" data-dir="up" aria-label="' + esc(b) + ' 위로"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+              '<button class="icon-btn" data-action="badge-move" data-code="' + esc(b) + '" data-dir="down" aria-label="' + esc(b) + ' 아래로"' + (i === list.length - 1 ? ' disabled' : '') + '>↓</button>' +
+              '<button class="txt-btn" data-action="badge-rename" data-code="' + esc(b) + '" data-idx="' + i + '">저장</button>' +
+              '<button class="txt-btn danger" data-action="badge-delete" data-code="' + esc(b) + '">삭제</button>' +
+            '</div></td>' +
+          '</tr>';
+        }).join('') : '<tr><td colspan="4" class="empty-cell">등록된 뱃지가 없습니다.</td></tr>') +
+        '</tbody></table></div>' +
+      '<div class="category-add badge-add">' +
+        '<input id="badge-new-code" placeholder="새 뱃지 코드 (예: 1+1, SALE)" maxlength="16" aria-label="새 뱃지 코드">' +
+        '<button class="btn small" data-action="badge-add">+ 뱃지 추가</button>' +
+      '</div>' +
+    '</div>';
+  }
+  /* v1.9.13 — 「코드 관리」: 카테고리 관리 | 뱃지 관리 서브탭 */
+  var CODE_SUBTABS = [
+    { value: 'cats', label: '카테고리 관리' },
+    { value: 'badges', label: '뱃지 관리' }
+  ];
+  function adminCodeHTML() {
+    var active = ui.codeTab === 'badges' ? 'badges' : 'cats';
+    return '<div class="admin-code" data-admin-code="1" data-code-tab="' + active + '">' +
+      adminSubtabBarHTML('code-subtabs', 'code-subtab', CODE_SUBTABS, active) +
+      (active === 'badges' ? adminBadgesHTML() : adminCategoriesHTML()) +
     '</div>';
   }
 
@@ -11822,18 +12513,19 @@ table.data.ap-variants td.na { color: var(--line); }
           }).join('') + '</div>'
         : '');
   }
+  /* v1.9.13 — 뱃지는 「코드 관리 > 뱃지 관리」에 등록된 코드에서만 고른다(직접 입력 없음).
+     예전 데이터에 목록에 없는 뱃지가 남아 있으면 그 코드를 맨 아래에 그대로 두어 저장 시 유지한다. */
   function badgeEditorHTML(d) {
-    var cur = d.badge ? String(d.badge) : '';
-    var isPreset = BADGE_PRESETS.indexOf(cur) >= 0;
-    var sel = !cur ? '' : (isPreset ? cur : '__custom');
-    var opts = [['', '없음']].concat(BADGE_PRESETS.map(function (b) { return [b, b]; })).concat([['__custom', '직접 입력…']]);
+    var cur = d.badge ? String(d.badge).trim() : '';
+    var list = badgeList();
+    var opts = [['', '없음']].concat(list.map(function (b) { return [b, b]; }));
+    if (cur && list.indexOf(normalizeBadgeCode(cur)) < 0) opts.push([cur, cur + ' (등록 안 됨)']);
     return '<div class="badge-editor">' +
-      '<select id="pe-badge" data-hook="badge-select">' + opts.map(function (o) {
-        return '<option value="' + esc(o[0]) + '"' + (sel === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+      '<select id="pe-badge" data-hook="badge-select" aria-label="상품 뱃지">' + opts.map(function (o) {
+        return '<option value="' + esc(o[0]) + '"' + (cur === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
       }).join('') + '</select>' +
-      '<input id="pe-badge-custom" type="text" maxlength="' + BADGE_CUSTOM_MAX + '" placeholder="예: LIMITED, 단독, 1+1" value="' +
-        esc(isPreset || !cur ? '' : cur) + '"' + (sel === '__custom' ? '' : ' disabled') + ' data-hook="badge-custom" aria-label="뱃지 직접 입력">' +
-      '</div>';
+      '<span class="badge-editor-hint">뱃지 코드는 「코드 관리 → 뱃지 관리」에서 추가•수정합니다</span>' +
+    '</div>';
   }
   /* 옵션 행 — 컬러명 · 색상 스와치(누르면 색상 레이어) · HEX(직접 입력) · 사이즈 · 재고 */
   function variantRowHTML(v, idx, sizeOptions) {
@@ -12067,8 +12759,7 @@ table.data.ap-variants td.na { color: var(--line); }
     fsRaw = fsRaw == null ? '' : String(fsRaw).trim();
     var freeShip = fsRaw === '' ? null : Math.max(0, parseInt(fsRaw, 10) || 0);
     var bSel = ($('#pe-badge') || {}).value || '';
-    var bCustom = ($('#pe-badge-custom') || {}).value || '';
-    var badge = bSel === '__custom' ? normalizeBadge(bCustom) : (bSel ? normalizeBadge(bSel) : null);
+    var badge = bSel ? normalizeBadge(bSel) : null;
     var modelRaw = ($('#pe-model') || {}).value || '';
     var activeEl = $('#pe-active');
     return {
@@ -13101,6 +13792,8 @@ table.data.ap-variants td.na { color: var(--line); }
         var rvHost = $('#modal-layer [data-hook=pm-reviews]');
         var rvProd = productById(ui.modal.pid);
         if (rvHost && rvProd) rvHost.innerHTML = productReviewsInnerHTML(rvProd);
+        /* v1.9.13 — 페이지를 바꾸면 리뷰 섹션 맨 위로 맞춘다(Q&A 페이징과 동일) */
+        scrollToModalSection('pm-reviews-section');
         break;
       }
       case 'close-review': {
@@ -13291,6 +13984,7 @@ table.data.ap-variants td.na { color: var(--line); }
         var qpHost = $('#modal-layer [data-hook=pm-qna]');
         var qpProd = productById(ui.modal.pid);
         if (qpHost && qpProd) qpHost.innerHTML = productQnaInnerHTML(qpProd);
+        scrollToModalSection('pm-qna-section');
         break;
       }
       case 'qna-form-toggle': {
@@ -13429,6 +14123,38 @@ table.data.ap-variants td.na { color: var(--line); }
         ui.memberPtsError = '';
         renderAll();
         toast('회원 등급을 ' + gradeLabel({ grade: sgRes.grade }) + '로 저장했습니다.');
+        break;
+      }
+      /* v1.9.13 — 멤버십 등급 기준 저장 · 대상자 조회 · 일괄 자동 적용 */
+      case 'save-grade-rules': {
+        if (!isAdmin()) break;
+        var grRes = saveGradeRulesFromForm();
+        if (!grRes.ok) { toast(grRes.message, 'warn'); break; }
+        ui.memberTargets = null;
+        renderAll();
+        toast('멤버십 등급 기준을 저장했습니다. (최근 ' + grRes.rules.months + '개월)');
+        break;
+      }
+      case 'membership-scan': {
+        if (!isAdmin()) break;
+        var scanSaved = saveGradeRulesFromForm();
+        if (!scanSaved.ok) { toast(scanSaved.message, 'warn'); break; }
+        ui.memberTargets = membershipTargets();
+        renderAll();
+        toast(ui.memberTargets.length
+          ? '등급 변경 대상 ' + ui.memberTargets.length + '명을 찾았습니다.'
+          : '등급을 바꿀 회원이 없습니다.');
+        break;
+      }
+      case 'membership-apply': {
+        if (!isAdmin()) break;
+        var apRes = applyMembershipTargets();
+        if (!apRes.ok) { toast(apRes.message, 'warn'); break; }
+        ui.memberTargets = membershipTargets();
+        renderAll();
+        toast(apRes.changed
+          ? '회원 ' + apRes.changed + '명의 등급을 적용했습니다.' + (ui.memberTargets.length ? ' 남은 대상 ' + ui.memberTargets.length + '명.' : '')
+          : '등급이 이미 모두 기준에 맞습니다.');
         break;
       }
       case 'apply-points': {
@@ -13745,6 +14471,76 @@ table.data.ap-variants td.na { color: var(--line); }
         if (!isAdmin()) break;
         ui.siteTab = el.dataset.value || 'all';
         renderAll();
+        break;
+      }
+      /* v1.9.13 — 「코드 관리」 서브탭: 카테고리 관리 | 뱃지 관리 */
+      case 'code-subtab': {
+        if (!isAdmin()) break;
+        ui.codeTab = el.dataset.value === 'badges' ? 'badges' : 'cats';
+        renderAll();
+        break;
+      }
+      case 'badge-add': {
+        if (!isAdmin()) break;
+        var bAdd = addBadge(($('#badge-new-code') || {}).value);
+        if (!bAdd.ok) { toast(bAdd.message, 'warn'); break; }
+        renderAll();
+        toast(bAdd.badge + ' 뱃지를 추가했습니다.');
+        break;
+      }
+      case 'badge-rename': {
+        if (!isAdmin()) break;
+        var bIdx = el.dataset.idx;
+        var bInput = $('#badge-code-' + bIdx);
+        var bRen = renameBadge(el.dataset.code, bInput ? bInput.value : '');
+        if (!bRen.ok) { toast(bRen.message, 'warn'); break; }
+        renderAll();
+        toast(bRen.unchanged ? '뱃지 코드가 그대로입니다.' : '뱃지 코드를 바꿨습니다. 상품·쿠폰에 함께 반영했습니다.');
+        break;
+      }
+      case 'badge-delete': {
+        if (!isAdmin()) break;
+        var bDel = deleteBadge(el.dataset.code);
+        if (!bDel.ok) { toast(bDel.message, 'warn'); break; }
+        renderAll();
+        toast(el.dataset.code + ' 뱃지를 삭제했습니다.');
+        break;
+      }
+      case 'badge-move': {
+        if (!isAdmin()) break;
+        var bMov = moveBadge(el.dataset.code, el.dataset.dir);
+        if (!bMov.ok) { toast(bMov.message, 'warn'); break; }
+        renderAll();
+        break;
+      }
+      /* v1.9.13 — 사이트 전용 미디어: 썸네일 클릭 = 적용·저장, ✕ = 목록에서 삭제, URL 추가 */
+      case 'site-media-pick': {
+        if (!isAdmin()) break;
+        var smKind = el.dataset.kind === 'story' ? 'story' : 'hero';
+        var smRes = selectSiteMedia(smKind, el.dataset.src);
+        if (!smRes.ok) { toast(smRes.message, 'warn'); break; }
+        paintSiteMedia(smKind);
+        toast((smKind === 'hero' ? '히어로' : '스토리') + ' 사진을 바꿔 저장했습니다.');
+        break;
+      }
+      case 'site-media-delete': {
+        if (!isAdmin()) break;
+        var smdKind = el.dataset.kind === 'story' ? 'story' : 'hero';
+        var smdRes = removeSiteMedia(smdKind, el.dataset.src);
+        if (!smdRes.ok) { toast(smdRes.message, 'warn'); break; }
+        paintSiteMedia(smdKind);
+        toast('사진을 목록에서 삭제했습니다.');
+        break;
+      }
+      case 'site-media-add-url': {
+        if (!isAdmin()) break;
+        var smaKind = el.dataset.kind === 'story' ? 'story' : 'hero';
+        var smaInput = $('#site-' + smaKind + '-url');
+        var smaRes = addSiteMedia(smaKind, smaInput ? smaInput.value : '');
+        if (!smaRes.ok) { toast(smaRes.message, 'warn'); break; }
+        if (smaInput) smaInput.value = '';
+        paintSiteMedia(smaKind);
+        toast(smaRes.added ? '사진을 목록에 추가했습니다. 사진을 누르면 적용됩니다.' : '이미 목록에 있는 사진입니다.');
         break;
       }
       case 'data-subtab': {
@@ -14080,6 +14876,7 @@ table.data.ap-variants td.na { color: var(--line); }
           renderAll();
           break;
         }
+        var cConds = readCouponConditions('cf');
         var cRes = createCoupon({
           code: ($('#cf-code') || {}).value,
           name: ($('#cf-name') || {}).value,
@@ -14088,13 +14885,17 @@ table.data.ap-variants td.na { color: var(--line); }
           min_order_amount: ($('#cf-min') || {}).value,
           expires_at: ($('#cf-expires') || {}).value,
           target_user_ids: picked.target_user_ids,
-          target_grades: picked.target_grades
+          target_grades: picked.target_grades,
+          target_categories: cConds.target_categories,
+          target_badges: cConds.target_badges
         });
         if (!cRes.ok) { ui.couponFormError = cRes.message; renderAll(); break; }
         ui.couponFormError = '';
         ui.couponTargetMode = 'all';
         ui.couponTargetGrades = [];
         ui.couponTargetSel = [];
+        ui.couponTargetCats = [];
+        ui.couponTargetBadges = [];
         renderAll();
         toast(cRes.coupon.code + ' 쿠폰을 발행했습니다' +
           (couponIsPublic(cRes.coupon) ? ' (전체 공용)' : ' (' + couponTargetLabel(cRes.coupon) + ')') + '.');
@@ -14117,6 +14918,7 @@ table.data.ap-variants td.na { color: var(--line); }
         if (cePick.mode === 'grade' && !cePick.target_grades.length) {
           ui.modal.error = '쿠폰을 받을 회원 등급을 1개 이상 선택해 주세요.'; renderModal(); break;
         }
+        var ceConds = readCouponConditions('ce');
         var upRes = updateCoupon(el.dataset.cid, {
           name: ($('#ce-name') || {}).value,
           discount_type: ($('#ce-type') || {}).value,
@@ -14124,7 +14926,9 @@ table.data.ap-variants td.na { color: var(--line); }
           min_order_amount: ($('#ce-min') || {}).value,
           expires_at: ($('#ce-expires') || {}).value,
           target_user_ids: cePick.target_user_ids,
-          target_grades: cePick.target_grades
+          target_grades: cePick.target_grades,
+          target_categories: ceConds.target_categories,
+          target_badges: ceConds.target_badges
         });
         if (!upRes.ok) { ui.modal.error = upRes.message; renderModal(); break; }
         ui.modal = null;
@@ -14606,22 +15410,15 @@ table.data.ap-variants td.na { color: var(--line); }
     }
     /* 색상 레이어 — 분석할 사진 변경/추출 */
     if (t.id === 'pe-layer-src') { extractColorLayerPalette(); return; }
-    /* 브랜드 스토리 사진 업로드/선택 */
+    /* 브랜드 스토리 사진 업로드 — 사이트 전용 목록에 추가하고 바로 적용한다 */
     if (t.id === 'site-story-upload') {
       var stFiles = t.files;
       if (stFiles && stFiles.length) {
         resizeImageFile(stFiles[0]).then(function (row) {
-          var sel = $('#site-story-image');
-          if (sel) {
-            var opt = document.createElement('option');
-            opt.value = row.data;
-            opt.textContent = '업로드한 사진';
-            sel.insertBefore(opt, sel.firstChild);
-            sel.value = row.data;
-          }
-          var prev = $('[data-hook=story-preview]');
-          if (prev) prev.src = row.data;
-          toast('스토리 사진을 준비했습니다. 「스토리 저장」을 누르면 반영됩니다.');
+          var stAdd = addSiteMedia('story', row.data);
+          if (stAdd.ok) selectSiteMedia('story', row.data);
+          paintSiteMedia('story');
+          toast(stAdd.ok ? '스토리 사진을 추가하고 적용했습니다.' : stAdd.message, stAdd.ok ? 'ok' : 'warn');
         })['catch'](function (err) {
           toast(err && err.message ? err.message : '사진을 불러오지 못했습니다.', 'warn');
         });
@@ -14690,22 +15487,15 @@ table.data.ap-variants td.na { color: var(--line); }
       if (exHost && exOrder) exHost.innerHTML = claimExchangeHTML(exOrder, cm);
       return;
     }
-    /* 사이트 관리: 히어로 배너 사진 업로드/선택 */
+    /* 사이트 관리: 히어로 배너 사진 업로드 — 사이트 전용 목록에 추가하고 바로 적용한다 */
     if (t.id === 'site-hero-upload') {
       var heroFiles = t.files;
       if (heroFiles && heroFiles.length) {
         resizeImageFile(heroFiles[0]).then(function (row) {
-          var sel = $('#site-hero-image');
-          if (sel) {
-            var opt = document.createElement('option');
-            opt.value = row.data;
-            opt.textContent = '업로드한 사진';
-            sel.insertBefore(opt, sel.firstChild);
-            sel.value = row.data;
-          }
-          var prev = $('[data-hook=hero-preview]');
-          if (prev) prev.src = row.data;
-          toast('배너 사진을 준비했습니다. 「히어로 저장」을 누르면 반영됩니다.');
+          var hAdd = addSiteMedia('hero', row.data);
+          if (hAdd.ok) selectSiteMedia('hero', row.data);
+          paintSiteMedia('hero');
+          toast(hAdd.ok ? '배너 사진을 추가하고 적용했습니다.' : hAdd.message, hAdd.ok ? 'ok' : 'warn');
         })['catch'](function (err) {
           toast(err && err.message ? err.message : '사진을 불러오지 못했습니다.', 'warn');
         });
@@ -14731,11 +15521,6 @@ table.data.ap-variants td.na { color: var(--line); }
       return;
     }
     if (t.id === 'pe-badge') {
-      var badgeInput = $('#pe-badge-custom');
-      if (badgeInput) {
-        badgeInput.disabled = t.value !== '__custom';
-        if (!badgeInput.disabled) { try { badgeInput.focus(); } catch (e) {} }
-      }
       return;
     }
     if (t.dataset && t.dataset.action === 'admin-claim-status') {

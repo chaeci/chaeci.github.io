@@ -1,7 +1,7 @@
 {
   "meta": {
     "app": "MONO ATELIER",
-    "schema_version": 12,
+    "schema_version": 13,
     "generated_at": "2026-11-27T16:10:00+09:00",
     "grades": [
       "NORMAL",
@@ -2332,6 +2332,8 @@
       "is_active": true,
       "target_user_ids": [],
       "target_grades": [],
+      "target_categories": [],
+      "target_badges": [],
       "created_at": "2026-11-01T10:00:00+09:00"
     },
     {
@@ -2345,6 +2347,8 @@
       "is_active": true,
       "target_user_ids": [],
       "target_grades": [],
+      "target_categories": [],
+      "target_badges": [],
       "created_at": "2026-11-05T10:00:00+09:00"
     },
     {
@@ -2360,7 +2364,31 @@
         "u_001"
       ],
       "target_grades": [],
+      "target_categories": [],
+      "target_badges": [],
       "created_at": "2026-11-20T10:00:00+09:00"
+    },
+    {
+      "id": "c_004",
+      "code": "GOLD20",
+      "name": "골드 전용 20% — 잡의·야우터 BEST",
+      "discount_type": "percent",
+      "discount_value": 20,
+      "min_order_amount": 100000,
+      "expires_at": "2027-06-30T23:59:59+09:00",
+      "is_active": true,
+      "target_user_ids": [],
+      "target_grades": [
+        "GOLD"
+      ],
+      "target_categories": [
+        "acc",
+        "outer"
+      ],
+      "target_badges": [
+        "BEST"
+      ],
+      "created_at": "2026-11-28T09:00:00+09:00"
     }
   ],
   "product_reviews": [
@@ -3265,7 +3293,34 @@
       "상품",
       "기타"
     ],
-    "updated_at": "2026-11-27T08:20:00+09:00"
+    "product_badges": [
+      "BEST",
+      "NEW",
+      "SALE",
+      "LIMITED"
+    ],
+    "hero_images": [
+      "hero.webp",
+      "coat.webp",
+      "knit.webp",
+      "trench.webp"
+    ],
+    "story_images": [
+      "coat.webp",
+      "coat-fabric.webp",
+      "knit-detail.webp",
+      "trench.webp"
+    ],
+    "member_grade_rules": {
+      "months": 6,
+      "thresholds": {
+        "NORMAL": 0,
+        "SILVER": 200000,
+        "GOLD": 400000,
+        "VIP": 800000
+      }
+    },
+    "updated_at": "2026-11-28T09:00:00+09:00"
   },
   "help_topics": [
     {

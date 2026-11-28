@@ -162,6 +162,8 @@ CREATE TABLE coupons (
   expires_at       TEXT,                                    -- NULL = 무기한
   is_active        INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
   target_grades    TEXT NOT NULL DEFAULT '[]',              -- JSON 배열: 발급 대상 회원 등급 ([] = 등급 제한 없음)
+  target_categories TEXT NOT NULL DEFAULT '[]',             -- v1.9.13 JSON 배열: 사용 가능 상품 카테고리 id ([] = 조건 없음)
+  target_badges    TEXT NOT NULL DEFAULT '[]',              -- v1.9.13 JSON 배열: 사용 가능 상품 뱃지 코드 ([] = 조건 없음)
   created_at       TEXT NOT NULL
 );
 
@@ -272,6 +274,11 @@ CREATE TABLE site_settings (
   sms_api_url          TEXT NOT NULL DEFAULT '',                -- SMS Webhook/API URL
   sms_sender           TEXT NOT NULL DEFAULT '',                -- 발신번호
   faq_categories       TEXT NOT NULL DEFAULT '[]',              -- v1.9.5 JSON 배열: FAQ 카테고리 목록(관리자에서 추가·삭제·순서)
+  product_badges       TEXT NOT NULL DEFAULT '["BEST","NEW","SALE","LIMITED"]',
+                                                               -- v1.9.13 JSON 배열: 상품 뱃지 코드(관리자 「코드 관리 > 뱃지 관리」)
+  hero_images          TEXT NOT NULL DEFAULT '[]',              -- v1.9.13 JSON 배열: 히어로 배너 전용 사진 목록(상품 사진과 분리)
+  story_images         TEXT NOT NULL DEFAULT '[]',              -- v1.9.13 JSON 배열: 브랜드 스토리 전용 사진 목록
+  member_grade_rules   TEXT NOT NULL DEFAULT '{}',              -- v1.9.13 JSON 객체: {months, thresholds{NORMAL,SILVER,GOLD,VIP}}
   updated_at           TEXT NOT NULL
 );
 
