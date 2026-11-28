@@ -11,7 +11,8 @@ import sqlite3
 
 HERE = pathlib.Path(__file__).resolve().parent
 ORDER = ["users", "categories", "products", "product_images", "product_variants", "orders", "order_items",
-         "order_claims", "cart_items", "coupons", "product_reviews", "point_policies", "point_logs", "faqs",
+         "order_claims", "cart_items", "coupons", "product_reviews", "product_qnas", "review_votes",
+         "point_policies", "point_logs", "faqs",
          "sms_logs", "dispatch_logs", "site_settings", "help_topics"]
 
 

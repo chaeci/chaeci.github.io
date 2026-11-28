@@ -326,6 +326,45 @@ CREATE TABLE product_reviews (
   UNIQUE (order_item_id, attempt)                    -- 주문항목당 차수별 1건(재작성은 attempt 2)
 );
 
+-- ===================================================== 상품 Q&A (v1.9.11)
+-- 상품 상세의 「상품 Q&A」 — 로그인한 회원이 상품별로 문의하고 관리자가 답변한다.
+--   qna_type: product(상품 문의) / delivery(배송 문의) / claim(교환·반품) / etc(기타)
+--   is_secret = 1 이면 작성자 본인과 관리자만 본문을 볼 수 있고, 다른 회원에게는 「비밀글입니다」로 보인다.
+--   status = answer 가 비어 있으면 pending(미답변), 채워지면 answered(답변완료)
+CREATE TABLE product_qnas (
+  id          TEXT PRIMARY KEY,
+  product_id  TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_name   TEXT NOT NULL DEFAULT '',              -- 표시용 마스킹 이름 (예: 홍길*)
+  qna_type    TEXT NOT NULL DEFAULT 'product'
+              CHECK (qna_type IN ('product','delivery','claim','etc')),
+  title       TEXT NOT NULL,
+  content     TEXT NOT NULL DEFAULT '',
+  is_secret   INTEGER NOT NULL DEFAULT 0 CHECK (is_secret IN (0,1)),
+  answer      TEXT NOT NULL DEFAULT '',
+  answered_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+  answered_at TEXT,
+  status      TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','answered')),
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT
+);
+CREATE INDEX idx_qnas_product ON product_qnas(product_id, created_at DESC);
+CREATE INDEX idx_qnas_status ON product_qnas(status, created_at DESC);
+
+-- ===================================================== 리뷰 추천/비추천 (v1.9.11)
+-- 리뷰 1건에 회원 1명이 추천(up) 또는 비추천(down) 하나만 남길 수 있다(UNIQUE).
+--   본인이 쓴 리뷰에는 투표할 수 없다(앱에서 차단). 추천 수 = COUNT(vote='up').
+CREATE TABLE review_votes (
+  id         TEXT PRIMARY KEY,
+  review_id  TEXT NOT NULL REFERENCES product_reviews(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vote       TEXT NOT NULL CHECK (vote IN ('up','down')),
+  created_at TEXT NOT NULL,
+  UNIQUE (review_id, user_id)
+);
+CREATE INDEX idx_review_votes_review ON review_votes(review_id, vote);
+CREATE INDEX idx_review_votes_user ON review_votes(user_id);
+
 -- ===================================================== 포인트 정책 (v1.9)
 -- 관리자 「포인트/회원」에서 등급별 적립률(%)을 수정한다.
 CREATE TABLE point_policies (

@@ -1,7 +1,7 @@
 {
   "meta": {
     "app": "MONO ATELIER",
-    "schema_version": 11,
+    "schema_version": 12,
     "generated_at": "2026-11-27T16:10:00+09:00",
     "grades": [
       "NORMAL",
@@ -2353,6 +2353,211 @@
       "created_at": "2026-11-26T19:10:00+09:00",
       "updated_at": null,
       "attempt": 1
+    }
+  ],
+  "product_qnas": [
+    {
+      "id": "q_001",
+      "product_id": "p_001",
+      "user_id": "u_001",
+      "user_name": "홍길*",
+      "qna_type": "product",
+      "title": "173cm 62kg이면 M 사이즈 괜찮을까요?",
+      "content": "코트 안에 두꺼운 니트를 입고 싶은데 M이 넉넉할지 궁금합니다. 평소 95~100 사이즈를 입습니다.",
+      "is_secret": 0,
+      "answer": "어깨가 여유 있는 실루엣이라 173cm·62kg 이시면 M 사이즈가 잘 맞습니다. 두꺼운 니트를 입으실 예정이면 L도 여유 있게 잘 어울립니다.",
+      "answered_by": "u_002",
+      "answered_at": "2026-11-20T10:12:00+09:00",
+      "status": "answered",
+      "created_at": "2026-11-19T21:40:00+09:00",
+      "updated_at": "2026-11-20T10:12:00+09:00"
+    },
+    {
+      "id": "q_002",
+      "product_id": "p_001",
+      "user_id": "u_003",
+      "user_name": "홍길*",
+      "qna_type": "delivery",
+      "title": "오늘 결제하면 오늘 출고되나요?",
+      "content": "내일 외출에 입고 나가려고 하는데 오늘 오후 1시에 결제하면 당일 출고가 가능할까요?",
+      "is_secret": 0,
+      "answer": "",
+      "answered_by": null,
+      "answered_at": null,
+      "status": "pending",
+      "created_at": "2026-11-25T12:58:00+09:00",
+      "updated_at": null
+    },
+    {
+      "id": "q_003",
+      "product_id": "p_002",
+      "user_id": "u_001",
+      "user_name": "홍길*",
+      "qna_type": "product",
+      "title": "세탁은 어떻게 해야 하나요?",
+      "content": "캐시미어라 드라이클리닝만 해야 하는지, 집에서 손세탁도 괜찮은지 문의드립니다.",
+      "is_secret": 1,
+      "answer": "캐시미어 20% 혼방이라 드라이클리닝을 권장합니다. 집에서 손세탁하실 때는 찬물에 중성세제로 가볍게 주무르고 평평하게 눕혀 건조해 주세요.",
+      "answered_by": "u_002",
+      "answered_at": "2026-11-23T09:30:00+09:00",
+      "status": "answered",
+      "created_at": "2026-11-22T18:20:00+09:00",
+      "updated_at": "2026-11-23T09:30:00+09:00"
+    },
+    {
+      "id": "q_004",
+      "product_id": "p_002",
+      "user_id": "u_004",
+      "user_name": "홍길*",
+      "qna_type": "claim",
+      "title": "받은 니트에 올이 풀린 곳이 있어요",
+      "content": "소매 안쪽에 올이 풀린 부분이 있는데 교환하면 재고가 있을까요? 색상은 크림입니다.",
+      "is_secret": 1,
+      "answer": "",
+      "answered_by": null,
+      "answered_at": null,
+      "status": "pending",
+      "created_at": "2026-11-27T08:15:00+09:00",
+      "updated_at": null
+    },
+    {
+      "id": "q_005",
+      "product_id": "p_003",
+      "user_id": "u_005",
+      "user_name": "홍길*",
+      "qna_type": "product",
+      "title": "기장 수선이 가능한가요?",
+      "content": "와이드 팬츠 기장이 조금 길 것 같아서 수선해서 입으려고 합니다. 밑단 원단 여유가 있는지 궁금합니다.",
+      "is_secret": 0,
+      "answer": "밑단 안쪽에 3cm 정도 시접 여유가 있어 수선집에서 줄이거나 늘릴 수 있습니다.",
+      "answered_by": "u_002",
+      "answered_at": "2026-11-21T15:05:00+09:00",
+      "status": "answered",
+      "created_at": "2026-11-21T11:32:00+09:00",
+      "updated_at": "2026-11-21T15:05:00+09:00"
+    },
+    {
+      "id": "q_006",
+      "product_id": "p_001",
+      "user_id": "u_004",
+      "user_name": "홍길*",
+      "qna_type": "etc",
+      "title": "선물 포장도 가능할까요?",
+      "content": "생일 선물로 보내려고 하는데 리본 포장과 메시지 카드를 같이 넣어 주실 수 있는지 문의드립니다.",
+      "is_secret": 0,
+      "answer": "",
+      "answered_by": null,
+      "answered_at": null,
+      "status": "pending",
+      "created_at": "2026-11-26T19:44:00+09:00",
+      "updated_at": null
+    }
+  ],
+  "review_votes": [
+    {
+      "id": "rvv_001",
+      "review_id": "rv_001",
+      "user_id": "u_003",
+      "vote": "up",
+      "created_at": "2026-11-22T12:00:00+09:00"
+    },
+    {
+      "id": "rvv_002",
+      "review_id": "rv_001",
+      "user_id": "u_004",
+      "vote": "up",
+      "created_at": "2026-11-22T15:10:00+09:00"
+    },
+    {
+      "id": "rvv_003",
+      "review_id": "rv_003",
+      "user_id": "u_003",
+      "vote": "up",
+      "created_at": "2026-11-13T09:00:00+09:00"
+    },
+    {
+      "id": "rvv_004",
+      "review_id": "rv_003",
+      "user_id": "u_004",
+      "vote": "up",
+      "created_at": "2026-11-14T10:20:00+09:00"
+    },
+    {
+      "id": "rvv_005",
+      "review_id": "rv_003",
+      "user_id": "u_005",
+      "vote": "up",
+      "created_at": "2026-11-15T19:40:00+09:00"
+    },
+    {
+      "id": "rvv_006",
+      "review_id": "rv_004",
+      "user_id": "u_001",
+      "vote": "up",
+      "created_at": "2026-10-31T08:30:00+09:00"
+    },
+    {
+      "id": "rvv_007",
+      "review_id": "rv_004",
+      "user_id": "u_004",
+      "vote": "up",
+      "created_at": "2026-11-01T13:05:00+09:00"
+    },
+    {
+      "id": "rvv_008",
+      "review_id": "rv_004",
+      "user_id": "u_005",
+      "vote": "down",
+      "created_at": "2026-11-02T17:25:00+09:00"
+    },
+    {
+      "id": "rvv_009",
+      "review_id": "rv_005",
+      "user_id": "u_001",
+      "vote": "down",
+      "created_at": "2026-11-10T09:15:00+09:00"
+    },
+    {
+      "id": "rvv_010",
+      "review_id": "rv_005",
+      "user_id": "u_004",
+      "vote": "down",
+      "created_at": "2026-11-11T11:45:00+09:00"
+    },
+    {
+      "id": "rvv_011",
+      "review_id": "rv_006",
+      "user_id": "u_001",
+      "vote": "up",
+      "created_at": "2026-11-15T10:00:00+09:00"
+    },
+    {
+      "id": "rvv_012",
+      "review_id": "rv_006",
+      "user_id": "u_003",
+      "vote": "up",
+      "created_at": "2026-11-16T12:30:00+09:00"
+    },
+    {
+      "id": "rvv_013",
+      "review_id": "rv_007",
+      "user_id": "u_005",
+      "vote": "up",
+      "created_at": "2026-11-21T09:50:00+09:00"
+    },
+    {
+      "id": "rvv_014",
+      "review_id": "rv_008",
+      "user_id": "u_001",
+      "vote": "up",
+      "created_at": "2026-11-25T08:10:00+09:00"
+    },
+    {
+      "id": "rvv_015",
+      "review_id": "rv_002",
+      "user_id": "u_005",
+      "vote": "up",
+      "created_at": "2026-11-19T14:00:00+09:00"
     }
   ],
   "point_policies": [
