@@ -7,7 +7,9 @@ import base64
 import datetime as dt
 import hashlib
 import json
+import os
 import pathlib
+import re
 
 ROOT = pathlib.Path(__file__).resolve().parent
 WORKSPACE = ROOT.parent
@@ -25,8 +27,14 @@ PEPPER = "mono-atelier$"
 EXAMPLE_NAME = "홍길동"
 EXAMPLE_PHONE = "010-0000-0000"
 EXAMPLE_ADDRESS = "서울특별시 송파구 올림픽로 300 101동 1203호"
-# 빌드 산출물에 실제 개인정보가 섞이지 않았는지 확인하는 안전장치(빌드 실패 처리)
-PRIVATE_PATTERNS = ["채성준", "8227-2219", "월드컵북로"]
+# 빌드 산출물에 실제 개인정보가 섞이지 않았는지 확인하는 안전장치(빌드 실패 처리).
+# 실명·연락처·실주소 문자열 자체는 **공개 저장소에 두지 않는다.** 필요하면 환경변수로 주입한다.
+#   MONO_PRIVATE_PATTERNS="이름,연락처,주소조각" python3 build.py
+PRIVATE_PATTERNS = [p.strip() for p in os.environ.get("MONO_PRIVATE_PATTERNS", "").split(",") if p.strip()]
+# 값과 무관하게 항상 검사하는 패턴 — 주민등록번호 · 예시값(010-0000-0000)이 아닌 휴대전화 번호
+RRN_RE = re.compile(r"\d{6}-\s?[1-4]\d{6}")
+MOBILE_RE = re.compile(r"01[016789]-\d{3,4}-\d{4}")
+ALLOWED_PHONES = {"010-0000-0000"}
 
 
 def h(pw: str) -> str:
@@ -1812,8 +1820,11 @@ DOWNLOADS.mkdir(parents=True, exist_ok=True)
 for label, text in (("schema-seed.json", seed_text), ("index.html", html_index),
                     ("fashion-shop-preview.html", html_preview)):
     leaked = [pat for pat in PRIVATE_PATTERNS if pat in text]
-    if leaked:
-        raise SystemExit(f"개인정보 보호 검사 실패 — {label} 에 {leaked} 포함")
+    phones = sorted(set(MOBILE_RE.findall(text)) - ALLOWED_PHONES)
+    rrn = RRN_RE.findall(text)
+    if leaked or phones or rrn:
+        raise SystemExit(
+            f"개인정보 보호 검사 실패 — {label}: 패턴 {leaked} · 휴대전화 {phones} · 주민번호 {len(rrn)}건")
 
 print("privacy check      ok (실명·연락처·실주소 0건)")
 print("seed rows:", {k: len(v) for k, v in seed.items() if isinstance(v, list)})

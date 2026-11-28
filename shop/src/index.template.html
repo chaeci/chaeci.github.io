@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fbfaf7">
+<!-- 삼성 인터넷 강제 다크모드의 색 반전으로 선택 옵션 대비가 사라지지 않도록 라이트 전용으로 고정 -->
+<meta name="color-scheme" content="light only">
+<title>MONO ATELIER — 모노 아틀리에</title>
+<meta name="description" content="단정한 실루엣과 좋은 소재. 서울에서 만드는 모던 컨템포러리 브랜드 모노 아틀리에의 데모 스토어입니다.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2317170f'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='16' fill='%23fbfaf7' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+<style>/*__STYLES__*/</style>
+</head>
+<body>
+<div class="announce" id="announce" data-announce aria-label="상단 안내"></div>
+<header class="site-header" id="site-header"></header>
+<main id="app"></main>
+<div class="scrim" id="scrim" data-action="close-cart"></div>
+<aside class="drawer" id="cart-drawer" aria-hidden="true" aria-label="장바구니"></aside>
+<div class="modal-layer" id="modal-layer" hidden></div>
+<!-- 상품 상세 이미지 확대 뷰어 (1x↔2x, 드래그·핀치, ‹ › 전환) -->
+<div class="lightbox" id="lightbox" hidden></div>
+<!-- 리뷰 사진·동영상 뷰어 — 상세 모달 위에 얹히는 별도 레이어 -->
+<div id="media-viewer" hidden></div>
+<div class="toast-host" id="toast-host" aria-live="polite"></div>
+<!-- 토스페이먼츠 SDK v2 (결제창). 오프라인·file:// 에서는 로드 실패해도 데모 결제로 동작합니다. -->
+<script src="https://js.tosspayments.com/v2/standard"></script>
+<script>/*__APP_JS__*/</script>
+</body>
+</html>

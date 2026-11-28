@@ -1,0 +1,13075 @@
+/* =========================================================================
+   MONO ATELIER — single-page fashion storefront
+   Pure JSON + localStorage. Tables mirror data/schema.sql 1:1.
+   ========================================================================= */
+(function () {
+  'use strict';
+
+  var SEED = __SEED__;
+  var EMBEDDED = __EMBEDDED_IMAGES__;
+  var APP_VERSION = '__APP_VERSION__';
+
+  var LS_DB = 'mono_atelier_db_v1';
+  var LS_SESSION = 'mono_atelier_session_v1';
+  var LS_PENDING = 'mono_atelier_pending_checkout_v1';
+  var LS_PENDING_CLAIM = 'mono_atelier_pending_claim_v1';
+  var LS_CUSTOMER_KEY = 'mono_atelier_payment_customer_key_v1';
+  var LS_PAYMENT_CONFIG = 'mono_atelier_payment_config_v1';   // 관리자 화면에서 저장한 결제 설정(우선 적용)
+  var LS_STORE_VIEW = 'mono_atelier_store_view_v1';           // v1.9.9 스토어 상품 목록 보기 방식(grid|list)
+  var FREE_SHIPPING = 100000;      // 스토어 기본 무료배송 기준
+  var SHIPPING_FEE = 3000;         // 기본 배송비(한 주문당 1회)
+  /* 업로드 이미지: 브라우저 Canvas 로 줄여 Data URL(localStorage 5MB) 로 저장 */
+  var UPLOAD_MAX_SIDE = 900;       // 긴 변 최대 px
+  var UPLOAD_QUALITY = 0.82;       // JPEG 품질
+  var UPLOAD_MAX_COUNT = 6;        // 상품당 업로드 이미지 수 상한
+  /* v1.9.13 — 뱃지 코드는 관리자 「코드 관리 > 뱃지 관리」에서 추가·수정·삭제·순서를 관리한다.
+     BADGE_PRESETS 는 시드 기본값(저장 값이 없을 때만 쓰는 fallback)이다. */
+  var BADGE_PRESETS = ['BEST', 'NEW', 'SALE', 'LIMITED'];
+  var BADGE_CUSTOM_MAX = 16;
+  /* v1.9.13 — 사이트 전용 미디어(히어로·스토리) 기본 시드. 상품 사진 풀(ALL_IMAGES)과 분리해 관리한다. */
+  var DEFAULT_HERO_MEDIA = ['hero.webp', 'coat.webp', 'knit.webp', 'trench.webp'];
+  var DEFAULT_STORY_MEDIA = ['coat.webp', 'coat-fabric.webp', 'knit-detail.webp', 'trench.webp'];
+  var SITE_MEDIA_MAX = 24;
+  /* v1.9.13 — 최근 N개월 구매금액 기준 멤버십 등급 기본값(원) */
+  var DEFAULT_GRADE_RULES = {
+    months: 6,
+    thresholds: { NORMAL: 0, SILVER: 200000, GOLD: 400000, VIP: 800000 }
+  };
+  var DB_TABLES = ['users', 'categories', 'products', 'product_images', 'product_variants', 'cart_items', 'orders', 'order_items', 'order_claims', 'coupons', 'product_reviews', 'product_qnas', 'review_votes', 'point_policies', 'point_logs', 'faqs', 'sms_logs', 'dispatch_logs'];
+  /* v1.9.8 — 단일 테이블 레지스트리
+     「데이터 관리 > 테이블 현황」의 테이블 목록·건수와 「JSON 다운로드」가 내보내는
+     tables 객체가 **같은 이 목록**을 참조한다(개수·건수 100% 일치).
+     · coupon_targets 는 coupons[].target_user_ids 를 행 단위로 편 목록(coupon_targets 테이블과 1:1)
+     · site_settings 는 단일 행 객체, help_topics 는 배열 */
+  var STORE_TABLES = [
+    { name: 'users', label: '회원' },
+    { name: 'categories', label: '카테고리' },
+    { name: 'products', label: '상품' },
+    { name: 'product_images', label: '상품 갤러리' },
+    { name: 'product_variants', label: '상품 옵션·재고' },
+    { name: 'cart_items', label: '장바구니' },
+    { name: 'orders', label: '주문' },
+    { name: 'order_items', label: '주문 항목' },
+    { name: 'order_claims', label: '교환/반품' },
+    { name: 'coupons', label: '쿠폰' },
+    { name: 'coupon_targets', label: '쿠폰 발급 대상' },
+    { name: 'product_reviews', label: '상품 리뷰' },
+    { name: 'product_qnas', label: '상품 Q&A' },
+    { name: 'review_votes', label: '리뷰 추천/비추천' },
+    { name: 'point_policies', label: '포인트 정책' },
+    { name: 'point_logs', label: '포인트 내역' },
+    { name: 'faqs', label: 'FAQ' },
+    { name: 'sms_logs', label: 'SMS 로그' },
+    { name: 'dispatch_logs', label: '발송 로그' },
+    { name: 'site_settings', label: '사이트 설정' },
+    { name: 'help_topics', label: 'HELP 항목' }
+  ];
+  /* v1.9 · 등급별 포인트 적립률 기본값(%)
+     · 구매확정: 상품 실결제 금액의 confirm_rate%
+     · 포토·영상 리뷰: 같은 금액의 photo_rate% 를 추가로 1회 */
+  var DEFAULT_POINT_POLICIES = {
+    NORMAL: { confirm_rate: 0.5, photo_rate: 1.0 },
+    SILVER: { confirm_rate: 0.7, photo_rate: 1.2 },
+    GOLD: { confirm_rate: 1.0, photo_rate: 1.5 },
+    VIP: { confirm_rate: 1.5, photo_rate: 2.0 }
+  };
+  var POINT_POLICY_LIMIT = 10;        // 등급별 적립률 상한(%)
+  var REVIEW_MAX_MEDIA = 6;           // 리뷰 1건당 사진·동영상 수
+  var REVIEW_PAGE_SIZE = 5;           // 상품 상세 리뷰 목록 페이지당 건수
+  var QNA_PAGE_SIZE = 5;              // v1.9.11 상품 Q&A 목록 페이지당 건수
+  /* v1.9.11 — 상품 Q&A 문의 유형 */
+  var QNA_TYPES = { product: '상품 문의', delivery: '배송 문의', claim: '교환·반품', etc: '기타' };
+  var QNA_TYPE_ORDER = ['product', 'delivery', 'claim', 'etc'];
+  var QNA_TITLE_MAX = 60;
+  var QNA_CONTENT_MAX = 500;
+  var QNA_ANSWER_MAX = 1000;
+  var REVIEW_VIDEO_MAX_BYTES = 4 * 1024 * 1024;   // 동영상 Data URL 저장 상한(4MB)
+  var REVIEW_MAX_IMAGES = 6;
+  var REVIEW_MAX_ATTEMPTS = 2;        // v1.9.2 — 반려·포인트 회수 후 재작성 1회(총 2회)까지
+  var POINT_UNIT = 1;                 // 1P = 1원
+  /* v1.9.2 — 알림 발송 로그·과다 발송 감지 */
+  var EMAIL_SEND_COOLDOWN = 60 * 1000;          // 같은 이메일 재발송 쿨다운 60초(그 안에는 blocked 로 기록)
+  var DISPATCH_WINDOW_MS = 10 * 60 * 1000;      // 과다 발송 판정 시간 창 10분
+  var DISPATCH_RECIPIENT_LIMIT = 3;             // 같은 수신자 3회 이상 → 이상 징후
+  var DISPATCH_BURST_WINDOW_MS = 5 * 60 * 1000; // 전체 발송 급증 판정 창 5분
+  var DISPATCH_BURST_LIMIT = 12;                // 5분 내 전체 12건 이상 → 발송 급증
+  var DISPATCH_CHANNELS = { sms: 'SMS', email: '이메일' };
+  var DISPATCH_STATUS = { test: '테스트 발송', sent: '발송 완료', blocked: '차단됨', failed: '발송 실패' };
+  var DISPATCH_KINDS = {
+    order_created: '주문 완료 안내', order_cancelled: '주문 취소 안내',
+    email_otp: '회원가입 이메일 인증', email_resend: '인증번호 재발송'
+  };
+
+  /* --------------------------------------------------- 실제 가시 높이 보정
+     모바일 브라우저(삼성 인터넷·사파리)는 100vh 를 주소창·하단 툴바를 뺀 실제 가시 높이보다
+     크게 계산한다. 그만큼 상세 모달을 하단 정렬하면 상단(닫기·1/3 배지·대표 이미지 머리)이
+     화면 위로 밀려 잘렸다. 실제 가시 높이를 --app-height 로 노출해 CSS 가 그대로 쓰게 한다.
+     window.innerHeight 는 주소창·툴바를 반영하고 소프트 키보드에는 줄지 않아 기준으로 적합하다. */
+  function syncAppHeight() {
+    var h = Math.round(window.innerHeight ||
+                        (window.visualViewport && window.visualViewport.height) || 0);
+    if (h > 0) document.documentElement.style.setProperty('--app-height', h + 'px');
+  }
+  syncAppHeight();
+  window.addEventListener('resize', syncAppHeight);
+  window.addEventListener('orientationchange', function () { setTimeout(syncAppHeight, 150); });
+  if (window.visualViewport && window.visualViewport.addEventListener) {
+    window.visualViewport.addEventListener('resize', syncAppHeight);
+  }
+
+  /* ============================================================ 결제 설정
+     토스페이먼츠 SDK v2 '결제창형(구 결제위젯)' — 사업자 등록 없이 공개 테스트 키로 연동합니다.
+     · provider      : 결제 대행사
+     · clientKey     : 토스페이먼츠 개발자센터 문서에 공개된 테스트 키 (결제위젯/결제창형 연동 키)
+                       → 실결제 전환 시 개발자센터 API 키의 live_gck_… 로 이 값만 교체하면 됩니다.
+                         (같은 세트의 시크릿 키 live_gsk_… 는 서버에만 두세요)
+     · confirmApiUrl : '' 이면 정적 데모 — 서버 승인 없이 '테스트 승인'으로 처리.
+                       Python/SQLite 백엔드를 붙일 때 '/api/payments/confirm' 만 넣으면
+                       시크릿 키로 토스 결제 승인 API를 호출합니다.
+                       (예제: data/payment_confirm_example.py)
+     · successUrl/failUrl 은 현재 페이지 URL 에 ?tossResult=success / fail 로 붙습니다. */
+  var PAYMENT_CONFIG = {
+    provider: 'tosspayments',
+    clientKey: 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm',
+    clientKeyMode: 'test',
+    confirmApiUrl: '',
+    sdkUrl: 'https://js.tosspayments.com/v2/standard',
+    currency: 'KRW',
+    orderNameMax: 100
+  };
+  /* 열려 있는 토스 결제창 세션 (결제창 중복 렌더 방지 · 이벤트 시점의 최신 대기 주문 참조) */
+  var tossSession = { widgets: null, window: null, params: null, pending: null };
+  /* 관리자 화면(데이터 관리 → 결제 설정)에서 저장한 설정이 있으면 서버 파일 수정 없이 그것을 먼저 쓴다.
+     localStorage 에만 저장되며 시크릿 키(live_gsk_…)는 절대 넣지 않는다. */
+  var PAYMENT_DEFAULTS = {
+    clientKey: PAYMENT_CONFIG.clientKey,
+    clientKeyMode: PAYMENT_CONFIG.clientKeyMode,
+    confirmApiUrl: PAYMENT_CONFIG.confirmApiUrl
+  };
+  function normalizePaymentConfig(input) {
+    var mode = input && input.clientKeyMode === 'live' ? 'live' : 'test';
+    var key = String((input && input.clientKey) || '').trim();
+    if (key && !/^[A-Za-z0-9_\-]{8,200}$/.test(key)) {
+      return { ok: false, message: '클라이언트 키 형식이 올바르지 않습니다. (영문·숫자·_·- 8~200자)' };
+    }
+    var url = String((input && input.confirmApiUrl) || '').trim();
+    if (url && !/^https?:\/\/[^\s]+$/.test(url) && !/^\/[^\s]*$/.test(url)) {
+      return { ok: false, message: '승인 API URL은 /api/... 또는 https:// 주소로 입력해 주세요.' };
+    }
+    if (url && /gsk_/i.test(url)) return { ok: false, message: '시크릿 키(gsk_)는 URL 에 넣을 수 없습니다.' };
+    if (/gsk_/i.test(key)) return { ok: false, message: '시크릿 키(gsk_…)는 클라이언트에 저장할 수 없습니다. 공개 클라이언트 키(gck_…)만 넣어 주세요.' };
+    return { ok: true, config: { clientKey: key, clientKeyMode: mode, confirmApiUrl: url } };
+  }
+  function loadPaymentConfig() {
+    var raw = null;
+    try { raw = localStorage.getItem(LS_PAYMENT_CONFIG); } catch (e) { raw = null; }
+    if (!raw) return false;
+    var parsed = null;
+    try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+    var norm = normalizePaymentConfig(parsed);
+    if (!norm.ok) return false;
+    applyPaymentConfig(norm.config);
+    return true;
+  }
+  function applyPaymentConfig(cfg) {
+    PAYMENT_CONFIG.clientKey = cfg.clientKey || '';
+    PAYMENT_CONFIG.clientKeyMode = cfg.clientKeyMode === 'live' ? 'live' : 'test';
+    PAYMENT_CONFIG.confirmApiUrl = cfg.confirmApiUrl || '';
+    tossSession.widgets = null;   // 키가 바뀌면 기존 위젯 세션을 버린다
+    tossSession.window = null;
+    tossSession.params = null;
+  }
+  function savePaymentConfig(input) {
+    var norm = normalizePaymentConfig(input);
+    if (!norm.ok) return norm;
+    try { localStorage.setItem(LS_PAYMENT_CONFIG, JSON.stringify(norm.config)); }
+    catch (e) { return { ok: false, message: '결제 설정을 저장하지 못했습니다. (저장 공간 부족)' }; }
+    applyPaymentConfig(norm.config);
+    return { ok: true, config: norm.config };
+  }
+  function resetPaymentConfig() {
+    try { localStorage.removeItem(LS_PAYMENT_CONFIG); } catch (e) {}
+    applyPaymentConfig(PAYMENT_DEFAULTS);
+    return { ok: true, config: clone(PAYMENT_DEFAULTS) };
+  }
+
+  var DEFAULT_CATEGORIES = [
+    { id: 'outer', label: '아우터', en: 'OUTER', sort_order: 1, size_codes: ['95', '100', '105', 'S', 'M', 'L', 'XL'] },
+    { id: 'top', label: '상의', en: 'TOP', sort_order: 2, size_codes: ['95', '100', '105', 'S', 'M', 'L', 'XL', 'FREE'] },
+    { id: 'bottom', label: '하의', en: 'BOTTOM', sort_order: 3, size_codes: ['28', '30', '32', '34', 'S', 'M', 'L'] },
+    { id: 'dress', label: '원피스', en: 'DRESS', sort_order: 4, size_codes: ['S', 'M', 'L'] },
+    { id: 'acc', label: '잡화', en: 'ACC', sort_order: 5, size_codes: ['FREE'] }
+  ];
+  /* 카테고리는 데이터(db.categories)에서 읽는다 — 관리자 「카테고리 관리」에서 추가·수정·삭제·순서 변경 시
+     스토어 상단 필터·상품 등록 드롭다운에 즉시 반영되도록 하드코딩을 없앴다. */
+  function categories() {
+    var list = (db && Array.isArray(db.categories) ? db.categories : DEFAULT_CATEGORIES).slice();
+    list.sort(function (a, b) { return (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0); });
+    return [{ id: 'all', label: '전체', en: 'ALL', sort_order: 0 }].concat(list);
+  }
+  /* v1.9.8 — 스토어 노출용 카테고리(「사용」= true 만). 상품·관리자 화면은 categories() 그대로 본다. */
+  function categoryActive(c) { return !!(c && c.is_active !== false && c.is_active !== 0); }
+  function storeCategories() {
+    return categories().filter(function (c) { return c.id === 'all' || categoryActive(c); });
+  }
+  /* 회원 등급 — 쿠폰 발급 대상(등급별)과 마이페이지·관리자 표시에 사용 */
+  var GRADES = {
+    NORMAL: { label: '일반', cls: 'normal' },
+    SILVER: { label: '실버', cls: 'silver' },
+    GOLD: { label: '골드', cls: 'gold' },
+    VIP: { label: 'VIP', cls: 'vip' }
+  };
+  var GRADE_ORDER = ['NORMAL', 'SILVER', 'GOLD', 'VIP'];
+  function gradeOf(u) {
+    var g = u && String(u.grade || '').toUpperCase();
+    return GRADES[g] ? g : 'NORMAL';
+  }
+  function gradeLabel(u) { return GRADES[gradeOf(u)].label; }
+  /* 색상명 → HEX 자동 매핑 — 관리자가 색상명만 입력해도 정확한 색조가 보이도록 한다.
+     크림·하얀색·아이보리·베이지처럼 흑백 판별이 어려운 이름을 포함한다. */
+  var COLOR_HEX_MAP = {
+    '블랙': '#1B1B1D', '검정': '#1B1B1D', '검정색': '#1B1B1D', 'black': '#1B1B1D',
+    '화이트': '#FFFFFF', '하얀색': '#FFFFFF', '흰색': '#FFFFFF', '화이트색': '#FFFFFF', 'white': '#FFFFFF',
+    '크림': '#F3EAD9', '크림색': '#F3EAD9', 'cream': '#F3EAD9',
+    '아이보리': '#F7F1E1', 'ivory': '#F7F1E1',
+    '베이지': '#D7C3A3', 'beige': '#D7C3A3', '샌드': '#C9B79C', 'sand': '#C9B79C',
+    '그레이': '#B9B7B1', '회색': '#B9B7B1', 'gray': '#B9B7B1', 'grey': '#B9B7B1',
+    '차콜': '#35353A', 'charcoal': '#35353A',
+    '네이비': '#2B3A55', 'navy': '#2B3A55',
+    '블루': '#5C7CA6', 'blue': '#5C7CA6', '미드블루': '#5C7CA6',
+    '스카이': '#C9D8E4', 'sky': '#C9D8E4',
+    '브라운': '#6B4F3A', 'brown': '#6B4F3A', '다크브라운': '#4A3628',
+    '카멜': '#B08A5E', 'camel': '#B08A5E',
+    '샴페인': '#D9C3A8', 'champagne': '#D9C3A8',
+    '오트밀': '#D9CBB5', 'oatmeal': '#D9CBB5',
+    '올리브': '#5A6247', 'olive': '#5A6247',
+    '그린': '#5A7A5A', 'green': '#5A7A5A',
+    '레드': '#A33A32', 'red': '#A33A32',
+    '핑크': '#E3B6BE', 'pink': '#E3B6BE',
+    '옐로우': '#E5C96B', 'yellow': '#E5C96B',
+    '퍼플': '#6F5B8A', 'purple': '#6F5B8A',
+    '오렌지': '#D98650', 'orange': '#D98650',
+    '실버': '#C7C9CC', 'silver': '#C7C9CC',
+    '골드': '#C3A15C', 'gold': '#C3A15C'
+  };
+  var DEFAULT_HEX = '#1B1B1D';
+  /* HEX 정규화 — '#' 없이 입력한 FFFFFF·fff(3자리)도 받아들인다.
+     (끝값 흰색·검정을 손으로 입력할 때 값이 조용히 무시되던 문제를 없앤다) */
+  function normalizeHex(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return null;
+    if (s.charAt(0) !== '#') s = '#' + s;
+    if (/^#[0-9a-f]{3}$/i.test(s)) {
+      s = '#' + s.charAt(1) + s.charAt(1) + s.charAt(2) + s.charAt(2) + s.charAt(3) + s.charAt(3);
+    }
+    if (!/^#[0-9a-f]{6}$/i.test(s)) return null;
+    return s.toUpperCase();
+  }
+  function isHexColor(v) { return !!normalizeHex(v); }
+  function colorHexFromName(name) {
+    var key = String(name || '').trim().toLowerCase().replace(/\s+/g, '');
+    if (!key) return null;
+    var keys = Object.keys(COLOR_HEX_MAP);
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].toLowerCase().replace(/\s+/g, '') === key) return COLOR_HEX_MAP[keys[i]];
+    }
+    return null;
+  }
+  /* 옵션 렌더링용 HEX — 저장된 color_hex(관리자가 고른 값)를 그대로 신뢰한다.
+     값이 비어 있거나 형식이 깨졌을 때만 색상명 매핑 → 기본색 순서로 보정한다.
+     (예전에는 #1B1B1D 를 '미지정'으로 취급해, 관리자가 고른 검정이 색상명 매핑값으로
+      덮어써지는 바람에 HEX 가 변하지 않는 것처럼 보였다) */
+  function resolveColorHex(name, hex) {
+    var stored = normalizeHex(hex);
+    if (stored) return stored;
+    var mapped = colorHexFromName(name);
+    return mapped || DEFAULT_HEX;
+  }
+  /* 저장용 — 입력값이 없을 때만 색상명 매핑으로 채운다 */
+  function normalizeStoredHex(name, hex) {
+    return normalizeHex(hex) || colorHexFromName(name) || DEFAULT_HEX;
+  }
+  /* 한국어 색상명 목록 — 이미지에서 뽑은 색에 가장 가까운 이름을 추천할 때 쓴다 */
+  var COLOR_NAME_LIST = (function () {
+    var seen = {}, out = [];
+    Object.keys(COLOR_HEX_MAP).forEach(function (k) {
+      if (/[a-z]/i.test(k)) return;                     // 영문 키는 제외
+      var hex = String(COLOR_HEX_MAP[k]).toUpperCase();
+      if (seen[hex]) return;
+      seen[hex] = 1;
+      out.push({ name: k, hex: hex });
+    });
+    [['라이트그레이', '#D5D7DA'], ['카키', '#7C7A5E'], ['레몬', '#EBD661'], ['라벤더', '#B7A9C9'],
+     ['민트', '#A8C7B6'], ['코랄', '#D98A78'], ['버건디', '#6E2B33'], ['흰색', '#FFFFFF'], ['검정색', '#000000']]
+      .forEach(function (pair) {
+        if (out.some(function (c) { return c.hex === pair[1]; })) return;
+        out.push({ name: pair[0], hex: pair[1] });
+      });
+    return out;
+  })();
+  function hexLuma(hex) {
+    var h = String(normalizeHex(hex) || '#000000').slice(1);
+    var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  }
+  /* 두 HEX 의 지각적 거리(가중 RGB) — 이름 추천·팔레트 중복 제거에 쓴다 */
+  function hexDistance(a, b) {
+    var x = String(normalizeHex(a) || '#000000').slice(1), y = String(normalizeHex(b) || '#000000').slice(1);
+    var r1 = parseInt(x.slice(0, 2), 16), g1 = parseInt(x.slice(2, 4), 16), b1 = parseInt(x.slice(4, 6), 16);
+    var r2 = parseInt(y.slice(0, 2), 16), g2 = parseInt(y.slice(2, 4), 16), b2 = parseInt(y.slice(4, 6), 16);
+    var rm = (r1 + r2) / 2;
+    var dr = r1 - r2, dg = g1 - g2, db = b1 - b2;
+    return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db);
+  }
+  function nearestColorName(hex) {
+    var n = normalizeHex(hex) || DEFAULT_HEX;
+    /* 채도가 거의 없는 색은 밝기로 부른다(회색 계열이 '카키'로 추천되던 문제) */
+    if (hexSaturation(n) <= 0.06) {
+      var l = hexLuma(n);
+      if (l >= 0.93) return { name: '하얀색', hex: '#FFFFFF', distance: 0 };
+      if (l >= 0.72) return { name: '라이트그레이', hex: '#D5D7DA', distance: 0 };
+      if (l >= 0.45) return { name: '그레이', hex: '#B9B7B1', distance: 0 };
+      if (l >= 0.22) return { name: '차콜', hex: '#35353A', distance: 0 };
+      return { name: '검정색', hex: '#000000', distance: 0 };
+    }
+    var best = COLOR_NAME_LIST[0], bestD = Infinity;
+    for (var i = 0; i < COLOR_NAME_LIST.length; i++) {
+      var d = hexDistance(n, COLOR_NAME_LIST[i].hex);
+      if (d < bestD) { bestD = d; best = COLOR_NAME_LIST[i]; }
+    }
+    return { name: best.name, hex: best.hex, distance: Math.round(bestD) };
+  }
+  /* 밝은 색(흰색·아이보리·크림)은 배경과 구분되도록 바깥 테두리를 준다 */
+  function isLightHex(hex) {
+    return hexLuma(resolveColorHex('', hex)) >= 0.86;
+  }
+  function swatchClass(hex) { return 'sw' + (isLightHex(hex) ? ' light' : ''); }
+  /* =========================== 색상 프리셋 · 이미지 색 추출 (관리자 편집기)
+     · 프리셋: 자주 쓰는 16색(흰색·검정 끝값 포함)을 한 번에 적용
+     · 추출: 대표(또는 선택한) 갤러리 이미지를 canvas 로 샘플링해 주요 색 6개 + 가까운 한국어 색상명 */
+  var COLOR_PRESETS = [
+    ['하얀색', '#FFFFFF'], ['아이보리', '#F7F1E1'], ['크림', '#F3EAD9'], ['오트밀', '#D9CBB5'],
+    ['베이지', '#D7C3A3'], ['샌드', '#C9B79C'], ['카멜', '#B08A5E'], ['브라운', '#6B4F3A'],
+    ['그레이', '#B9B7B1'], ['차콜', '#35353A'], ['블랙', '#000000'], ['네이비', '#2B3A55'],
+    ['미드블루', '#5C7CA6'], ['올리브', '#5A6247'], ['레드', '#A33A32'], ['핑크', '#E3B6BE']
+  ];
+  function hexSaturation(hex) {
+    var h = String(normalizeHex(hex) || '#000000').slice(1);
+    var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    return mx === 0 ? 0 : (mx - mn) / mx;
+  }
+  function rgbToHex(r, g, b) {
+    var to = function (n) { var s = Math.max(0, Math.min(255, Math.round(n))).toString(16).toUpperCase(); return s.length < 2 ? '0' + s : s; };
+    return '#' + to(r) + to(g) + to(b);
+  }
+  /* 이미지 → 주요 색 팔레트(최대 6) — 흰 배경 같은 극단 노이즈는 비중이 크면 걸러낸다 */
+  function sampleImageColors(src, opts, cb) {
+    var url = imgSrc(src);
+    if (!url) { cb({ ok: false, colors: [], message: '분석할 이미지가 없습니다.' }); return; }
+    var img = new Image();
+    var done = false;
+    var finish = function (res) { if (done) return; done = true; cb(res); };
+    img.onload = function () {
+      try {
+        var S = 96;
+        var cv = document.createElement('canvas');
+        cv.width = S; cv.height = S;
+        var cx = cv.getContext('2d');
+        cx.drawImage(img, 0, 0, S, S);
+        var data = cx.getImageData(0, 0, S, S).data;
+        var at = function (x, y) { var i = (y * S + x) * 4; return [data[i], data[i + 1], data[i + 2], data[i + 3]]; };
+        /* 배경색 추정 — 네 모서리 6×6 패치의 평균(스튜디오 배경이 흰색이든 회색이든 걸러낸다) */
+        var corner = [0, 0, 0], cornerN = 0;
+        [[0, 0], [S - 6, 0], [0, S - 6], [S - 6, S - 6]].forEach(function (c0) {
+          for (var yy = c0[1]; yy < c0[1] + 6; yy++) for (var xx = c0[0]; xx < c0[0] + 6; xx++) {
+            var px = at(xx, yy);
+            if (px[3] < 125) continue;
+            corner[0] += px[0]; corner[1] += px[1]; corner[2] += px[2]; cornerN++;
+          }
+        });
+        var bgHex = cornerN ? rgbToHex(corner[0] / cornerN, corner[1] / cornerN, corner[2] / cornerN) : null;
+        var buckets = {}, total = 0, kept = 0;
+        for (var i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 125) continue;
+          var r = data[i], g = data[i + 1], b = data[i + 2];
+          total++;
+          var hexPx = rgbToHex(r, g, b);
+          /* 배경과 거의 같은 픽셀은 버린다(의류 본체만 남긴다) */
+          if (bgHex && hexDistance(hexPx, bgHex) < 34) continue;
+          var key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+          var bk = buckets[key] || (buckets[key] = { n: 0, r: 0, g: 0, b: 0 });
+          bk.n++; bk.r += r; bk.g += g; bk.b += b;
+          kept++;
+        }
+        /* 배경 제거가 너무 많이 지웠다면(옷이 배경과 같은 색) 배경 필터를 끄고 다시 */
+        if (kept < total * 0.10) {
+          buckets = {}; kept = 0;
+          for (var j = 0; j < data.length; j += 4) {
+            if (data[j + 3] < 125) continue;
+            var r2 = data[j], g2 = data[j + 1], b2 = data[j + 2];
+            var k2 = ((r2 >> 4) << 8) | ((g2 >> 4) << 4) | (b2 >> 4);
+            var b2k = buckets[k2] || (buckets[k2] = { n: 0, r: 0, g: 0, b: 0 });
+            b2k.n++; b2k.r += r2; b2k.g += g2; b2k.b += b2; kept++;
+          }
+        }
+        if (!kept) { finish({ ok: false, colors: [], message: '이미지에서 색을 찾지 못했습니다.' }); return; }
+        var list = Object.keys(buckets).map(function (k) {
+          var bk = buckets[k];
+          var hex = rgbToHex(bk.r / bk.n, bk.g / bk.n, bk.b / bk.n);
+          return { hex: hex, share: bk.n / kept, luma: hexLuma(hex), sat: hexSaturation(hex) };
+        }).filter(function (c) { return c.share >= 0.005; }).sort(function (a, b) { return b.share - a.share; });
+        /* 비슷한 색은 비중 가중 평균으로 합친다(미세한 그림자·노이즈 제거) */
+        var merged = [];
+        list.forEach(function (c) {
+          for (var m = 0; m < merged.length; m++) {
+            if (hexDistance(merged[m].hex, c.hex) < 22) {
+              var g2 = merged[m];
+              var w = g2.share + c.share;
+              var hr = parseInt(g2.hex.slice(1, 3), 16) * g2.share + parseInt(c.hex.slice(1, 3), 16) * c.share;
+              var hg = parseInt(g2.hex.slice(3, 5), 16) * g2.share + parseInt(c.hex.slice(3, 5), 16) * c.share;
+              var hb = parseInt(g2.hex.slice(5, 7), 16) * g2.share + parseInt(c.hex.slice(5, 7), 16) * c.share;
+              g2.hex = rgbToHex(hr / w, hg / w, hb / w);
+              g2.share = w;
+              return;
+            }
+          }
+          merged.push({ hex: c.hex, share: c.share });
+        });
+        merged.sort(function (a, b) { return b.share - a.share; });
+        var picked = [];
+        for (var t2 = 0; t2 < 2 && picked.length < 4; t2++) {
+          var minDist = t2 === 0 ? 46 : 24;
+          merged.forEach(function (c) {
+            if (picked.length >= 6) return;
+            if (picked.every(function (p) { return hexDistance(p.hex, c.hex) >= minDist; })) picked.push(c);
+          });
+        }
+        var colors = picked.slice(0, 6).map(function (c) {
+          var near = nearestColorName(c.hex);
+          return { hex: c.hex, name: near.name, share: Math.round(c.share * 100), distance: near.distance };
+        });
+        finish({ ok: colors.length > 0, colors: colors, message: colors.length ? '' : '이미지에서 색을 찾지 못했습니다.' });
+      } catch (e) {
+        finish({ ok: false, colors: [], message: '이미지 색을 읽을 수 없습니다(보안 제한). 로컬 서버(http)로 열거나 업로드한 사진으로 시도해 주세요.' });
+      }
+    };
+    img.onerror = function () { finish({ ok: false, colors: [], message: '이미지를 불러오지 못했습니다.' }); };
+    try { img.crossOrigin = 'anonymous'; } catch (e) {}
+    img.src = url;
+  }
+  var SIZE_ORDER = ['S', 'M', 'L', 'XL', 'FREE'];
+  /* v1.9.1 — 카테고리별 사이즈 코드. 관리자 「카테고리」 탭에서 추가·수정·삭제·순서 변경하고
+     상품 등록/수정의 사이즈 드롭다운이 선택한 카테고리 목록을 그대로 쓴다. */
+  var DEFAULT_SIZE_CODES = {
+    outer: ['95', '100', '105', 'S', 'M', 'L', 'XL'],
+    top: ['95', '100', '105', 'S', 'M', 'L', 'XL', 'FREE'],
+    bottom: ['28', '30', '32', '34', 'S', 'M', 'L'],
+    dress: ['S', 'M', 'L'],
+    acc: ['FREE']
+  };
+  var SIZE_CODE_MAX = 8;         // 사이즈 코드 1개 길이 상한
+  var SIZE_CODE_COUNT_MAX = 20;  // 카테고리당 사이즈 코드 수 상한
+  function normalizeSizeCode(v) {
+    return String(v == null ? '' : v).trim().toUpperCase().slice(0, SIZE_CODE_MAX);
+  }
+  function sizeCodesOf(categoryId) {
+    var c = (db && db.categories ? db.categories : []).filter(function (x) { return x.id === categoryId; })[0];
+    var list = c && Array.isArray(c.size_codes) ? c.size_codes : null;
+    if (!list || !list.length) {
+      var def = DEFAULT_SIZE_CODES[categoryId];
+      if (def) return def.slice();
+      var first = (db && db.categories ? db.categories : [])[0];
+      return first ? sizeCodesOf(first.id) : SIZE_ORDER.slice();
+    }
+    return list.map(normalizeSizeCode).filter(Boolean);
+  }
+  /* 사이즈 드롭다운 옵션 — 카테고리 코드 + 기존 상품에 등록된 레거시아 사이즈(누락 방지) */
+  function sizeOptionsFor(categoryId, legacySizes) {
+    var out = sizeCodesOf(categoryId).slice();
+    (legacySizes || []).forEach(function (s) {
+      var v = normalizeSizeCode(s);
+      if (v && out.indexOf(v) < 0) out.push(v);
+    });
+    return out.length ? out : SIZE_ORDER.slice();
+  }
+  function sizeOptionsFromDraft(d) {
+    if (!d) return SIZE_ORDER.slice();
+    var legacy = (d.variants || []).map(function (v) { return v.size; });
+    return sizeOptionsFor(d.category, legacy);
+  }
+  var STATUS = {
+    paid: { label: '결제완료', cls: 'paid' },
+    preparing: { label: '배송준비', cls: 'preparing' },
+    shipping: { label: '배송중', cls: 'shipping' },
+    delivered: { label: '배송완료', cls: 'delivered' },
+    cancelled: { label: '취소됨', cls: 'cancelled' }
+  };
+  var STATUS_FLOW = ['paid', 'preparing', 'shipping', 'delivered'];
+  /* v1.9.16 — 주문 관리 「일괄 상태 변경」의 목표 상태: 다음 단계 + 취소 */
+  var ORDER_BULK_STATUSES = ['preparing', 'shipping', 'delivered', 'cancelled'];
+  /* ======================================================== 교환 / 반품 정책
+     · 판매자 귀책(제품 하자·파손 / 오배송)  : 배송비 0원          → payment_status 'free'
+     · 고객 귀책(단순 변심 / 사이즈·색상 변경): 반품 3,000원(편도), 교환 6,000원(왕복)
+       → 토스페이먼츠 SDK v2 로 배송비를 결제한 뒤 접수 → payment_status 'paid'
+     · 신청 가능 단계: 배송중('shipping') · 배송완료('delivered') — 배송 전에는 주문 취소로 처리
+     · 한 주문에는 교환/반품 1건만 접수 (order_claims.order_id UNIQUE) */
+  var CLAIM_FEE = { return: SHIPPING_FEE, exchange: SHIPPING_FEE * 2 };
+  var CLAIM_TYPES = { return: '반품', exchange: '교환' };
+  var CLAIM_REASONS = {
+    defect: { label: '제품 하자·파손', seller: true },
+    wrong_item: { label: '오배송', seller: true },
+    change_of_mind: { label: '단순 변심', seller: false },
+    size_color: { label: '사이즈·색상 변경', seller: false }
+  };
+  var CLAIM_STATUS = {
+    requested: { label: '접수됨', cls: 'requested' },
+    approved: { label: '수거중/승인', cls: 'approved' },
+    completed: { label: '완료', cls: 'completed' },
+    rejected: { label: '반려', cls: 'rejected' }
+  };
+  var CLAIM_ORDER_STATUSES = ['shipping', 'delivered'];
+  /* v1.9.16 — 반품/교환 「일괄 상태 변경」의 목표 상태 */
+  var CLAIM_BULK_STATUSES = ['requested', 'approved', 'completed', 'rejected'];
+  var SELLER_FAULT_BADGE = '판매자 귀책 · 반품/교환 배송비 0원 (무료)';
+  var CUSTOMER_FAULT_BADGE = '반품 3,000원 / 교환(왕복) 6,000원 배송비 결제 필요';
+  var PAYMENTS = { card: '신용카드', easypay: '간편결제', bank: '무통장입금' };
+  var ASSETS = ['coat.webp', 'knit.webp', 'pants.webp', 'dress.webp', 'bag.webp', 'jacket.webp', 'shirt.webp', 'skirt.webp', 'trench.webp', 'cardigan.webp', 'denim.webp', 'loafers.webp'];
+  /* 갤러리용 디테일 크롭 — 대표 이미지별 2장 (assets/<stem>-detail|-fabric.webp) */
+  var GALLERY_ASSETS = (function () {
+    var out = [];
+    ASSETS.forEach(function (a) {
+      var stem = a.replace(/\.webp$/, '');
+      out.push(stem + '-detail.webp', stem + '-fabric.webp');
+    });
+    return out;
+  })();
+  var ALL_IMAGES = ASSETS.concat(GALLERY_ASSETS);
+
+  /* ---------------------------------------------------------------- utils */
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function won(n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; }
+  function pad(n, w) { var s = String(n); while (s.length < w) s = '0' + s; return s; }
+  function fmtDate(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '-';
+    return d.getFullYear() + '.' + pad(d.getMonth() + 1, 2) + '.' + pad(d.getDate(), 2);
+  }
+  function fmtDateTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '-';
+    return fmtDate(iso) + ' ' + pad(d.getHours(), 2) + ':' + pad(d.getMinutes(), 2);
+  }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function nowISO() { return new Date().toISOString(); }
+  /* created_at 정렬용 — ISO 문자열을 실제 시각으로 비교한다(+09:00 과 Z 가 섮여도 정확) */
+  function timeOf(iso) {
+    var t = new Date(iso).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+  function imgSrc(name) {
+    if (!name) return '';
+    if (/^data:image\//i.test(name)) return name;   // 관리자가 업로드한 Data URL
+    if (/^https?:\/\//i.test(name)) return name;    // v1.9.13 사이트 미디어 URL 직접 추가
+    if (EMBEDDED && EMBEDDED[name]) return EMBEDDED[name];
+    return 'assets/' + name;
+  }
+  function isDataImage(name) { return /^data:image\//i.test(String(name || '')); }
+  function catLabel(id) {
+    var list = categories();
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i].label;
+    return id;
+  }
+  function catEnOf(id) {
+    var list = categories();
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i].en || String(id).toUpperCase();
+    return String(id).toUpperCase();
+  }
+  function idSeq(n) { var s = Math.random().toString(36).slice(2, 2 + n); return s || 'x'; }
+  var seq = 0;
+  function newId(prefix) { seq++; return prefix + '_' + Date.now().toString(36) + seq.toString(36) + idSeq(2); }
+
+  /* --------------------------------------------------------------- sha256 */
+  var K256 = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ];
+  function sha256Hex(msg) {
+    function rr(x, n) { return (x >>> n) | (x << (32 - n)); }
+    var bytes = new TextEncoder().encode(String(msg));
+    var l = bytes.length;
+    var total = Math.ceil((l + 9) / 64) * 64;
+    var buf = new Uint8Array(total);
+    buf.set(bytes); buf[l] = 0x80;
+    var dv = new DataView(buf.buffer);
+    var bits = l * 8;
+    dv.setUint32(total - 8, Math.floor(bits / 4294967296));
+    dv.setUint32(total - 4, bits >>> 0);
+    var H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    var w = new Uint32Array(64);
+    for (var off = 0; off < total; off += 64) {
+      var i;
+      for (i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4);
+      for (i = 16; i < 64; i++) {
+        var s0 = rr(w[i - 15], 7) ^ rr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+        var s1 = rr(w[i - 2], 17) ^ rr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+      }
+      var a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (i = 0; i < 64; i++) {
+        var S1 = rr(e, 6) ^ rr(e, 11) ^ rr(e, 25);
+        var ch = (e & f) ^ (~e & g);
+        var t1 = (h + S1 + ch + K256[i] + w[i]) >>> 0;
+        var S0 = rr(a, 2) ^ rr(a, 13) ^ rr(a, 22);
+        var maj = (a & b) ^ (a & c) ^ (b & c);
+        var t2 = (S0 + maj) >>> 0;
+        h = g; g = f; f = e; e = (d + t1) >>> 0;
+        d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      }
+      H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+      H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+    }
+    return H.map(function (x) { return pad(x.toString(16), 8); }).join('');
+  }
+  function hashPw(pw) { return sha256Hex('mono-atelier$' + pw); }
+
+  /* ------------------------------------------------------------------- db */
+  var db = null;
+  var session = null;
+  var storageOk = true;
+  var seedMergePending = false;   // v1.9.12 — 새 시드 행을 병합했으면 boot 에서 저장소에 반영
+
+  function loadDB() {
+    try {
+      var raw = localStorage.getItem(LS_DB);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.users)) return null;
+      return migrateDB(parsed);
+    } catch (e) { storageOk = false; return null; }
+  }
+  /* 이전 버전(v1) localStorage 를 새 스키마(v2: 갤러리·쿠폰·무료배송 기준)로 올린다. */
+  function migrateDB(parsed) {
+    /* v1.9.11 — 이전 저장소에는 없는 표는 시드에서 채운다(빈 배열로 덮어쓰지 않도록 존재 여부를 먼저 기억) */
+    var hadQnas = Array.isArray(parsed.product_qnas);
+    var hadVotes = Array.isArray(parsed.review_votes);
+    DB_TABLES.forEach(function (t) {
+      if (!Array.isArray(parsed[t])) parsed[t] = [];
+    });
+    parsed.products.forEach(function (p) {
+      if (!Array.isArray(p.images) || !p.images.length) p.images = galleryFallback(p.image);
+      if (!('free_shipping_threshold' in p)) p.free_shipping_threshold = null;
+      if (!('model_info' in p)) p.model_info = null;   // v1.6: 모델 착용 정보(선택)
+    });
+    parsed.orders.forEach(function (o) {
+      if (o.discount_amount == null) o.discount_amount = 0;
+      if (!('coupon_code' in o)) o.coupon_code = null;
+    });
+    if (!parsed.coupons.length && SEED.coupons) parsed.coupons = clone(SEED.coupons);
+    // v1.7: 카테고리(관리자 편집) · 회원 등급 · 쿠폰 등급 대상 보충
+    if (!Array.isArray(parsed.categories) || !parsed.categories.length) {
+      parsed.categories = clone((SEED.categories && SEED.categories.length) ? SEED.categories : DEFAULT_CATEGORIES);
+    }
+    parsed.categories.forEach(function (c, i) {
+      c.label = String(c.label || c.id || '').trim() || c.id;
+      c.en = String(c.en || '').trim() || String(c.id || '').toUpperCase();
+      c.sort_order = Number(c.sort_order); if (!isFinite(c.sort_order)) c.sort_order = i + 1;
+      // v1.9.8 — 카테고리 사용 여부(숨김이면 스토어 필터에서만 빠진다)
+      c.is_active = !(c.is_active === false || c.is_active === 0 || c.is_active === '0');
+      // v1.9.1: 카테고리별 사이즈 코드 (없으면 카테고리 id 기본값으로 보충)
+      if (!Array.isArray(c.size_codes) || !c.size_codes.length) {
+        c.size_codes = (DEFAULT_SIZE_CODES[c.id] || ['FREE']).slice();
+      } else {
+        c.size_codes = c.size_codes.map(normalizeSizeCode).filter(Boolean);
+      }
+    });
+    parsed.users.forEach(function (u) {
+      if (!GRADES[String(u.grade || '').toUpperCase()]) u.grade = 'NORMAL';
+      else u.grade = String(u.grade).toUpperCase();
+      // v1.9: 보유 포인트 · 우편번호 · 상세주소
+      u.points = Math.max(0, Math.round(Number(u.points) || 0));
+      if (typeof u.postcode !== 'string') u.postcode = '';
+      if (typeof u.address_detail !== 'string') u.address_detail = '';
+    });
+    // v1.9: 주문 우편번호·사용 포인트 / 주문항목 구매확정·적립 상태
+    parsed.orders.forEach(function (o) {
+      if (typeof o.postcode !== 'string') o.postcode = '';
+      o.points_used = Math.max(0, Math.round(Number(o.points_used) || 0));
+    });
+    parsed.order_items.forEach(function (oi) {
+      if (!('confirmed_at' in oi)) oi.confirmed_at = null;
+      oi.confirm_points = Math.max(0, Math.round(Number(oi.confirm_points) || 0));
+      oi.photo_bonus = Math.max(0, Math.round(Number(oi.photo_bonus) || 0));
+      if (!('photo_bonus_at' in oi)) oi.photo_bonus_at = null;
+      // v1.9.2: 리뷰 작성 횟수·재작성 사용 여부 (반려 후 1회 재작성 추적)
+      oi.review_attempts = Math.max(0, Math.round(Number(oi.review_attempts) || 0));
+      oi.rewrite_used = (oi.rewrite_used === true || oi.rewrite_used === 1 || oi.rewrite_used === '1') ? 1 : 0;
+    });
+    // v1.9: 상품 리뷰 · 포인트 정책/내역 · FAQ
+    if (!Array.isArray(parsed.product_reviews)) parsed.product_reviews = clone((SEED && SEED.product_reviews) || []);
+    /* v1.9.11 — 상품 Q&A · 리뷰 추천/비추천 표가 없던 저장소에는 시드 예시를 채운다 */
+    if (!hadQnas) parsed.product_qnas = clone((SEED && SEED.product_qnas) || []);
+    if (!hadVotes) parsed.review_votes = clone((SEED && SEED.review_votes) || []);
+    parsed.product_qnas.forEach(function (q) {
+      if (!QNA_TYPES[q.qna_type]) q.qna_type = 'product';
+      q.is_secret = (q.is_secret === true || q.is_secret === 1 || q.is_secret === '1') ? 1 : 0;
+      q.title = String(q.title || '').trim();
+      q.content = String(q.content || '');
+      q.answer = String(q.answer || '');
+      q.status = q.answer.trim() ? 'answered' : 'pending';
+      if (!('answered_by' in q)) q.answered_by = null;
+      if (!('answered_at' in q)) q.answered_at = null;
+      if (!('updated_at' in q)) q.updated_at = null;
+    });
+    parsed.review_votes = parsed.review_votes.filter(function (v) {
+      return v && v.review_id && v.user_id && (v.vote === 'up' || v.vote === 'down');
+    });
+    // v1.9.1: 리뷰 검수 상태·반려 사유·회수 포인트 / HELP '고객센터 · FAQ' → '고객센터'
+    parsed.product_reviews.forEach(function (r) {
+      if (r.status !== 'rejected') r.status = 'published';
+      if (!('rejected_reason' in r)) r.rejected_reason = null;
+      r.reclaimed_points = Math.max(0, Math.round(Number(r.reclaimed_points) || 0));
+      if (!('rejected_at' in r)) r.rejected_at = null;
+      if (!('updated_at' in r)) r.updated_at = null;
+      // v1.9.2: 리뷰 차수(1 = 최초 작성, 2 = 반려 후 재작성)
+      r.attempt = Math.max(1, Math.round(Number(r.attempt) || 1));
+    });
+    /* v1.9.2: 예전 데이터(리뷰만 있고 작성 횟수가 0)는 실제 리뷰 수로 보정한다 */
+    parsed.order_items.forEach(function (oi) {
+      if ((oi.review_attempts || 0) > 0) return;
+      var mine = parsed.product_reviews.filter(function (r) { return r.order_item_id === oi.id; });
+      oi.review_attempts = mine.length;
+      if (mine.length > 1) oi.rewrite_used = 1;
+    });
+    if (Array.isArray(parsed.help_topics)) {
+      parsed.help_topics.forEach(function (t) {
+        if (t && /·\s*FAQ/.test(String(t.title || ''))) t.title = String(t.title).replace(/\s*·\s*FAQ/g, '').trim();
+      });
+      /* v1.9.10 — 「무료배송·당일출고」 칸은 FAQ 게시판으로 대체되어 홈에 더 이상 쓰이지 않는다.
+         저장소에 남아 있어도 홈·관리자 목록에서 빠지도록 여기서 정리한다. */
+      parsed.help_topics = parsed.help_topics.filter(function (t) {
+        return t && !/무료배송|당일출고/.test(String(t.title || ''));
+      }).map(function (t, i) { t.sort_order = i + 1; return t; });
+      if (!parsed.help_topics.length) parsed.help_topics = clone((SEED && SEED.help_topics) || []);
+    }
+    if (!Array.isArray(parsed.point_policies) || !parsed.point_policies.length) parsed.point_policies = clone((SEED && SEED.point_policies) || []);
+    if (!Array.isArray(parsed.point_logs)) parsed.point_logs = clone((SEED && SEED.point_logs) || []);
+    if (!Array.isArray(parsed.faqs)) parsed.faqs = clone((SEED && SEED.faqs) || []);
+    // v1.9.1: 주문 SMS 발송 로그
+    if (!Array.isArray(parsed.sms_logs)) parsed.sms_logs = clone((SEED && SEED.sms_logs) || []);
+    // v1.9.2: 발송 로그 통합(SMS + 이메일 OTP) — 없으면 SMS 로그에서 옮겨 채운다
+    if (!Array.isArray(parsed.dispatch_logs)) {
+      parsed.dispatch_logs = parsed.sms_logs.map(function (l) {
+        return {
+          id: 'dsp_' + l.id, channel: 'sms', to: l.phone, kind: l.kind || 'order_created',
+          summary: l.message, status: l.status === 'sent' ? 'sent' : (l.status === 'failed' ? 'failed' : 'test'),
+          mode: l.mode || 'test', order_id: l.order_id || null, created_at: l.created_at
+        };
+      });
+    }
+    // v1.3: 쿠폰 발급 대상(전용 쿠폰) 필드 보충 — 없거나 null 이면 전체 공용
+    parsed.coupons.forEach(function (c) {
+      if (!Array.isArray(c.target_user_ids)) c.target_user_ids = [];
+      c.target_user_ids = c.target_user_ids.filter(function (id) {
+        return parsed.users.some(function (u) { return u.id === id; });
+      });
+      if (!Array.isArray(c.target_grades)) c.target_grades = [];
+      c.target_grades = c.target_grades.filter(function (g) { return !!GRADES[String(g).toUpperCase()]; })
+        .map(function (g) { return String(g).toUpperCase(); });
+    });
+    // v1.9.13 — 쿠폰 사용 조건(카테고리·뱃지) 보충
+    parsed.coupons.forEach(function (c) {
+      if (!Array.isArray(c.target_categories)) c.target_categories = [];
+      c.target_categories = c.target_categories.filter(function (id) {
+        return parsed.categories.some(function (x) { return x.id === id; });
+      });
+      if (!Array.isArray(c.target_badges)) c.target_badges = [];
+      c.target_badges = normalizeBadgeList(c.target_badges);
+    });
+    // v1.3: 뱃지는 짧은 문구면 자유롭게 쓸 수 있다 (길이만 제한)
+    parsed.products.forEach(function (p) {
+      if (p.badge != null) p.badge = String(p.badge).trim().slice(0, 16) || null;
+    });
+    if (!parsed.product_images.length) {
+      parsed.product_images = [];
+      parsed.products.forEach(function (p) {
+        (p.images || [p.image]).forEach(function (img, i) {
+          parsed.product_images.push({ id: newId('pi'), product_id: p.id, image: img, alt: p.name, sort_order: i });
+        });
+      });
+    }
+    /* v1.9.12 — 이미 방문한 브라우저에도 새 시드 행을 병합 */
+    mergeSeedRows(parsed);
+    return parsed;
+  }
+  /* v1.9.12 — 시드 보강분을 기존 localStorage 에도 합친다.
+     · id 가 같은 행은 사용자가 고친 값(리뷰 수정·답변·상태 변경)을 그대로 두고 건드리지 않는다
+     · 저장소에 없는 시드 행(새 주문·주문항목·리뷰·Q&A·추천표)만 빠짐없이 추가한다
+     · db.meta.seed_version 으로 한 번만 실행 — 같은 병합을 매번 반복하지 않는다
+     · 새 시드가 걸린 표만 다룬다(상품·카테고리·회원은 관리자가 지운 것을 되살리지 않도록 제외) */
+  var SEED_MERGE_VERSION = 1912;
+  var SEED_MERGE_TABLES = ['orders', 'order_items', 'product_reviews', 'product_qnas', 'review_votes'];
+  function mergeSeedRows(parsed) {
+    if (!parsed.meta || typeof parsed.meta !== 'object') parsed.meta = {};
+    if (Number(parsed.meta.seed_version) >= SEED_MERGE_VERSION) return false;
+    var added = 0;
+    SEED_MERGE_TABLES.forEach(function (name) {
+      var seedRows = (SEED && Array.isArray(SEED[name])) ? SEED[name] : [];
+      if (!seedRows.length) return;
+      if (!Array.isArray(parsed[name])) parsed[name] = [];
+      var have = {};
+      parsed[name].forEach(function (row) { if (row && row.id) have[row.id] = 1; });
+      seedRows.forEach(function (row) {
+        if (!row || !row.id || have[row.id]) return;
+        parsed[name].push(clone(row));
+        added++;
+      });
+    });
+    parsed.meta.seed_version = SEED_MERGE_VERSION;
+    if (added > 0) seedMergePending = true;
+    return added > 0;
+  }
+  function galleryFallback(image) {
+    var stem = String(image || 'coat.webp').replace(/\.(webp|jpg|png)$/i, '');
+    return [image || 'coat.webp', stem + '-detail.webp', stem + '-fabric.webp'];
+  }
+  function save() {
+    try { localStorage.setItem(LS_DB, JSON.stringify(db)); storageOk = true; return true; }
+    catch (e) { storageOk = false; return false; }
+  }
+  function quotaMessage() {
+    return '저장 공간이 부족합니다. 업로드한 사진 수를 줄이거나 사용하지 않는 상품을 정리해 주세요.';
+  }
+  function loadSession() {
+    try { session = JSON.parse(localStorage.getItem(LS_SESSION) || 'null'); }
+    catch (e) { session = null; }
+  }
+  function saveSession() {
+    try {
+      if (session) localStorage.setItem(LS_SESSION, JSON.stringify(session));
+      else localStorage.removeItem(LS_SESSION);
+    } catch (e) { storageOk = false; }
+  }
+  function currentUser() {
+    if (!session) return null;
+    return db.users.filter(function (u) { return u.id === session.userId; })[0] || null;
+  }
+  function isAdmin() { var u = currentUser(); return !!u && u.role === 'admin'; }
+
+  /* ------------------------------------------------------------- entities */
+  function productById(id) { return db.products.filter(function (p) { return p.id === id; })[0] || null; }
+  /* ------------------------------------------------- 제품고유키(제품번호)
+     MA-0001 형식 · 대소문자 무시 유일 · 신규 등록 시 가장 큰 번호 다음을 자동 추천 */
+  var PRODUCT_CODE_PREFIX = 'MA-';
+  function normalizeProductCode(v) { return String(v == null ? '' : v).trim().toUpperCase(); }
+  function nextProductCode() {
+    var max = 0;
+    db.products.forEach(function (p) {
+      var m = String(p.product_code || '').match(/^MA-(\d+)$/i);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return PRODUCT_CODE_PREFIX + ('0000' + (max + 1)).slice(-4);
+  }
+  function productCodeTaken(code, exceptId) {
+    var c = normalizeProductCode(code);
+    if (!c) return false;
+    return db.products.some(function (p) {
+      return p.id !== exceptId && normalizeProductCode(p.product_code) === c;
+    });
+  }
+  function productCodeOf(p) { return p ? (normalizeProductCode(p.product_code) || '-') : '-'; }
+  function productByCode(code) {
+    var c = normalizeProductCode(code);
+    if (!c) return null;
+    return db.products.filter(function (p) { return normalizeProductCode(p.product_code) === c; })[0] || null;
+  }
+  function variantById(id) { return db.product_variants.filter(function (v) { return v.id === id; })[0] || null; }
+  function variantsOf(pid) {
+    return db.product_variants.filter(function (v) { return v.product_id === pid; });
+  }
+  function stockOf(pid) {
+    return variantsOf(pid).reduce(function (s, v) { return s + Math.max(0, v.stock); }, 0);
+  }
+  function colorsOf(pid) {
+    var out = [], seen = {};
+    variantsOf(pid).forEach(function (v) {
+      if (!seen[v.color]) { seen[v.color] = 1; out.push({ color: v.color, hex: resolveColorHex(v.color, v.color_hex) }); }
+    });
+    return out;
+  }
+  /* 컬러명의 상품 대표 HEX — 상세·장바구니·주문내역·교환모달이 같은 값을 보여주게 한다 */
+  function hexOfColor(pid, color) {
+    var list = colorsOf(pid);
+    for (var i = 0; i < list.length; i++) if (list[i].color === color) return list[i].hex;
+    return null;
+  }
+  function sizesOf(pid, color) {
+    return variantsOf(pid)
+      .filter(function (v) { return !color || v.color === color; })
+      .sort(function (a, b) { return SIZE_ORDER.indexOf(a.size) - SIZE_ORDER.indexOf(b.size); });
+  }
+  function findVariant(pid, color, size) {
+    return db.product_variants.filter(function (v) {
+      return v.product_id === pid && v.color === color && v.size === size;
+    })[0] || null;
+  }
+  function discountPct(p) {
+    if (!p.original_price || p.original_price <= p.price) return 0;
+    return Math.round((1 - p.price / p.original_price) * 100);
+  }
+  function productBadge(p) {
+    if (stockOf(p.id) <= 0) return null;
+    var b = String(p.badge || '').trim();
+    return b ? b : null;
+  }
+  function badgeClass(b) {
+    var v = String(b || '').toUpperCase();
+    if (v === 'SALE') return 'sale';
+    if (v === 'NEW') return 'new';
+    if (v === 'LIMITED') return 'limited';
+    if (BADGE_PRESETS.indexOf(v) >= 0) return '';
+    return 'custom';
+  }
+  function normalizeBadge(v) {
+    var s = String(v == null ? '' : v).trim().replace(/\s+/g, ' ').slice(0, BADGE_CUSTOM_MAX);
+    return s || null;
+  }
+  /* 모델 착용 정보 — 선택 입력. 빈 값이면 null(상세에서 숨김), 최대 60자 */
+  var MODEL_INFO_MAX = 60;
+  function normalizeModelInfo(v) {
+    var s = String(v == null ? '' : v).trim().replace(/\s+/g, ' ').slice(0, MODEL_INFO_MAX);
+    return s || null;
+  }
+  /* ------------------------------------------------------------- gallery */
+  function productImages(p) {
+    if (!p) return [];
+    var list = Array.isArray(p.images) && p.images.length ? p.images.slice() : [p.image];
+    if (p.image && list.indexOf(p.image) < 0) list.unshift(p.image);
+    return list;
+  }
+  function imageAltOf(p, idx) {
+    if (!idx) return p.name;
+    return p.name + (idx === 1 ? ' 디테일' : ' 소재 클로즈업');
+  }
+  /* -------------------------------------------------------- free shipping */
+  /* 상품별 무료배송 기준: null → 스토어 기본(10만 원), 0 → 무조건 무료, N → 상품 합계 N원 이상 */
+  function freeShipThresholdOf(p) {
+    var th = p ? p.free_shipping_threshold : null;
+    if (th === 0) return 0;
+    if (th == null || th === '' || isNaN(Number(th))) return FREE_SHIPPING;
+    return Math.max(0, Math.round(Number(th)));
+  }
+  function shippingLabelOf(p) {
+    var th = freeShipThresholdOf(p);
+    if (th === 0) return '무료배송';
+    return won(th) + ' 이상 무료배송';
+  }
+  /* 선택한 행들을 상품별로 묶어 배송비를 계산한다.
+     한 상품의 합계가 그 상품의 기준을 넘으면 그 상품은 무료, 모든 상품이 무료일 때만 배송비 0원. */
+  function shippingOf(rows) {
+    var groups = {};
+    (rows || []).forEach(function (r) {
+      var pid = r.product.id;
+      if (!groups[pid]) groups[pid] = { id: pid, name: r.product.name, sum: 0, threshold: freeShipThresholdOf(r.product) };
+      groups[pid].sum += r.product.price * r.item.quantity;
+    });
+    var list = Object.keys(groups).map(function (k) { return groups[k]; });
+    var unpaid = list.filter(function (g) { return g.threshold > 0 && g.sum < g.threshold; });
+    var freeGroups = list.filter(function (g) { return unpaid.indexOf(g) < 0; });
+    var remaining = unpaid.length ? Math.min.apply(null, unpaid.map(function (g) { return g.threshold - g.sum; })) : 0;
+    return {
+      fee: list.length && unpaid.length ? SHIPPING_FEE : 0,
+      groups: list,
+      unpaid: unpaid,
+      free: freeGroups,
+      remaining: remaining,
+      allFree: list.length > 0 && unpaid.length === 0
+    };
+  }
+  function orderItemsOf(orderId) {
+    return db.order_items.filter(function (oi) { return oi.order_id === orderId; });
+  }
+  function orderById(id) { return db.orders.filter(function (o) { return o.id === id; })[0] || null; }
+
+  /* --------------------------------------------------------- 교환/반품 접수 */
+  function claimById(id) { return db.order_claims.filter(function (c) { return c.id === id; })[0] || null; }
+  function claimOfOrder(orderId) {
+    return db.order_claims.filter(function (c) { return c.order_id === orderId; })[0] || null;
+  }
+  function claimFeeOf(type, reason) {
+    var r = CLAIM_REASONS[reason];
+    if (!r || r.seller) return 0;                       // 판매자 귀책 = 무료
+    return type === 'exchange' ? CLAIM_FEE.exchange : CLAIM_FEE.return;
+  }
+  function claimReasonLabel(reason) {
+    return (CLAIM_REASONS[reason] || {}).label || reason || '-';
+  }
+  /* 접수 가능 여부: 본인 주문 · 배송중/배송완료 · 아직 접수 전 */
+  function claimBlockReason(o) {
+    if (!o) return '주문을 찾을 수 없습니다.';
+    var u = currentUser();
+    if (!u) return '로그인 후 이용할 수 있습니다.';
+    if (o.user_id !== u.id) return '본인 주문만 교환/반품을 신청할 수 있습니다.';
+    if (o.status === 'cancelled') return '취소된 주문은 교환/반품을 신청할 수 없습니다.';
+    if (CLAIM_ORDER_STATUSES.indexOf(o.status) < 0) {
+      return '배송이 시작된 주문(배송중·배송완료)만 교환/반품을 신청할 수 있습니다.';
+    }
+    if (claimOfOrder(o.id)) return '이미 교환/반품이 접수된 주문입니다.';
+    return '';
+  }
+  function canClaim(o) { return !!o && !claimBlockReason(o); }
+  function claimFeeLabel(c) {
+    if (!c) return '';
+    if (!c.shipping_fee) return '무료';
+    if ((c.payment_status || '') === 'paid') return won(c.shipping_fee) + ' 결제완료';
+    return won(c.shipping_fee) + ' 결제 대기';
+  }
+  function claimBadgeText(c) {
+    if (!c) return '';
+    var kind = CLAIM_TYPES[c.claim_type] || '교환/반품';
+    if (!c.shipping_fee) return kind + ' 접수됨 (무료)';
+    return kind + ' 접수됨 (배송비 ' + won(c.shipping_fee) + ((c.payment_status || '') === 'paid' ? ' 결제)' : ' 결제 전)');
+  }
+  function claimStateLabel(c) { return (CLAIM_STATUS[c && c.status] || { label: c && c.status }).label; }
+  function claimCreatedLabel(c) { return c ? fmtDate(c.created_at) : ''; }
+  function makeClaimId() {
+    var d = new Date();
+    var ymd = '' + d.getFullYear() + pad(d.getMonth() + 1, 2) + pad(d.getDate(), 2);
+    var id;
+    do {
+      id = 'oc_' + ymd + '_' + String(Math.floor(Math.random() * 9000) + 1000);
+    } while (claimById(id));
+    return id;
+  }
+  /* 화면 입력 → 접수 레코드 초기값 (아직 저장하지 않는다) */
+  function buildClaim(input) {
+    var o = orderById(input.oid);
+    if (!o) return { ok: false, message: '주문을 찾을 수 없습니다.' };
+    var u = currentUser();
+    if (!u) return { ok: false, message: '로그인이 필요합니다. 다시 로그인해 주세요.' };
+    if (o.user_id !== u.id) return { ok: false, message: '본인 주문만 교환/반품을 신청할 수 있습니다.' };
+    if (CLAIM_ORDER_STATUSES.indexOf(o.status) < 0) {
+      return { ok: false, message: '배송이 시작된 주문(배송중·배송완료)만 교환/반품을 신청할 수 있습니다.' };
+    }
+    if (claimOfOrder(o.id)) return { ok: false, message: '이미 교환/반품이 접수된 주문입니다.' };
+    var type = CLAIM_TYPES[input.claim_type] ? input.claim_type : 'return';
+    if (!CLAIM_REASONS[input.reason_category]) return { ok: false, message: '사유를 선택해 주세요.' };
+    var option = String(input.exchange_option == null ? '' : input.exchange_option).trim().slice(0, 60);
+    if (type === 'exchange' && !option) {
+      return { ok: false, message: '교환할 컬러와 사이즈를 선택해 주세요.' };
+    }
+    var fee = claimFeeOf(type, input.reason_category);
+    return {
+      ok: true,
+      claim: {
+        id: makeClaimId(),
+        order_id: o.id,
+        user_id: u.id,
+        claim_type: type,
+        reason_category: input.reason_category,
+        reason_detail: String(input.reason_detail == null ? '' : input.reason_detail).trim().slice(0, 300),
+        shipping_fee: fee,
+        payment_status: fee > 0 ? 'pending' : 'free',
+        payment_key: null,
+        payment_mode: fee > 0 ? 'pending' : 'free',
+        exchange_option: type === 'exchange' ? option : null,
+        status: 'requested',
+        stock_restored: 0,
+        created_at: nowISO(),
+        updated_at: nowISO()
+      }
+    };
+  }
+  /* 접수 확정 — 무료는 즉시, 유료는 토스 결제 복귀 후 payment_key 와 함께 호출 */
+  function finalizeClaim(claim, payInfo) {
+    if (!claim) return { ok: false, message: '교환/반품 신청 정보가 없습니다.' };
+    var dup = claimById(claim.id) || claimOfOrder(claim.order_id);
+    if (dup) return { ok: true, claim: dup, duplicate: true };
+    var o = orderById(claim.order_id);
+    if (!o) return { ok: false, message: '주문을 찾을 수 없습니다.' };
+    if (CLAIM_ORDER_STATUSES.indexOf(o.status) < 0) {
+      return { ok: false, message: '배송이 시작된 주문(배송중·배송완료)만 교환/반품을 신청할 수 있습니다.' };
+    }
+    var fee = Number(claim.shipping_fee) || 0;
+    var paid = fee > 0;
+    var saved = {
+      id: claim.id,
+      order_id: o.id,
+      user_id: claim.user_id,
+      claim_type: claim.claim_type,
+      reason_category: claim.reason_category,
+      reason_detail: claim.reason_detail || '',
+      shipping_fee: fee,
+      payment_status: paid ? 'paid' : 'free',
+      payment_key: paid ? ((payInfo && payInfo.payment_key) || null) : null,
+      payment_mode: paid ? ((payInfo && payInfo.mode) || 'demo-fallback') : 'free',
+      exchange_option: claim.exchange_option || null,
+      status: 'requested',
+      stock_restored: 0,
+      created_at: nowISOEmbedded(claim.created_at),
+      updated_at: nowISO()
+    };
+    db.order_claims.push(saved);
+    save();
+    clearPendingClaim();
+    return { ok: true, claim: saved };
+  }
+  function nowISOEmbedded(v) { return v && !isNaN(new Date(v)) ? v : nowISO(); }
+  /* 관리자 — 접수 상태 변경. 반품 '완료' 시 재고를 한 번만 복구한다. */
+  function updateClaimStatus(claimId, status) {
+    var c = claimById(claimId);
+    if (!c) return { ok: false, message: '교환/반품 신청을 찾을 수 없습니다.' };
+    if (!CLAIM_STATUS[status]) return { ok: false, message: '알 수 없는 상태입니다.' };
+    if (c.status === status) return { ok: true, claim: c, unchanged: true };
+    var restored = 0;
+    if (status === 'completed' && c.claim_type === 'return' && !c.stock_restored) {
+      orderItemsOf(c.order_id).forEach(function (oi) {
+        var v = variantById(oi.variant_id);
+        if (v) { v.stock += oi.quantity; restored += oi.quantity; }
+      });
+      c.stock_restored = 1;
+    }
+    c.status = status;
+    c.updated_at = nowISO();
+    save();
+    return { ok: true, claim: c, restored: restored };
+  }
+  /* v1.9.16 — 반품/교환 일괄 상태 변경(단건과 같은 함수를 거친다 → 반품 완료 재고 1회 복구 유지) */
+  function bulkUpdateClaimStatus(ids, status) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 교환/반품 상태를 변경할 수 있습니다.' };
+    if (!CLAIM_STATUS[status]) return { ok: false, message: '일괄 변경할 상태를 선택해 주세요.' };
+    var list = ids || [];
+    if (!list.length) return { ok: false, message: '먼저 변경할 접수건을 선택해 주세요.' };
+    var changed = 0, same = 0, missing = 0, restored = 0;
+    list.forEach(function (id) {
+      var c = claimById(id);
+      if (!c) { missing += 1; return; }
+      if (c.status === status) { same += 1; return; }
+      var r = updateClaimStatus(id, status);
+      if (!r.ok) { missing += 1; return; }
+      changed += 1;
+      restored += r.restored || 0;
+    });
+    return { ok: true, changed: changed, skipped: same + missing, skippedSame: same, skippedMissing: missing, restored: restored };
+  }
+  function savePendingClaim(p) {
+    try { localStorage.setItem(LS_PENDING_CLAIM, JSON.stringify(p)); } catch (e) { storageOk = false; }
+  }
+  function loadPendingClaim() {
+    try {
+      var raw = localStorage.getItem(LS_PENDING_CLAIM);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function clearPendingClaim() {
+    try { localStorage.removeItem(LS_PENDING_CLAIM); } catch (e) {}
+  }
+
+  /* --------------------------------------------------------------- coupons */
+  function couponByCode(code) {
+    var c = String(code || '').trim().toUpperCase();
+    if (!c) return null;
+    return db.coupons.filter(function (x) { return String(x.code).toUpperCase() === c; })[0] || null;
+  }
+  function couponExpired(c) {
+    if (!c || !c.expires_at) return false;
+    var t = new Date(c.expires_at).getTime();
+    return !isNaN(t) && t < Date.now();
+  }
+  function couponActive(c) { return !!c && !!c.is_active && !couponExpired(c); }
+  function activeCoupons() {
+    return db.coupons.filter(couponActive).sort(function (a, b) {
+      return timeOf(a.created_at) - timeOf(b.created_at);
+    });
+  }
+  /* ---------------------------------------------------- 쿠폰 발급 대상
+     coupons.target_user_ids = [] (또는 null) → 전체 공용
+                                 [user_id, …]     → 해당 회원 전용
+     SQLite 로 옮길 때는 coupon_targets 테이블(행 1개 = 대상 1명)로 전개한다. */
+  function couponTargets(c) {
+    if (!c) return [];
+    var list = c.target_user_ids;
+    if (!Array.isArray(list)) return [];
+    return list.filter(function (id) { return !!id; });
+  }
+  /* 쿠폰 등급 대상 — 예: ['GOLD','VIP'] (빈 배열 = 등급 제한 없음) */
+  function couponTargetGrades(c) {
+    if (!c || !Array.isArray(c.target_grades)) return [];
+    return c.target_grades.map(function (g) { return String(g).toUpperCase(); })
+      .filter(function (g) { return !!GRADES[g]; });
+  }
+  function couponIsPublic(c) { return couponTargets(c).length === 0 && couponTargetGrades(c).length === 0; }
+  /* v1.9.13 — 쿠폰 사용 조건(상품 카테고리·뱃지). 빈 배열 = 조건 없음 */
+  function couponTargetCategories(c) {
+    if (!c || !Array.isArray(c.target_categories)) return [];
+    var out = [];
+    c.target_categories.forEach(function (id) {
+      var v = String(id || '').trim();
+      if (v && out.indexOf(v) < 0) out.push(v);
+    });
+    return out;
+  }
+  function couponTargetBadges(c) {
+    if (!c || !Array.isArray(c.target_badges)) return [];
+    return normalizeBadgeList(c.target_badges);
+  }
+  function couponHasItemConditions(c) {
+    return couponTargetCategories(c).length > 0 || couponTargetBadges(c).length > 0;
+  }
+  function couponConditionLabel(c) {
+    var cats = couponTargetCategories(c), badges = couponTargetBadges(c), parts = [];
+    if (cats.length) parts.push(cats.map(catLabel).join('·'));
+    if (badges.length) parts.push(badges.join('·'));
+    return parts.join(' · ');
+  }
+  /* 장바구니 행 중 카테고리·뱃지 조건을 모두 만족하는 상품 금액 합계 (조건 없음 = 전체 금액) */
+  function couponEligibleBase(c, rows, subtotal) {
+    var all = Number(subtotal) || 0;
+    if (!c || !couponHasItemConditions(c)) return all;
+    var cats = couponTargetCategories(c), badges = couponTargetBadges(c);
+    return (rows || []).reduce(function (sum, r) {
+      var p = r && r.product;
+      if (!p) return sum;
+      if (cats.length && cats.indexOf(p.category) < 0) return sum;
+      if (badges.length) {
+        var b = String(p.badge || '').trim().toUpperCase();
+        if (badges.indexOf(b) < 0) return sum;
+      }
+      return sum + (Number(p.price) || 0) * (Number(r.item && r.item.quantity) || 0);
+    }, 0);
+  }
+  function couponAudienceKind(c) {
+    if (couponIsPublic(c)) return 'all';
+    if (couponTargetGrades(c).length && !couponTargets(c).length) return 'grade';
+    return 'user';
+  }
+  /* v1.9.13 — 발급 대상 조건도 AND 로 본다(회원 지정이 있으면 그 회원이면서, 등급 조건이 있으면 그 등급이어야 사용 가능) */
+  function couponForUser(c, user) {
+    var t = couponTargets(c), g = couponTargetGrades(c);
+    if (!t.length && !g.length) return true;               // 전체 공용
+    if (!user) return false;
+    if (t.length && t.indexOf(user.id) < 0) return false;   // 특정 회원 지정
+    if (g.length && g.indexOf(gradeOf(user)) < 0) return false;   // 등급 대상
+    return true;
+  }
+  function userLabel(id) {
+    var u = currentUserById(id);
+    return u ? u.name + ' (' + u.email + ')' : '(없는 회원 ' + id + ')';
+  }
+  function couponTargetLabel(c) {
+    if (couponIsPublic(c)) return '전체 공용';
+    var parts = [];
+    var g = couponTargetGrades(c);
+    if (g.length) parts.push(g.map(function (x) { return GRADES[x].label + '등급'; }).join('·'));
+    var t = couponTargets(c);
+    if (t.length) parts.push(t.map(userLabel).join(', '));
+    return parts.join(' · ');
+  }
+  /* 현재 사용자가 쓸 수 있는(공용 + 본인 전용) 활성 쿠폰 */
+  function couponsForUser(user) {
+    return activeCoupons().filter(function (c) { return couponForUser(c, user); });
+  }
+  function couponValueLabel(c) {
+    if (!c) return '';
+    return c.discount_type === 'percent' ? c.discount_value + '% 할인' : won(c.discount_value) + ' 할인';
+  }
+  function couponDiscount(c, subtotal) {
+    if (!c) return 0;
+    var v = Math.max(0, Math.round(Number(c.discount_value) || 0));
+    var d = c.discount_type === 'percent' ? Math.floor(subtotal * v / 100) : v;
+    return Math.max(0, Math.min(d, subtotal));
+  }
+  /* 사용할 수 없는 이유를 함께 돌려준다(체크아웃·장바구니 안내에 그대로 사용) */
+  function couponCheck(c, subtotal, user, rows) {
+    if (!c) return { ok: false, message: '쿠폰 코드를 찾을 수 없습니다.' };
+    if (!c.is_active) return { ok: false, message: '사용이 중지된 쿠폰입니다.', coupon: c };
+    if (couponExpired(c)) return { ok: false, message: '사용 기간이 만료된 쿠폰입니다.', coupon: c };
+    var who = user === undefined ? currentUser() : user;
+    if (!couponForUser(c, who)) {
+      return { ok: false, message: '이 계정에 발급된 쿠폰이 아닙니다.', coupon: c, notMine: true };
+    }
+    if (subtotal < (Number(c.min_order_amount) || 0)) {
+      return { ok: false, message: '최소 주문금액 ' + won(c.min_order_amount) + ' 이상일 때 사용할 수 있습니다.', coupon: c };
+    }
+    /* v1.9.13 — 카테고리·뱃지 조건(AND)을 만족하는 상품이 없으면 구체적 사유를 돌려준다 */
+    if (couponHasItemConditions(c)) {
+      var base = couponEligibleBase(c, rows || activeRows(), subtotal);
+      if (base <= 0) {
+        return {
+          ok: false, coupon: c, noEligible: true,
+          message: '사용 조건(' + couponConditionLabel(c) + ')에 해당하는 상품이 장바구니에 없습니다.'
+        };
+      }
+    }
+    return { ok: true, coupon: c };
+  }
+  function couponUsable(c, subtotal, rows) {
+    if (!c) return null;
+    return couponCheck(c, subtotal, undefined, rows).ok ? c : null;
+  }
+  function couponHintOf(c, subtotal, rows) {
+    if (!c) return '';
+    var min = Number(c.min_order_amount) || 0;
+    var parts = [];
+    if (min > 0) parts.push(won(min) + ' 이상 구매 시');
+    if (couponHasItemConditions(c)) {
+      var base = Number(subtotal) > 0 ? won(couponEligibleBase(c, rows || [], subtotal)) + '분' : '';
+      parts.push(couponConditionLabel(c) + ' 상품' + (base ? ' · ' + base : ''));
+    }
+    return parts.length ? parts.join(' · ') : '금액 제한 없음';
+  }
+
+  function cartRows() {
+    var u = currentUser();
+    if (!u) return [];
+    return db.cart_items
+      .filter(function (c) { return c.user_id === u.id; })
+      .map(function (c) {
+        var v = variantById(c.variant_id);
+        var p = v ? productById(v.product_id) : null;
+        return { item: c, variant: v, product: p };
+      })
+      .filter(function (r) { return r.variant && r.product; });
+  }
+  function cartCount() {
+    return cartRows().reduce(function (n, r) { return n + r.item.quantity; }, 0);
+  }
+  function selectedRows() {
+    return cartRows().filter(function (r) { return ui.cartSel[r.item.id] !== false; });
+  }
+  function totalsOf(rows, coupon) {
+    var subtotal = rows.reduce(function (s, r) { return s + r.product.price * r.item.quantity; }, 0);
+    var listTotal = rows.reduce(function (s, r) {
+      return s + (r.product.original_price || r.product.price) * r.item.quantity;
+    }, 0);
+    var ship = shippingOf(rows);
+    var c = couponUsable(coupon, subtotal, rows);
+    var discount = c ? couponDiscount(c, couponEligibleBase(c, rows, subtotal)) : 0;
+    var total = Math.max(0, subtotal - discount + ship.fee);
+    return {
+      subtotal: subtotal,
+      saving: Math.max(0, listTotal - subtotal),
+      shipping: ship.fee,
+      ship: ship,
+      coupon: c,
+      discount: discount,
+      total: total,
+      count: rows.reduce(function (n, r) { return n + r.item.quantity; }, 0)
+    };
+  }
+
+  /* -------------------------------------------------------------- ui state */
+  /* v1.9.9 — 스토어 상품 목록 보기 방식(썸네일/목록). 마지막 선택을 브라우저에 기억한다. */
+  function loadStoreView() {
+    try { return localStorage.getItem(LS_STORE_VIEW) === 'list' ? 'list' : 'grid'; }
+    catch (e) { return 'grid'; }
+  }
+  function saveStoreView(v) {
+    try { localStorage.setItem(LS_STORE_VIEW, v === 'list' ? 'list' : 'grid'); } catch (e) {}
+  }
+  var ui = {
+    view: 'home',
+    category: 'all',
+    sort: 'new',
+    storeView: loadStoreView(),   // v1.9.9 — grid(썸네일) | list(목록)
+    query: '',              // v1.9.5 — 검색은 SHOP 카테고리 줄의 검색창 하나로 통합
+    cartOpen: false,
+    cartSel: {},
+    modal: null,
+    lightbox: null,          // 상품 상세 이미지 확대 뷰어 { pid, img, zoom, x, y }
+    media: null,             // 리뷰 사진·동영상 뷰어 { reviewId, idx, kind, src } — 상세 모달 위 레이어
+    reviewPage: 1,           // 상품 상세 리뷰 목록 페이지(5개씩)
+    reviewSort: 'new',       // v1.9.11 — 상품 리뷰 정렬(new 최신순 / top 추천순)
+    qnaPage: 1,              // v1.9.11 — 상품 Q&A 페이지(5개씩)
+    qnaForm: false,          // v1.9.11 — 상품 상세 Q&A 작성 폼 펼침 여부
+    qnaType: 'product',      // v1.9.11 — 작성 폼의 문의 유형
+    qnaError: '',            // v1.9.11 — 작성 폼 오류 안내
+    adminQnaQuery: '',       // v1.9.11 — 관리자 Q&A 검색어(작성자·이메일·상품명·제품번호·제목·내용)
+    adminQnaFilter: 'all',   // v1.9.11 — 관리자 Q&A 상태 필터(all/pending/answered)
+    auth: { tab: 'login', error: '', message: '', draft: null },
+    myTab: 'profile',
+    adminTab: 'products',
+    adminOrderFilter: 'all',   // v1.9.2 — 주문 관리 상태 필터
+    adminClaimFilter: 'all',   // v1.9.2 — 반품/교환 상태 필터
+    adminProductFilter: 'all', // v1.9.6 — 상품 관리 판매 상태 필터(all/active/hidden)
+    adminOrderFrom: '',        // v1.9.6 — 주문 관리 조회 시작일(YYYY-MM-DD)
+    adminOrderTo: '',          // v1.9.6 — 주문 관리 조회 종료일
+    adminOrderQuery: '',       // v1.9.6 — 주문 관리 주문자·주문번호·상품명 검색어
+    adminClaimFrom: '',        // v1.9.6 — 반품/교환 조회 시작일
+    adminClaimTo: '',          // v1.9.6 — 반품/교환 조회 종료일
+    adminClaimQuery: '',       // v1.9.6 — 반품/교환 주문자·주문번호·상품명 검색어
+    adminRevFrom: '',          // v1.9.7 — 매출 관리 조회 시작일
+    adminRevTo: '',            // v1.9.7 — 매출 관리 조회 종료일
+    adminRevPreset: 'all',     // v1.9.7 — 매출 관리 빠른 기간(all/3m/6m/month/'')
+    adminProductFrom: '',      // v1.9.8 — 상품 관리 등록일 조회 시작일
+    adminProductTo: '',        // v1.9.8 — 상품 관리 등록일 조회 종료일
+    siteTab: 'title',          // v1.9.15 — 메인/사이트 서브탭(페이지 구성순: title/banner/hero/shop/story/help/info, all=전체)
+    dataTab: 'tables',         // v1.9.8 — 데이터 관리 서브탭(tables/json/settings/tools)
+    faqSel: {},                // v1.9.8 — FAQ 관리 표의 선택 삭제 체크 상태(FAQ id → true)
+    adminSel: { order: {}, claim: {}, review: {} },  // v1.9.16 — 주문·반품/교환·리뷰 관리의 멀티 선택(처리 id → 1)
+    adminSelSig: {},           // v1.9.16 — 목록별 선택이 묶인 필터 서명(바뀌면 선택 해제)
+    faqPage: 1,                // v1.9.6 — FAQ 게시판 페이지(5개씩)
+    logChannel: 'all',         // v1.9.2 — 발송 로그 채널 필터
+    logStatus: 'all',          // v1.9.2 — 발송 로그 상태 필터
+    logQuery: '',              // v1.9.2 — 발송 로그 키워드
+    checkoutIds: [],
+    pendingAdd: null,
+    pendingBuy: null,
+    payMethod: 'card',
+    pointUse: 0,             // 체크아웃에서 사용하려는 포인트
+    pointUseMsg: '',
+    profileError: '',
+    editError: '',
+    editRow: null,           // 편집기에서 마지막으로 만진 옵션 행
+    colorRow: null,          // 색상 레이어를 연 옵션 행
+    colorPalette: null,      // 색상 레이어의 이미지 추출 팔레트
+    colorPaletteMsg: '',
+    colorPaletteSrc: 0,
+    review: null,            // { pid, oi, rating, content, media, error, returnModal }
+    faqCat: 'all',
+    faqQuery: '',
+    integrity: null,
+    coupon: null,
+    couponCode: '',
+    couponMessage: '',
+    couponError: '',
+    couponFormError: '',
+    couponTargetMode: 'all',
+    couponTargetGrades: [],
+    couponTargetSel: [],
+    adminQuery: '',
+    adminReviewQuery: '',     // v1.9.10 — 리뷰 관리 검색어(작성자·이메일·상품명·제품번호·내용)
+    adminReviewFilter: 'all', // v1.9.10 — 리뷰 관리 검수 상태 필터(all/published/rejected)
+    categoryError: '',
+    memberPtsError: ''   // v1.9.9 — 회원 상세 모달의 포인트 조정 안내문
+  };
+
+  /* --------------------------------------------------------------- toasts */
+  function toast(msg, type) {
+    var host = $('#toast-host');
+    if (!host) return;
+    var el = document.createElement('div');
+    el.className = 'toast' + (type === 'warn' ? ' warn' : '');
+    el.textContent = msg;
+    host.appendChild(el);
+    setTimeout(function () {
+      el.style.transition = 'opacity .3s, transform .3s';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(6px)';
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
+    }, 2600);
+  }
+
+  /* ----------------------------------------------------------- navigation */
+  function go(view) {
+    ui.view = view;
+    renderAll();
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+  /* 주문/결제 화면으로 이동 — 상세 모달과 장바구니 드로어를 반드시 닫고 화면을 연다.
+     (예전에는 '바로 구매' 후 장바구니 드로어가 결제 화면 위에 남아 창이 사라진 것처럼 보였다) */
+  function openCheckout(ids) {
+    if (ids) ui.checkoutIds = ids;
+    ui.modal = null;
+    if (ui.lightbox) { ui.lightbox = null; renderLightbox(); }
+    ui.cartOpen = false;
+    ui.view = 'checkout';
+    renderAll();
+    try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) { window.scrollTo(0, 0); }
+  }
+  function setCategory(id) {
+    ui.category = id;
+    ui.query = '';
+    if (ui.view !== 'home') ui.view = 'home';
+    renderAll();
+    var shop = $('#shop');
+    if (shop) window.scrollTo({ top: shop.offsetTop - 80, behavior: 'smooth' });
+  }
+
+  /* --------------------------------------------------- history (뒤로가기)
+     모달·드로어·비홈 뷰를 열 때마다 history 에 상태를 쌓는다.
+     뒤로가기(popstate) 는 사이트를 벗어나지 않고 한 겹만 되돌린다. */
+  var routeApplying = false;
+  var routeBackTarget = null;
+  var routeBackTries = 0;
+  /* v1.9.6 — FAQ 게시판 모달도 히스토리 한 겹(layer:'faq'): 뒤로가기 = 모달만 닫히고 보던 페이지 유지
+     v1.9.11 — 리뷰 상세(admin-review)·Q&A 상세(admin-qna)도 편입: 뒤로가기 = 모달만 닫히고 해당 관리자 탭 유지
+     v1.9.12 — Q&A 상세 → 상품 미리보기(admin-qna-product): 뒤로가기 = Q&A 상세 모달로 복귀 */
+  var TRACKED_LAYERS = { product: 1, auth: 1, order: 1, receipt: 1, claim: 1, help: 1, edit: 1, faq: 1,
+    'admin-member': 1, 'admin-review': 1, 'admin-qna': 1, 'admin-qna-product': 1,
+    /* v1.9.14 — 관리자 주문서·반품/교환 신청서 상세도 히스토리 한 겹:
+       뒤로가기 = 모달만 닫히고 보던 관리자 탭(활성 필터·검색 그대로) 유지 */
+    'admin-order': 1, 'admin-claim': 1 };
+  /* 상품 위에 겹쳐 열리는 보조 레이어 — 히스토리에 따로 쌓지 않고, 닫으면 아래 화면으로 돌아간다 */
+  var OVERLAY_LAYERS = { review: 1, media: 1, 'coupon-edit': 1, confirm: 1, 'bulk-reclaim': 1,
+    'admin-faq': 1, 'category-detail': 1 };
+  /* v1.9.3 — 상품 등록/수정 모달의 초안은 히스토리에 통째로 넣지 않고 키로 보관한다
+     (앞으로가기로 돌아왔을 때 쓰던 초안 그대로 복원) */
+  var editDraftCache = {};
+  function trackEditDraft(m) {
+    if (!m || m.type !== 'edit') return m;
+    if (!m.eid) m.eid = newId('ed');
+    editDraftCache[m.eid] = m.draft;
+    m.pid = (m.draft && m.draft.id) || m.pid || null;
+    return m;
+  }
+  function routeOf() {
+    var m = ui.modal;
+    var tracked = m && TRACKED_LAYERS[m.type] ? m.type : null;
+    return {
+      mono: 1,
+      view: ui.view,
+      tab: ui.view === 'mypage' ? (ui.myTab || 'profile') : (ui.view === 'admin' ? (ui.adminTab || 'products') : null),
+      layer: tracked,
+      pid: (tracked === 'product' || tracked === 'edit' || tracked === 'admin-qna-product') ? (m.pid || null) : null,
+      eid: tracked === 'edit' ? (m.eid || null) : null,
+      oid: (tracked === 'order' || tracked === 'receipt' || tracked === 'claim' || tracked === 'admin-order') ? m.oid : null,
+      cid: tracked === 'admin-claim' ? (m.cid || null) : null,
+      tid: tracked === 'help' ? m.topicId : null,
+      uid: tracked === 'admin-member' ? (m.uid || null) : null,
+      rid: tracked === 'admin-review' ? (m.rid || null) : null,
+      qid: (tracked === 'admin-qna' || tracked === 'admin-qna-product') ? (m.qid || null) : null,
+      img: tracked === 'product' ? (m.img || 0) : 0,
+      cart: !!ui.cartOpen,
+      zoom: ui.lightbox ? 1 : 0,
+      zimg: ui.lightbox ? (ui.lightbox.img || 0) : 0,
+      mview: ui.media ? 1 : 0,
+      mrid: ui.media ? ui.media.reviewId : null,
+      midx: ui.media ? (ui.media.idx || 0) : 0
+    };
+  }
+  /* v1.9.2 — 새로고침해도 보던 화면(마이페이지·관리자 탭)이 유지되도록 URL 해시와 동기화
+       #/  ·  #/mypage/orders  ·  #/admin/claims  ·  #/checkout */
+  var MY_TABS = { profile: 1, orders: 1, points: 1, coupons: 1 };
+  /* v1.9.7 — 「매출 관리」 탭 추가(주문 관리에서 기간 매출·매출 추이 분리) */
+  var ADMIN_TABS = { products: 1, orders: 1, revenue: 1, claims: 1, coupons: 1, points: 1, members: 1, reviews: 1, qnas: 1, categories: 1, site: 1, faqs: 1, logs: 1, data: 1 };
+  function routeHashFor(view, tab) {
+    if (view === 'mypage') return '#/mypage/' + (MY_TABS[tab] ? tab : 'profile');
+    if (view === 'admin') return '#/admin/' + (ADMIN_TABS[tab] ? tab : 'products');
+    if (view === 'checkout') return '#/checkout';
+    return '#/';
+  }
+  function currentRouteHash() {
+    return routeHashFor(ui.view, ui.view === 'mypage' ? ui.myTab : ui.adminTab);
+  }
+  /* v1.9.11 — 화면 안에서 다른 탭으로 "이동"할 때(회원 상세 → 주문/리뷰 조회)는
+     깊이가 줄어드는 것이 아니라 새 화면이므로, syncRoute 의 back() 대신 히스토리에 새로 쌓는다.
+     (그래야 뒤로가기 = 직전 화면인 회원 상세 모달로 복귀) */
+  function pushRouteState() {
+    if (routeApplying) return;
+    try { history.pushState(routeOf(), '', currentRouteHash()); } catch (e) {}
+  }
+  /* URL 해시 → 화면 상태(새로고침·직접 입력) */
+  function applyHashRoute() {
+    var h = String(location.hash || '').replace(/^#\/?/, '');
+    if (!h) return false;
+    var parts = h.split('/');
+    var head = String(parts[0] || '').toLowerCase();
+    var tail = String(parts[1] || '').toLowerCase();
+    if (head === 'mypage') {
+      ui.view = 'mypage';
+      ui.myTab = MY_TABS[tail] ? tail : 'profile';
+      return true;
+    }
+    if (head === 'admin') {
+      if (!isAdmin()) return false;      // 관리자 해시는 관리자로 로그인했을 때만 — 아니면 스토어로
+      ui.view = 'admin';
+      ui.adminTab = ADMIN_TABS[tail] ? tail : 'products';
+      return true;
+    }
+    if (head === 'checkout') { ui.view = 'checkout'; return true; }
+    if (head === 'home' || head === '') { ui.view = 'home'; return true; }
+    return false;
+  }
+  function routeDepth(r) {
+    if (!r) return 0;
+    return (r.view && r.view !== 'home' ? 1 : 0) + (r.cart ? 1 : 0) + (r.layer ? 1 : 0) + (r.zoom ? 1 : 0) + (r.mview ? 1 : 0);
+  }
+  function sameRoute(a, b) {
+    return !!a && !!b && a.view === b.view && a.layer === b.layer && a.cart === b.cart &&
+      (a.tab || null) === (b.tab || null) &&
+      a.pid === b.pid && a.oid === b.oid && (a.cid || null) === (b.cid || null) && a.tid === b.tid && a.img === b.img &&
+      (a.uid || null) === (b.uid || null) &&
+      (a.rid || null) === (b.rid || null) &&
+      (a.qid || null) === (b.qid || null) &&
+      (a.eid || null) === (b.eid || null) &&
+      (a.zoom || 0) === (b.zoom || 0) && (a.zimg || 0) === (b.zimg || 0) &&
+      (a.mview || 0) === (b.mview || 0) && (a.mrid || null) === (b.mrid || null) && (a.midx || 0) === (b.midx || 0);
+  }
+  function syncRoute() {
+    if (routeApplying) return;
+    trackEditDraft(ui.modal);   // v1.9.3 — 편집 중인 초안을 캐시에 최신 상태로
+    var cur = routeOf();
+    var st = null;
+    try { st = history.state; } catch (e) { st = null; }
+    if (!st || !st.mono) {
+      try { history.replaceState(cur, '', currentRouteHash()); } catch (e) {}
+      return;
+    }
+    if (sameRoute(cur, st)) return;
+    var dCur = routeDepth(cur), dSt = routeDepth(st);
+    /* 리뷰·미디어·편집 등 겹침 레이어는 히스토리에 새로 쌓지 않는다(뒤로가기로 아래 화면이 닫히는 것 방지) */
+    if (ui.modal && OVERLAY_LAYERS[ui.modal.type] && dCur < dSt) {
+      try { history.replaceState(st, '', currentRouteHash()); } catch (e) {}
+      return;
+    }
+    if (dCur > dSt) {
+      routeBackTries = 0;
+      try { history.pushState(cur, '', currentRouteHash()); } catch (e) {}
+      return;
+    }
+    if (dCur < dSt) {
+      // 겹이 닫혔다 → 히스토리에서 한 단계만 되돌린다(화면은 popstate 가 맞춘다)
+      if (routeBackTries >= 3) {
+        // 안전장치: back() 이 목표에 닿지 못하는 이상 상태에서는 현재 화면으로 히스토리를 고정한다
+        routeBackTries = 0;
+        routeApplying = false;
+        routeBackTarget = null;
+        try { history.replaceState(cur, '', currentRouteHash()); } catch (e) {}
+        return;
+      }
+      routeBackTarget = cur;
+      routeApplying = true;
+      routeBackTries++;
+      try { history.back(); } catch (e) { routeApplying = false; routeBackTarget = null; }
+      return;
+    }
+    try { history.replaceState(cur, '', currentRouteHash()); } catch (e) {}
+  }
+  function applyRoute(s) {
+    if (routeBackTarget) {
+      var target = routeBackTarget;
+      routeBackTarget = null;
+      routeApplying = false;
+      // 1) 되돌리는 사이 사용자가 다른 화면을 열었거나
+      // 2) popstate 가 목표보다 더 과거 상태를 가리키면(겹을 닫는 back() 이 한 칸 더 나간 경우)
+      //    낡은 상태를 화면에 적용하지 않는다. 현재 화면을 유지하고 히스토리만 다시 맞춘다.
+      //    → 예전에는 이 경우 결제 화면이 스토어로 되돌아가 '창이 사라지는' 것처럼 보였다.
+      if (!s || !s.mono || !sameRoute(s, target) || !sameRoute(routeOf(), target)) {
+        syncRoute();
+        return;
+      }
+      routeBackTries = 0;
+    }
+    routeApplying = true;
+    var prevScroll = captureModalScroll();
+    if (!s || !s.mono) {
+      /* 주소창에 해시를 직접 넣거나 해시 링크로 이동한 경우(state 없음)에는 해시가 가리키는 화면을 �린다.
+         (그냥 home 으로 되돌리면 새로고침·해시 이동이 보던 화면을 잊어버린다) */
+      if (applyHashRoute()) {
+        s = { mono: 1, view: ui.view, tab: ui.view === 'mypage' ? ui.myTab : (ui.view === 'admin' ? ui.adminTab : null), layer: null, cart: false };
+      } else {
+        s = { mono: 1, view: 'home', layer: null, cart: false, tab: null };
+      }
+    }
+    ui.view = s.view || 'home';
+    /* v1.9.2 — 같은 뷰 안의 탭(마이페이지·관리자)도 히스토리와 함께 복원 */
+    if (ui.view === 'mypage' && MY_TABS[s.tab]) ui.myTab = s.tab;
+    if (ui.view === 'admin' && ADMIN_TABS[s.tab]) ui.adminTab = s.tab;
+    ui.cartOpen = !!s.cart;
+    if (s.layer === 'product' && s.pid && productById(s.pid)) {
+      var same = ui.modal && ui.modal.type === 'product' && ui.modal.pid === s.pid;
+      ui.modal = same ? ui.modal : { type: 'product', pid: s.pid, color: (colorsOf(s.pid)[0] || {}).color || '', size: '', qty: 1, img: 0 };
+      ui.modal.img = s.img || 0;
+      if (!same) ui.reviewPage = 1;
+    } else if (s.layer === 'auth') {
+      ui.modal = ui.modal && ui.modal.type === 'auth' ? ui.modal : { type: 'auth' };
+      if (!ui.auth.tab) ui.auth.tab = 'login';
+    } else if (s.layer === 'order' && s.oid && orderById(s.oid)) {
+      ui.modal = { type: 'order', oid: s.oid };
+    } else if (s.layer === 'claim' && s.oid && orderById(s.oid)) {
+      ui.modal = {
+        type: 'claim', oid: s.oid, claim_type: 'return', reason_category: 'change_of_mind',
+        reason_detail: '', exchange_option: '', error: ''
+      };
+    } else if (s.layer === 'help' && helpTopicById(s.tid)) {
+      ui.modal = { type: 'help', topicId: s.tid };
+    } else if (s.layer === 'faq') {
+      /* v1.9.6 — 뒤로가기/앞으로가기로 FAQ 게시판 모달을 그대로 복원(필터·검색어·페이지 유지) */
+      ui.modal = { type: 'faq' };
+    } else if (s.layer === 'receipt' && s.oid && orderById(s.oid)) {
+      ui.modal = { type: 'receipt', oid: s.oid };
+    } else if (s.layer === 'admin-member' && isAdmin() && currentUserById(s.uid)) {
+      /* v1.9.10 — 회원 상세 모달도 히스토리 한 겹: 뒤로가기는 모달만 닫고 「회원 관리」 탭 유지 */
+      ui.modal = { type: 'admin-member', uid: s.uid };
+    } else if (s.layer === 'admin-review' && isAdmin() && reviewById(s.rid)) {
+      /* v1.9.11 — 리뷰 관리 상세·검수 모달: 뒤로가기는 모달만 닫고 「리뷰 관리」 탭 유지 */
+      ui.modal = { type: 'admin-review', rid: s.rid };
+    } else if (s.layer === 'admin-qna' && isAdmin() && qnaById(s.qid)) {
+      /* v1.9.11 — Q&A 관리 상세 모달: 뒤로가기는 모달만 닫고 「Q&A 관리」 탭 유지 */
+      ui.modal = { type: 'admin-qna', qid: s.qid };
+    } else if (s.layer === 'admin-order' && isAdmin() && s.oid && orderById(s.oid)) {
+      /* v1.9.14 — 관리자 주문서 상세: 뒤로가기 = 모달만 닫히고 「주문 관리」 탭·필터 유지 */
+      ui.modal = { type: 'admin-order', oid: s.oid };
+    } else if (s.layer === 'admin-claim' && isAdmin() && s.cid && claimById(s.cid)) {
+      /* v1.9.14 — 반품/교환 신청서 상세: 뒤로가기 = 모달만 닫히고 「반품/교환」 탭·필터 유지 */
+      ui.modal = { type: 'admin-claim', cid: s.cid };
+    } else if (s.layer === 'admin-qna-product' && isAdmin() && productById(s.pid)) {
+      /* v1.9.12 — Q&A 상세에서 연 상품 미리보기: 뒤로가기 = Q&A 상세 모달로 복귀 */
+      ui.modal = { type: 'admin-qna-product', pid: s.pid, qid: s.qid || null };
+    } else if (s.layer === 'edit' && isAdmin()) {
+      /* v1.9.3 — 상품 등록/수정 모달도 히스토리 한 겹: 뒤로가기는 모달만 닫고 관리자 페이지 유지 */
+      var pForEdit = s.pid ? productById(s.pid) : null;
+      var eDraft = (s.eid && editDraftCache[s.eid]) || (pForEdit ? draftFromProduct(pForEdit) : defaultDraft());
+      ui.modal = { type: 'edit', draft: eDraft, eid: s.eid || null, pid: s.pid || null };
+    } else {
+      ui.modal = null;
+    }
+    /* 확대 뷰어: 상세 모달 위에 한 겹 더 쌓인 상태로 복원 */
+    if (s.zoom && ui.modal && ui.modal.type === 'product') {
+      ui.lightbox = { pid: ui.modal.pid, img: s.zimg || 0, zoom: 1, x: 0, y: 0 };
+    } else {
+      ui.lightbox = null;
+    }
+    /* 리뷰 사진·동영상 보기: 상세 모달 위에 한 겹 더 — 뒤로가기는 뷰어만 닫힌다 */
+    if (s.mview && s.mrid && ui.modal && ui.modal.type === 'product') {
+      var mr = (db.product_reviews || []).filter(function (x) { return x.id === s.mrid; })[0];
+      var mlist = reviewMedia(mr);
+      var mitem = mlist[s.midx || 0];
+      if (mitem) ui.media = { reviewId: s.mrid, idx: s.midx || 0, kind: mitem.type || 'image', src: reviewMediaSrc(mitem) };
+      else ui.media = null;
+    } else {
+      ui.media = null;
+    }
+    renderAll();
+    if (ui.modal && ui.modal.type === 'product') restoreModalScroll(prevScroll);
+    routeApplying = false;
+    syncRoute();
+  }
+  window.addEventListener('popstate', function (ev) { applyRoute(ev.state); });
+  /* 해시만 바뀈 때(주소창 직접 입력·해시 링크)도 같은 화면 상태로 맞춘다 */
+  window.addEventListener('hashchange', function () {
+    if (routeApplying) return;
+    var before = ui.view + '|' + (ui.view === 'mypage' ? ui.myTab : ui.adminTab);
+    if (!applyHashRoute()) {
+      /* 열 수 없는 해시(예: 비관리자의 #/admin/...)는 현재 화면으로 되돌린다 */
+      try { history.replaceState(routeOf(), '', currentRouteHash()); } catch (e) {}
+      return;
+    }
+    var after = ui.view + '|' + (ui.view === 'mypage' ? ui.myTab : ui.adminTab);
+    if (before === after) return;
+    renderAll();
+    try { history.replaceState(routeOf(), '', currentRouteHash()); } catch (e) {}
+  });
+
+  /* ---------------------------------------------------------------- users */
+  function login(email, password) {
+    var e = String(email || '').trim().toLowerCase();
+    var u = db.users.filter(function (x) { return x.email.toLowerCase() === e; })[0];
+    if (!u) return { ok: false, message: '등록되지 않은 이메일입니다.' };
+    if (u.password_hash !== hashPw(password)) return { ok: false, message: '비밀번호가 일치하지 않습니다.' };
+    session = { userId: u.id, logged_in_at: nowISO() };
+    saveSession();
+    return { ok: true, user: u };
+  }
+  function signup(data) {
+    var email = String(data.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { ok: false, message: '올바른 이메일 주소를 입력해 주세요.' };
+    var pwCheck = passwordCheckOf(data.password);
+    if (!pwCheck.ok) return { ok: false, message: pwCheck.message };
+    if (data.password !== data.password2) return { ok: false, message: '비밀번호 확인이 일치하지 않습니다.' };
+    if (!emailVerifiedFor(email)) return { ok: false, message: '이메일 인증을 완료해 주세요. (인증번호 발송 → 확인)' };
+    if (!String(data.name || '').trim()) return { ok: false, message: '이름을 입력해 주세요.' };
+    if (!String(data.phone || '').trim()) return { ok: false, message: '연락처를 입력해 주세요.' };
+    if (!String(data.address || '').trim()) return { ok: false, message: '주소 검색으로 기본 주소를 입력해 주세요.' };
+    if (db.users.some(function (u) { return u.email.toLowerCase() === email; })) {
+      return { ok: false, message: '이미 가입된 이메일입니다. 로그인해 주세요.' };
+    }
+    var user = {
+      id: newId('u'),
+      email: email,
+      password_hash: hashPw(data.password),
+      name: String(data.name).trim(),
+      phone: String(data.phone).trim(),
+      address: String(data.address).trim(),
+      address_detail: String(data.address_detail || '').trim(),
+      postcode: String(data.postcode || '').trim(),
+      points: 0,
+      role: 'customer',
+      grade: 'NORMAL',
+      created_at: nowISO()
+    };
+    if (user.address_detail) user.address = user.address + ' ' + user.address_detail;
+    db.users.push(user);
+    save();
+    session = { userId: user.id, logged_in_at: nowISO() };
+    saveSession();
+    ui.emailAuth = null;   // 가입 후 인증 상태 정리
+    return { ok: true, user: user };
+  }
+  /* ===================================================== v1.9.1 비밀번호 정책
+     신규 회원가입 비밀번호: 8자 이상 + 영문 대·소문자 + 숫자 + 특수문자,
+     연속된 숫자 3자리(오름·내림차순, 예: 123·987·012)는 사용할 수 없다.
+     (기존 데모 계정 demo1234·admin1234 로그인은 영향받지 않는다) */
+  var PW_MIN_LEN = 8;
+  function hasSequentialDigits(pw) {
+    var p = String(pw || '');
+    for (var i = 0; i < p.length - 2; i++) {
+      var a = p.charAt(i), b = p.charAt(i + 1), c = p.charAt(i + 2);
+      if (!/[0-9]/.test(a) || !/[0-9]/.test(b) || !/[0-9]/.test(c)) continue;
+      var na = Number(a), nb = Number(b), nc = Number(c);
+      if ((nb === na + 1 && nc === nb + 1) || (nb === na - 1 && nc === nb - 1)) return true;
+    }
+    return false;
+  }
+  function passwordChecks(pw) {
+    var p = String(pw || '');
+    return {
+      len: p.length >= PW_MIN_LEN,
+      upper: /[A-Z]/.test(p),
+      lower: /[a-z]/.test(p),
+      digit: /[0-9]/.test(p),
+      special: /[^A-Za-z0-9]/.test(p),
+      noseq: !hasSequentialDigits(p)
+    };
+  }
+  function passwordCheckOf(pw) {
+    var c = passwordChecks(pw);
+    if (!String(pw || '')) return { ok: false, message: '비밀번호를 입력해 주세요.', checks: c };
+    if (hasSequentialDigits(pw)) return { ok: false, message: '연속된 숫자 3자리(예: 123, 987)는 사용할 수 없습니다.', checks: c };
+    if (!c.len) return { ok: false, message: '비밀번호는 8자 이상이어야 합니다.', checks: c };
+    if (!c.upper || !c.lower) return { ok: false, message: '비밀번호에 영문 대문자와 소문자를 모두 넣어 주세요.', checks: c };
+    if (!c.digit) return { ok: false, message: '비밀번호에 숫자를 넣어 주세요.', checks: c };
+    if (!c.special) return { ok: false, message: '비밀번호에 특수문자(!@#$% 등)를 넣어 주세요.', checks: c };
+    return { ok: true, checks: c };
+  }
+  var PW_RULES = [
+    ['len', '8자 이상'], ['upper', '영문 대문자'], ['lower', '영문 소문자'],
+    ['digit', '숫자'], ['special', '특수문자 (!@#$%…)'], ['noseq', '연속 숫자 3자리 없음']
+  ];
+  function pwRulesHTML(pw) {
+    var c = passwordChecks(pw);
+    return '<ul class="pw-rules" data-hook="pw-rules" aria-label="비밀번호 조건">' + PW_RULES.map(function (r) {
+      return '<li class="' + (c[r[0]] ? 'ok' : '') + '" data-rule="' + r[0] + '"><span class="mark" aria-hidden="true">' + (c[r[0]] ? '✓' : '✗') + '</span>' + r[1] + '</li>';
+    }).join('') + '</ul>';
+  }
+  function syncPwRules(pw) {
+    var host = $('[data-hook=pw-rules]');
+    if (!host) return;
+    var c = passwordChecks(pw);
+    $$('li[data-rule]', host).forEach(function (li) {
+      var ok = !!c[li.dataset.rule];
+      li.classList.toggle('ok', ok);
+      var m = li.querySelector('.mark');
+      if (m) m.textContent = ok ? '✓' : '✗';
+    });
+  }
+  /* 회원가입 입력값 보존 — 검증 실패로 다시 그려도 이름·주소·인증 상태 유지 */
+  function readAuthDraft() {
+    var val = function (id) { var el = $('#' + id); return el ? el.value : ''; };
+    var addr = { postcode: '', base: '', detail: '' };
+    try { addr = readAddressGroup('af'); } catch (e) {}
+    return {
+      email: val('af-email'), password: val('af-password'), password2: val('af-password2'),
+      name: val('af-name'), phone: val('af-phone'),
+      postcode: addr.postcode || '', address: addr.base || '', address_detail: addr.detail || ''
+    };
+  }
+  /* v1.9.3 — 화면 이동 없이 "맨 위로"만 되돌린다(로그아웃 직후 스크롤 잔여 제거) */
+  function scrollHomeTop() {
+    var toTop = function () {
+      try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch (e) { window.scrollTo(0, 0); }
+    };
+    toTop();
+    try { if (window.requestAnimationFrame) window.requestAnimationFrame(toTop); } catch (e) {}
+    /* 모바일은 주소창·툴바 높이가 바뀌며 레이아웃이 한 번 더 잡히므로 한 박자 뒤 한 번 더 */
+    setTimeout(toTop, 140);
+  }
+  function logout() {
+    session = null;
+    saveSession();
+    ui.cartSel = {};
+    clearCoupon();
+    ui.modal = null;
+    ui.lightbox = null;
+    ui.media = null;
+    ui.cartOpen = false;
+    ui.view = 'home';
+    renderAll();
+    /* v1.9.3 — 로그아웃 직후에는 언제나 홈 최상단.
+       이전 화면(마이페이지·관리자)의 히스토리 상태를 그대로 두면 syncRoute 의 back() 이
+       스토어에 남아 있던 스크롤 위치(첫 상품 라인)를 복원해 그 자리로 내려가 보였다.
+       현재 히스토리 항목을 홈으로 고정하고 스크롤을 0 으로 되돌린다. */
+    try { history.replaceState(routeOf(), '', '#/'); } catch (e) {}
+    scrollHomeTop();
+    toast('로그아웃되었습니다.');
+  }
+
+  /* ----------------------------------------------------------------- cart */
+  function addToCart(pid, color, size, qty) {
+    var u = currentUser();
+    if (!u) { openAuth('login', '로그인 후 장바구니에 담을 수 있습니다.'); return { ok: false, needLogin: true }; }
+    var p = productById(pid);
+    var v = findVariant(pid, color, size);
+    if (!p || !v) return { ok: false, message: '옵션을 다시 선택해 주세요.' };
+    qty = Math.max(1, parseInt(qty, 10) || 1);
+    if (v.stock <= 0) return { ok: false, message: '선택한 옵션은 품절입니다.' };
+    var existing = db.cart_items.filter(function (c) { return c.user_id === u.id && c.variant_id === v.id; })[0];
+    var current = existing ? existing.quantity : 0;
+    var target = Math.min(v.stock, current + qty);
+    if (existing) {
+      existing.quantity = target;
+    } else {
+      db.cart_items.push({
+        id: newId('ci'), user_id: u.id, variant_id: v.id, quantity: target, added_at: nowISO()
+      });
+    }
+    save();
+    var capped = target < current + qty;
+    return { ok: true, capped: capped, quantity: target, stock: v.stock };
+  }
+  function setCartQty(cid, next) {
+    var row = cartRows().filter(function (r) { return r.item.id === cid; })[0];
+    if (!row) return;
+    next = parseInt(next, 10) || 1;
+    if (next < 1) next = 1;
+    if (next > row.variant.stock) {
+      next = row.variant.stock;
+      toast('재고는 ' + row.variant.stock + '개까지 담을 수 있습니다.', 'warn');
+    }
+    row.item.quantity = next;
+    save();
+    renderCart();
+    renderHeader();
+  }
+  function removeCartItem(cid) {
+    db.cart_items = db.cart_items.filter(function (c) { return c.id !== cid; });
+    delete ui.cartSel[cid];
+    save();
+    renderCart(); renderHeader();
+    toast('장바구니에서 삭제했습니다.');
+  }
+  /* v1.9.3 — 선택 삭제 / 전체 삭제 */
+  function removeCartItems(ids) {
+    var drop = {};
+    (ids || []).forEach(function (id) { drop[id] = 1; });
+    var count = 0;
+    db.cart_items = db.cart_items.filter(function (c) {
+      if (!drop[c.id]) return true;
+      count++;
+      return false;
+    });
+    Object.keys(drop).forEach(function (id) { delete ui.cartSel[id]; });
+    ui.checkoutIds = (ui.checkoutIds || []).filter(function (id) { return !drop[id]; });
+    if (count) save();
+    renderCart(); renderHeader();
+    return count;
+  }
+  function removeSelectedCartItems() {
+    var ids = selectedRows().map(function (r) { return r.item.id; });
+    if (!ids.length) { toast('삭제할 항목을 선택해 주세요.', 'warn'); return 0; }
+    var n = removeCartItems(ids);
+    /* 남은 항목은 다시 선택 상태로 — 삭제 후 0원·주문 불가로 보이는 일을 막는다 */
+    ui.cartSel = {};
+    renderCart();
+    if (n) toast('선택한 ' + n + '개 항목을 장바구니에서 삭제했습니다.');
+    return n;
+  }
+  function setAllSelected(sel) {
+    cartRows().forEach(function (r) { ui.cartSel[r.item.id] = sel; });
+    renderCart();
+  }
+
+  /* --------------------------------------------------------------- orders */
+  function makeOrderNo() {
+    var d = new Date();
+    var ymd = '' + d.getFullYear() + pad(d.getMonth() + 1, 2) + pad(d.getDate(), 2);
+    var no;
+    do {
+      no = 'MA' + ymd + '-' + String(Math.floor(Math.random() * 9000) + 1000);
+    } while (db.orders.some(function (o) { return o.order_no === no; }));
+    return no;
+  }
+  /* --------------------------------------------------------------- payments
+     결제 흐름
+       ① 결제하기 → 대기 주문(pending_checkout)을 localStorage 에 저장
+       ② 토스페이먼츠 결제창 호출 (successUrl/failUrl = 현재 URL + ?tossResult=…)
+       ③ 리다이렉트 복귀 → paymentKey·orderId·amount 검증 → 재고 차감·주문 확정
+       ④ file://·오프라인·SDK 로드 실패 → 자동으로 데모 모의 결제 fallback */
+  function tossAvailable() {
+    return location.protocol !== 'file:' &&
+      typeof window.TossPayments === 'function' &&
+      !!PAYMENT_CONFIG.clientKey;
+  }
+  function paymentModeLabel() {
+    if (!tossAvailable()) return '데모 모의 결제';
+    return PAYMENT_CONFIG.clientKeyMode === 'live' ? '실결제 (라이브 키)' : '토스페이먼츠 테스트 결제';
+  }
+  function savePending(p) {
+    try { localStorage.setItem(LS_PENDING, JSON.stringify(p)); } catch (e) { storageOk = false; }
+  }
+  function loadPending() {
+    try {
+      var raw = localStorage.getItem(LS_PENDING);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function clearPending() {
+    try { localStorage.removeItem(LS_PENDING); } catch (e) {}
+  }
+  /* 구매자 식별 키 — 이메일·전화번호처럼 유추 가능한 값 대신 무작위 22자 이상 */
+  function customerKey() {
+    var key = null;
+    try { key = localStorage.getItem(LS_CUSTOMER_KEY); } catch (e) { key = null; }
+    if (!key || key.length < 22) {
+      var seed;
+      if (window.crypto && window.crypto.getRandomValues) {
+        seed = Array.prototype.map.call(window.crypto.getRandomValues(new Uint8Array(16)), function (b) {
+          return pad(b.toString(16), 2);
+        }).join('');
+      } else {
+        seed = Date.now().toString(36) + Math.random().toString(36).slice(2);
+      }
+      key = 'ck_' + seed;
+      try { localStorage.setItem(LS_CUSTOMER_KEY, key); } catch (e) {}
+    }
+    return key;
+  }
+  function orderNameOf(items) {
+    if (!items || !items.length) return 'MONO ATELIER 주문';
+    var head = items.length > 1 ? items[0].product_name + ' 외 ' + (items.length - 1) + '건' : items[0].product_name;
+    return head.slice(0, PAYMENT_CONFIG.orderNameMax || 100);
+  }
+  function stockProblem(items) {
+    for (var i = 0; i < items.length; i++) {
+      var v = variantById(items[i].variant_id);
+      if (!v) return '주문 상품을 찾을 수 없습니다.';
+      if (v.stock < items[i].quantity) {
+        return '“' + items[i].product_name + ' / ' + items[i].color + ' ' + items[i].size + '” 재고가 부족합니다. (남은 수량 ' + Math.max(0, v.stock) + '개)';
+      }
+    }
+    return '';
+  }
+  function buildPending(payload) {
+    var u = currentUser();
+    var rows = checkoutRows();
+    var t = totalsOf(rows, ui.coupon);
+    var pointsUsed = pointUseApplied(t.total);
+    return {
+      order_no: makeOrderNo(),
+      user_id: u.id,
+      cart_ids: rows.map(function (r) { return r.item.id; }),
+      items: rows.map(function (r) {
+        return {
+          variant_id: r.variant.id, product_id: r.product.id, product_name: r.product.name,
+          color: r.variant.color, size: r.variant.size,
+          unit_price: r.product.price, quantity: r.item.quantity
+        };
+      }),
+      subtotal: t.subtotal, shipping_fee: t.shipping, amount: Math.max(0, t.total - pointsUsed),
+      points_used: pointsUsed,
+      coupon_code: t.coupon ? t.coupon.code : null,
+      discount_amount: t.discount,
+      recipient_name: String(payload.recipient_name || '').trim(),
+      recipient_phone: String(payload.recipient_phone || '').trim(),
+      shipping_address: String(payload.shipping_address || '').trim(),
+      postcode: String(payload.postcode || '').trim(),
+      payment_method: payload.payment_method || 'card',
+      provider: PAYMENT_CONFIG.provider,
+      created_at: nowISO()
+    };
+  }
+  /* 결제 완료 → 재고 차감·주문 확정 (데모·토스 공통) */
+  function finalizeOrder(pending, payInfo) {
+    var u = currentUserById(pending.user_id);
+    if (!u) return { ok: false, message: '로그인이 필요합니다. 다시 로그인해 주세요.' };
+    if (payInfo.payment_key) {
+      var dup = db.orders.filter(function (o) { return o.payment_key === payInfo.payment_key; })[0];
+      if (dup) return { ok: true, order: dup, duplicate: true };
+    }
+    var exist = db.orders.filter(function (o) { return o.order_no === pending.order_no; })[0];
+    if (exist) return { ok: true, order: exist, duplicate: true };
+    var problem = stockProblem(pending.items || []);
+    if (problem) return { ok: false, message: problem };
+    var order = {
+      id: newId('o'),
+      order_no: pending.order_no,
+      user_id: u.id,
+      status: 'paid',
+      total_amount: pending.amount,
+      shipping_fee: pending.shipping_fee,
+      coupon_code: pending.coupon_code || null,
+      discount_amount: pending.discount_amount || 0,
+      points_used: Math.max(0, Math.round(Number(pending.points_used) || 0)),
+      recipient_name: pending.recipient_name,
+      recipient_phone: pending.recipient_phone,
+      shipping_address: pending.shipping_address,
+      postcode: pending.postcode || '',
+      payment_method: pending.payment_method,
+      payment_provider: payInfo.provider || 'demo',
+      payment_key: payInfo.payment_key || null,
+      payment_mode: payInfo.mode || 'demo',
+      created_at: nowISO()
+    };
+    (pending.items || []).forEach(function (it) {
+      var v = variantById(it.variant_id);
+      if (v) v.stock -= it.quantity;
+      db.order_items.push({
+        id: newId('oi'), order_id: order.id, variant_id: it.variant_id,
+        product_name: it.product_name, color: it.color, size: it.size,
+        unit_price: it.unit_price, quantity: it.quantity
+      });
+    });
+    db.orders.push(order);
+    var usedPoints = Math.max(0, Math.round(Number(pending.points_used) || 0));
+    if (usedPoints > 0) {
+      addPointLog(u, 'use', -Math.min(usedPoints, userPoints(u)), {
+        order_id: order.id, description: '주문 결제에 포인트 사용'
+      });
+    }
+    var ids = pending.cart_ids || [];
+    db.cart_items = db.cart_items.filter(function (c) { return ids.indexOf(c.id) < 0; });
+    ids.forEach(function (id) { delete ui.cartSel[id]; });
+    clearCoupon();
+    ui.pointUse = 0;
+    ui.pointUseMsg = '';
+    save();
+    sendOrderSms(order, 'order_created');   // v1.9.1 — 주문 완료 SMS (테스트 모드는 로그만)
+    save();
+    clearPending();
+    return { ok: true, order: order };
+  }
+  function showReceipt(order) {
+    ui.checkoutIds = [];
+    ui.view = 'home';
+    ui.modal = { type: 'receipt', oid: order.id };
+    renderAll();
+    window.scrollTo({ top: 0 });
+  }
+  function tossReturnUrl(kind) {
+    return location.origin + location.pathname + '?tossResult=' + kind;
+  }
+  function tossErrorCode(err) {
+    return (err && (err.code || err.errorCode)) || (err && err.message) || 'UNKNOWN';
+  }
+  function isTossCancel(err) {
+    var code = tossErrorCode(err);
+    return code === 'PAY_PROCESS_CANCELED' || code === 'PAY_PROCESS_ABORTED';
+  }
+  function tossFallback(pending, why) {
+    toast('토스페이먼츠 결제창을 열 수 없어 데모 모의 결제로 진행합니다.' + (why ? ' (' + why + ')' : ''), 'warn');
+    var res = finalizeOrder(pending, { provider: 'demo', mode: 'demo-fallback', payment_key: null });
+    if (res.ok) showReceipt(res.order);
+    else toast(res.message || '주문을 확정하지 못했습니다.', 'warn');
+  }
+  /* 결제창형(구 결제위젯) 흐름 — 주문 결제와 교환/반품 배송비 결제가 같은 위젯 세션을 쓴다.
+     widgets → setAmount → renderPaymentWindow → (구매자가 결제하기) → paymentRequest 이벤트
+     → widgets.requestPayment({ orderId, orderName, successUrl, failUrl }) → 토스 리다이렉트 */
+  function tossWidgets() {
+    if (!tossSession.widgets) {
+      var toss = window.TossPayments(PAYMENT_CONFIG.clientKey);
+      tossSession.widgets = toss.widgets({ customerKey: customerKey() });
+    }
+    return tossSession.widgets;
+  }
+  /* amount·orderName·params(성공/실패 URL·구매자)를 받아 결제창을 열고, 결제 요청 시 현재 params 로 리다이렉트한다.
+     onUnavailable: SDK 가 결제창을 주지 못했을 때(구버전 브라우저 등) 데모로 이어가는 처리 */
+  function openTossWindow(opts) {
+    var widgets = opts.widgets;
+    tossSession.params = opts.params;
+    opts.params.onError = opts.onError;
+    return widgets.setAmount({ currency: PAYMENT_CONFIG.currency || 'KRW', value: opts.amount }).then(function () {
+      if (tossSession.window) return null; // 이미 열려 있으면 금액만 갱신하고 재사용
+      return widgets.renderPaymentWindow({ orderName: opts.orderName }).then(function (win) {
+        tossSession.window = win || null;
+        if (!win || !win.on) {
+          tossSession.window = null;
+          if (opts.onUnavailable) opts.onUnavailable();
+          return null;
+        }
+        win.on('paymentRequest', function () {
+          var live = tossSession.params;
+          if (!live) return;
+          try {
+            var ret = widgets.requestPayment({
+              orderId: live.orderId, orderName: live.orderName,
+              successUrl: live.successUrl, failUrl: live.failUrl,
+              customerName: live.customerName, customerEmail: live.customerEmail
+            });
+            if (ret && typeof ret.then === 'function') ret['catch'](live.onError || function () {});
+          } catch (err) { if (live.onError) live.onError(err); }
+        });
+        return win;
+      });
+    })['catch'](opts.onError);
+  }
+  function requestTossPayment(pending, user) {
+    var orderName = orderNameOf(pending.items);
+    var params = {
+      orderId: pending.order_no,
+      orderName: orderName,
+      successUrl: tossReturnUrl('success'),
+      failUrl: tossReturnUrl('fail'),
+      customerName: user.name,
+      customerEmail: user.email
+    };
+    tossSession.pending = pending;
+    var onTossError = function (err) {
+      if (isTossCancel(err)) {
+        toast('결제를 취소했습니다.', 'warn');
+        clearPending();
+        return;
+      }
+      tossFallback(tossSession.pending || pending, tossErrorCode(err));
+    };
+    try {
+      openTossWindow({
+        widgets: tossWidgets(), amount: pending.amount, orderName: orderName, params: params,
+        onError: onTossError,
+        onUnavailable: function () { tossFallback(pending, 'PAYMENT_WINDOW'); }
+      });
+    } catch (err) {
+      onTossError(err);
+    }
+  }
+
+  /* ------------------------------------------ 교환/반품 배송비 결제 (토스페이먼츠)
+     · 유료(3,000원/6,000원) 신청만 결제창을 열고, 무료는 결제 없이 바로 접수한다.
+     · 결제창 복귀(?tossClaim=success) 시 신청번호·금액을 검증한 뒤 order_claims 를 만든다.
+     · file://·오프라인·SDK 로드 실패 → 데모 결제로 접수(fallback) */
+  function tossClaimReturnUrl(kind) {
+    return location.origin + location.pathname + '?tossClaim=' + kind;
+  }
+  function claimTossFallback(pending, why) {
+    toast('토스페이먼츠 결제창을 열 수 없어 데모 결제로 접수합니다.' + (why ? ' (' + why + ')' : ''), 'warn');
+    var res = finalizeClaim(pending, { mode: 'demo-fallback', payment_key: null });
+    if (!res.ok) { toast(res.message || '교환/반품을 접수하지 못했습니다.', 'warn'); return; }
+    ui.modal = null;
+    showClaimDone(res.claim, '배송비 ' + won(res.claim.shipping_fee) + ' 데모 결제로 접수했습니다.');
+  }
+  function requestTossClaimPayment(pending, user) {
+    var orderName = ('MONO ATELIER ' + (CLAIM_TYPES[pending.claim_type] || '교환/반품') + ' 배송비').slice(0, PAYMENT_CONFIG.orderNameMax || 100);
+    var params = {
+      orderId: pending.id,
+      orderName: orderName,
+      successUrl: tossClaimReturnUrl('success'),
+      failUrl: tossClaimReturnUrl('fail'),
+      customerName: user.name,
+      customerEmail: user.email
+    };
+    var onTossError = function (err) {
+      if (isTossCancel(err)) {
+        toast('배송비 결제를 취소했습니다.', 'warn');
+        clearPendingClaim();
+        return;
+      }
+      claimTossFallback(pending, tossErrorCode(err));
+    };
+    try {
+      openTossWindow({
+        widgets: tossWidgets(), amount: pending.shipping_fee, orderName: orderName, params: params,
+        onError: onTossError,
+        onUnavailable: function () { claimTossFallback(pending, 'PAYMENT_WINDOW'); }
+      });
+    } catch (err) {
+      onTossError(err);
+    }
+  }
+  /* 접수 완료 → 마이페이지 주문 내역(접수 배지)으로 이동 */
+  function showClaimDone(claim, message) {
+    ui.modal = null;
+    ui.view = 'mypage';
+    ui.myTab = 'orders';
+    ui.checkoutIds = [];
+    renderAll();
+    try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) { window.scrollTo(0, 0); }
+    if (message) toast(message);
+    return claim;
+  }
+  /* 결제하기 → 대기 주문 저장 → 토스 결제창(또는 데모 결제) */
+  function startPayment(payload) {
+    var u = currentUser();
+    if (!u) return { ok: false, message: '로그인이 필요합니다.' };
+    var rows = checkoutRows();
+    if (!rows.length) return { ok: false, message: '주문할 상품이 없습니다.' };
+    if (!payload.recipient_name || !payload.recipient_phone || !payload.shipping_address) {
+      return { ok: false, message: '배송지 정보를 모두 입력해 주세요.' };
+    }
+    var pending = buildPending(payload);
+    var problem = stockProblem(pending.items);
+    if (problem) return { ok: false, message: problem };
+    savePending(pending);
+    if (!tossAvailable()) {
+      return finalizeOrder(pending, { provider: 'demo', mode: 'demo', payment_key: null });
+    }
+    requestTossPayment(pending, u);
+    return { ok: true, redirected: true };
+  }
+  function stripPaymentQuery() {
+    var st = null;
+    try { st = routeOf(); } catch (e) { st = null; }
+    try { history.replaceState(st || {}, document.title, location.pathname + (location.hash || '')); } catch (e) {}
+  }
+  /* successUrl 복귀 → 금액·주문번호 대조 → 승인(서버 또는 테스트) → 주문 확정 */
+  function confirmPayment(pending, info) {
+    var done = function (mode) {
+      var res = finalizeOrder(pending, { provider: PAYMENT_CONFIG.provider, mode: mode, payment_key: info.paymentKey });
+      if (!res.ok) { toast(res.message || '주문을 확정하지 못했습니다.', 'warn'); renderAll(); return; }
+      toast(res.duplicate ? '이미 확정된 결제입니다.' : '결제가 완료되었습니다.');
+      showReceipt(res.order);
+    };
+    if (!PAYMENT_CONFIG.confirmApiUrl) {
+      // 정적 데모(GitHub Pages): 서버 승인 없이 테스트 승인으로 처리.
+      // 실서비스에서는 시크릿 키를 가진 서버가 반드시 승인 API를 호출해야 한다.
+      toast('토스페이먼츠 테스트 결제가 승인되었습니다. (서버 승인 없음)');
+      setTimeout(function () { done('test-client'); }, 120);
+      return;
+    }
+    fetch(PAYMENT_CONFIG.confirmApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentKey: info.paymentKey, orderId: info.orderId, amount: info.amount })
+    }).then(function (r) {
+      return r.json().then(function (body) { return { ok: r.ok, body: body }; });
+    }).then(function (r) {
+      if (!r.ok || (r.body && r.body.ok === false)) {
+        toast('결제 승인에 실패했습니다' + (r.body && r.body.message ? ': ' + r.body.message : ''), 'warn');
+        return;
+      }
+      done('server');
+    })['catch'](function () {
+      toast('결제 승인 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.', 'warn');
+    });
+  }
+  function handlePaymentReturn() {
+    var params;
+    try { params = new URLSearchParams(location.search); } catch (e) { return false; }
+    var result = params.get('tossResult');
+    if (!result) return false;
+    var paymentKey = params.get('paymentKey');
+    var orderId = params.get('orderId');
+    var amount = parseInt(params.get('amount'), 10);
+    var code = params.get('code');
+    var msg = params.get('message');
+    stripPaymentQuery();
+    var pending = loadPending();
+    if (result === 'fail') {
+      clearPending();
+      toast('결제가 취소되었거나 실패했습니다.' + (msg ? ' (' + msg + ')' : code ? ' (' + code + ')' : ''), 'warn');
+      return true;
+    }
+    if (!pending) {
+      toast('결제 정보(대기 주문)를 찾을 수 없습니다. 다시 주문해 주세요.', 'warn');
+      return true;
+    }
+    if (!paymentKey || !orderId || !amount) {
+      toast('결제 응답이 올바르지 않습니다.', 'warn');
+      return true;
+    }
+    if (orderId !== pending.order_no) {
+      toast('결제한 주문번호가 대기 주문과 일치하지 않아 결제를 확정하지 않았습니다.', 'warn');
+      return true;
+    }
+    if (amount !== pending.amount) {
+      toast('결제 금액이 주문 금액과 다릅니다(' + won(amount) + ' / ' + won(pending.amount) + '). 결제를 확정하지 않았습니다.', 'warn');
+      return true;
+    }
+    confirmPayment(pending, { paymentKey: paymentKey, orderId: orderId, amount: amount });
+    return true;
+  }
+
+  /* ?tossClaim=success|fail 복귀 → 신청번호·금액 검증 → 교환/반품 접수 확정 */
+  function handleClaimReturn() {
+    var params;
+    try { params = new URLSearchParams(location.search); } catch (e) { return false; }
+    var result = params.get('tossClaim');
+    if (!result) return false;
+    var paymentKey = params.get('paymentKey');
+    var claimId = params.get('orderId');
+    var amount = parseInt(params.get('amount'), 10);
+    var code = params.get('code');
+    var msg = params.get('message');
+    stripPaymentQuery();
+    var pending = loadPendingClaim();
+    if (result === 'fail') {
+      clearPendingClaim();
+      toast('배송비 결제가 취소되었거나 실패했습니다.' + (msg ? ' (' + msg + ')' : code ? ' (' + code + ')' : ''), 'warn');
+      return true;
+    }
+    if (!pending) {
+      toast('교환/반품 신청 정보(대기)를 찾을 수 없습니다. 다시 신청해 주세요.', 'warn');
+      return true;
+    }
+    if (!paymentKey || !claimId || !amount) {
+      toast('결제 응답이 올바르지 않습니다.', 'warn');
+      return true;
+    }
+    if (claimId !== pending.id) {
+      toast('결제한 신청번호가 대기 신청과 일치하지 않아 접수하지 않았습니다.', 'warn');
+      return true;
+    }
+    if (amount !== pending.shipping_fee) {
+      toast('결제 금액이 배송비와 다릅니다(' + won(amount) + ' / ' + won(pending.shipping_fee) + '). 접수하지 않았습니다.', 'warn');
+      return true;
+    }
+    // 정적 데모: 서버 승인 없이 테스트 승인으로 접수 (실서비스는 시크릿 키를 가진 서버가 승인해야 한다)
+    toast('토스페이먼츠 테스트 결제가 승인되었습니다. (서버 승인 없음)');
+    setTimeout(function () {
+      var res = finalizeClaim(pending, {
+        mode: PAYMENT_CONFIG.confirmApiUrl ? 'server' : 'test-client',
+        payment_key: paymentKey
+      });
+      if (!res.ok) { toast(res.message || '교환/반품을 접수하지 못했습니다.', 'warn'); renderAll(); return; }
+      toast(res.duplicate ? '이미 접수된 교환/반품 신청입니다.' : '교환/반품 신청이 접수되었습니다.');
+      showClaimDone(res.claim);
+    }, 120);
+    return true;
+  }
+
+  function cancelOrder(orderId) {
+    var o = orderById(orderId);
+    if (!o) return { ok: false, message: '주문을 찾을 수 없습니다.' };
+    if (o.status === 'cancelled') return { ok: false, message: '이미 취소된 주문입니다.' };
+    if (o.status === 'shipping' || o.status === 'delivered') {
+      return { ok: false, message: '배송이 시작된 주문은 취소할 수 없습니다. 고객센터로 문의해 주세요.' };
+    }
+    orderItemsOf(o.id).forEach(function (oi) {
+      var v = variantById(oi.variant_id);
+      if (v) v.stock += oi.quantity;
+    });
+    var used = Math.max(0, Math.round(Number(o.points_used) || 0));
+    if (used > 0) {
+      addPointLog(currentUserById(o.user_id), 'refund', used, {
+        order_id: o.id, description: '주문 취소 포인트 환급'
+      });
+    }
+    o.status = 'cancelled';
+    save();
+    return { ok: true };
+  }
+  function updateOrderStatus(orderId, status) {
+    var o = orderById(orderId);
+    if (!o) return { ok: false, message: '주문을 찾을 수 없습니다.' };
+    var r = applyOrderStatus(o, status);
+    if (!r.ok) return r;
+    save();
+    return r;
+  }
+  /* v1.9.16 — 주문 상태 변경 공통 처리(단건 드롭다운·일괄 변경이 같은 함수를 쓴다)
+     · 취소로 바꾸면 주문 상품의 재고를 1회 복구하고, 사용한 포인트를 환급한다
+     · 이미 취소된 주문은 되살리지 않는다(그래서 두 번 복구되지 않는다) */
+  function applyOrderStatus(o, status) {
+    if (!o) return { ok: false, message: '주문을 찾을 수 없습니다.' };
+    if (o.status === 'cancelled') return { ok: false, message: '취소된 주문은 상태를 변경할 수 없습니다.' };
+    if (!STATUS[status]) return { ok: false, message: '알 수 없는 상태입니다.' };
+    var restored = 0, refunded = 0;
+    if (status === 'cancelled') {
+      orderItemsOf(o.id).forEach(function (oi) {
+        var v = variantById(oi.variant_id);
+        if (v) { v.stock += oi.quantity; restored += oi.quantity; }
+      });
+      var used = Math.max(0, Math.round(Number(o.points_used) || 0));
+      var buyer = used > 0 ? currentUserById(o.user_id) : null;
+      if (buyer) {
+        addPointLog(buyer, 'refund', used, { order_id: o.id, description: '주문 취소 포인트 환급' });
+        refunded = used;
+      }
+    }
+    o.status = status;
+    return { ok: true, order: o, restored: restored, refunded: refunded };
+  }
+  /* 일괄 상태 변경 — 취소된 주문·이미 같은 상태인 주문은 건너뛰고 결과를 모아 돌려준다 */
+  function bulkUpdateOrderStatus(ids, status) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 주문 상태를 변경할 수 있습니다.' };
+    if (!STATUS[status]) return { ok: false, message: '일괄 변경할 상태를 선택해 주세요.' };
+    var list = ids || [];
+    if (!list.length) return { ok: false, message: '먼저 변경할 주문을 선택해 주세요.' };
+    var changed = 0, cancelled = 0, same = 0, missing = 0, restored = 0, refunded = 0;
+    list.forEach(function (id) {
+      var o = orderById(id);
+      if (!o) { missing += 1; return; }
+      if (o.status === 'cancelled') { cancelled += 1; return; }
+      if (o.status === status) { same += 1; return; }
+      var r = applyOrderStatus(o, status);
+      if (!r.ok) { missing += 1; return; }
+      changed += 1;
+      restored += r.restored || 0;
+      refunded += r.refunded || 0;
+    });
+    if (changed) save();
+    return { ok: true, changed: changed, skipped: cancelled + same + missing,
+      skippedCancelled: cancelled, skippedSame: same, skippedMissing: missing,
+      restored: restored, refunded: refunded };
+  }
+
+  /* -------------------------------------------------------------- products */
+  function normalizeImages(list, main) {
+    var out = [];
+    [main].concat(list || []).forEach(function (x) {
+      var v = String(x || '').trim();
+      if (v && out.indexOf(v) < 0) out.push(v);
+    });
+    return out.length ? out : [main || 'coat.webp'];
+  }
+  function normalizeFreeShip(v) {
+    if (v == null || v === '') return null;
+    var n = Number(v);
+    if (isNaN(n)) return null;
+    return Math.max(0, Math.round(n));
+  }
+  /* 판매 상태 — 셀프체크박스의 false/문자열 'false' 를 숨김으로 정확히 저장한다 */
+  function isActiveValue(v) {
+    if (v === false || v === 'false' || v === 0 || v === '0') return false;
+    return true;
+  }
+  function syncProductImages(p) {
+    db.product_images = db.product_images.filter(function (pi) { return pi.product_id !== p.id; });
+    productImages(p).forEach(function (img, i) {
+      db.product_images.push({ id: newId('pi'), product_id: p.id, image: img, alt: imageAltOf(p, i), sort_order: i });
+    });
+  }
+  function saveProduct(input) {
+    if (!String(input.name || '').trim()) return { ok: false, message: '상품명을 입력해 주세요.' };
+    /* 제품고유키(제품번호) — 비었으면 자동 채번, 형식·중복(대소문자 무시)은 저장 전에 막는다 */
+    var code = normalizeProductCode(input.product_code) || nextProductCode();
+    if (!/^[A-Z0-9][A-Z0-9._-]{1,23}$/.test(code)) {
+      return { ok: false, message: '제품번호는 영문·숫자·하이픈(-) 2~24자로 입력해 주세요. (예: MA-0014)' };
+    }
+    if (productCodeTaken(code, input.id)) {
+      return { ok: false, message: '제품번호 ' + code + ' 은(는) 이미 다른 상품에서 사용 중입니다. 다른 번호를 입력해 주세요.' };
+    }
+    var price = parseInt(input.price, 10);
+    if (!(price > 0)) return { ok: false, message: '판매가를 올바르게 입력해 주세요.' };
+    var original = input.original_price === '' || input.original_price == null ? null : parseInt(input.original_price, 10);
+    if (original != null && (!(original > 0) || isNaN(original))) return { ok: false, message: '정가를 올바르게 입력해 주세요.' };
+    var category = String(input.category || '');
+    if (!db.categories.some(function (c) { return c.id === category; })) {
+      return { ok: false, message: '카테고리를 선택해 주세요.' };
+    }
+    var variants = (input.variants || []).filter(function (v) { return String(v.color || '').trim() && v.size; });
+    if (!variants.length) return { ok: false, message: '옵션(컬러·사이즈)을 1개 이상 등록해 주세요.' };
+    var seen = {};
+    for (var i = 0; i < variants.length; i++) {
+      var key = variants[i].color + '|' + variants[i].size;
+      if (seen[key]) return { ok: false, message: '같은 컬러·사이즈 조합이 중복됩니다.' };
+      seen[key] = 1;
+      if (!(parseInt(variants[i].stock, 10) >= 0)) return { ok: false, message: '재고는 0 이상의 숫자여야 합니다.' };
+    }
+    var p;
+    if (input.id) {
+      p = productById(input.id);
+      if (!p) return { ok: false, message: '상품을 찾을 수 없습니다.' };
+      p.product_code = code;
+      p.name = String(input.name).trim();
+      p.brand = String(input.brand || 'MONO ATELIER').trim();
+      p.category = category;
+      p.price = price;
+      p.original_price = original;
+      p.badge = input.badge || null;
+      p.model_info = normalizeModelInfo(input.model_info);
+      p.description = String(input.description || '').trim();
+      p.image = input.image || p.image;
+      p.images = normalizeImages(input.images, p.image);
+      p.free_shipping_threshold = normalizeFreeShip(input.free_shipping_threshold);
+      p.is_active = isActiveValue(input.is_active);
+      syncProductImages(p);
+      var keep = {};
+      db.order_items.forEach(function (oi) { keep[oi.variant_id] = 1; });
+      var existing = variantsOf(p.id);
+      var nextIds = {};
+      variants.forEach(function (v) {
+        var match = existing.filter(function (e) { return e.color === v.color && e.size === v.size; })[0];
+        if (match) {
+          match.stock = parseInt(v.stock, 10) || 0;
+          match.color_hex = normalizeStoredHex(v.color, v.color_hex);
+          nextIds[match.id] = 1;
+        } else {
+          var nv = {
+            id: newId('v'), product_id: p.id, color: v.color, color_hex: normalizeStoredHex(v.color, v.color_hex),
+            size: v.size, stock: parseInt(v.stock, 10) || 0,
+            sku: 'MA-' + String(category).toUpperCase() + '-' + idSeq(3).toUpperCase() + '-' + v.size
+          };
+          db.product_variants.push(nv);
+          nextIds[nv.id] = 1;
+        }
+      });
+      existing.forEach(function (e) {
+        if (!nextIds[e.id]) {
+          if (keep[e.id]) e.stock = 0; // keep rows referenced by past orders
+          else {
+            db.product_variants = db.product_variants.filter(function (x) { return x.id !== e.id; });
+            db.cart_items = db.cart_items.filter(function (c) { return c.variant_id !== e.id; });
+          }
+        }
+      });
+    } else {
+      p = {
+        id: newId('p'),
+        product_code: code,
+        name: String(input.name).trim(),
+        brand: String(input.brand || 'MONO ATELIER').trim(),
+        category: category,
+        price: price,
+        original_price: original,
+        badge: input.badge || null,
+        model_info: normalizeModelInfo(input.model_info),
+        description: String(input.description || '').trim(),
+        image: input.image || 'coat.webp',
+        images: normalizeImages(input.images, input.image || 'coat.webp'),
+        free_shipping_threshold: normalizeFreeShip(input.free_shipping_threshold),
+        created_at: nowISO(),
+        is_active: isActiveValue(input.is_active)
+      };
+      db.products.push(p);
+      syncProductImages(p);
+      variants.forEach(function (v) {
+        db.product_variants.push({
+          id: newId('v'), product_id: p.id, color: v.color, color_hex: normalizeStoredHex(v.color, v.color_hex),
+          size: v.size, stock: parseInt(v.stock, 10) || 0,
+          sku: 'MA-' + String(category).toUpperCase() + '-' + idSeq(3).toUpperCase() + '-' + v.size
+        });
+      });
+    }
+    if (!save()) {
+      // 저장 실패(용량 초과) — 새로 만들던 상품은 되돌려 중복 생성을 막는다
+      if (!input.id) {
+        db.products = db.products.filter(function (x) { return x.id !== p.id; });
+        db.product_variants = db.product_variants.filter(function (x) { return x.product_id !== p.id; });
+        db.product_images = db.product_images.filter(function (x) { return x.product_id !== p.id; });
+      }
+      return { ok: false, message: quotaMessage() };
+    }
+    return { ok: true, product: p };
+  }
+  function toggleProductActive(pid) {
+    var p = productById(pid);
+    if (!p) return;
+    p.is_active = !p.is_active;
+    save();
+    toast(p.is_active ? '상품을 판매 재개했습니다.' : '상품을 숨김 처리했습니다.');
+  }
+  function soldoutProduct(pid) {
+    variantsOf(pid).forEach(function (v) { v.stock = 0; });
+    save();
+    toast('모든 옵션을 품절 처리했습니다.');
+  }
+
+  /* ---------------------------------------------------------------- data io */
+  /* v1.9.8 — 내보내는 tables 객체는 화면 「테이블 현황」과 같은 STORE_TABLES 레지스트리에서 만든다.
+     · meta.table_count / meta.row_count 로 두 곳의 개수를 바로 대조할 수 있다
+     · 예전 버전과 호환되도록 각 테이블을 최상위 키로도 함께 내보낸다(같은 객체 참조) */
+  function exportPayload() {
+    var tables = storeTableSnapshot();
+    var payload = {
+      meta: {
+        app: 'MONO ATELIER', schema_version: 8, app_version: APP_VERSION,
+        exported_at: nowISO(), storage: 'localStorage',
+        table_count: STORE_TABLES.length, row_count: storeTableTotal(),
+        tables: STORE_TABLES.map(function (t) { return t.name; })
+      },
+      tables: tables
+    };
+    STORE_TABLES.forEach(function (t) { payload[t.name] = tables[t.name]; });
+    return payload;
+  }
+  function exportJSON() {
+    var text = JSON.stringify(exportPayload(), null, 2);
+    try {
+      var blob = new Blob([text], { type: 'application/json' });
+      var a = document.createElement('a');
+      var d = new Date();
+      a.href = URL.createObjectURL(blob);
+      a.download = 'mono-atelier-db-' + d.getFullYear() + pad(d.getMonth() + 1, 2) + pad(d.getDate(), 2) + '-' + pad(d.getHours(), 2) + pad(d.getMinutes(), 2) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+      toast('JSON 데이터를 내보냈습니다.');
+    } catch (e) {
+      toast('다운로드를 시작할 수 없습니다.', 'warn');
+    }
+    return text;
+  }
+  function resetDB() {
+    db = clone(SEED);
+    save();
+    if (session && !db.users.some(function (u) { return u.id === session.userId; })) {
+      session = null; saveSession();
+    }
+    ui.cartSel = {}; ui.checkoutIds = []; ui.view = 'home';
+    clearCoupon();
+    renderAll();
+    toast('시드 데이터로 초기화했습니다.');
+  }
+  function runIntegrity() {
+    var out = [];
+    var ok = function (t) { out.push({ level: 'ok', text: t }); };
+    var warn = function (t) { out.push({ level: 'warn', text: t }); };
+    var bad = function (t) { out.push({ level: 'bad', text: t }); };
+
+    ['users', 'products', 'product_images', 'product_variants', 'cart_items', 'orders', 'order_items', 'order_claims', 'coupons', 'product_reviews', 'point_logs', 'faqs'].forEach(function (t) {
+      var ids = {}, dup = 0;
+      db[t].forEach(function (r) { if (ids[r.id]) dup++; ids[r.id] = 1; });
+      if (dup) bad(t + ': 기본키(id) 중복 ' + dup + '건'); else ok(t + ': 기본키 고유 (' + db[t].length + '행)');
+    });
+
+    var dangling = 0;
+    db.product_variants.forEach(function (v) { if (!productById(v.product_id)) dangling++; });
+    if (dangling) bad('product_variants → products 참조 오류 ' + dangling + '건'); else ok('product_variants → products 외래키 정상');
+
+    dangling = 0;
+    db.cart_items.forEach(function (c) { if (!currentUserById(c.user_id) || !variantById(c.variant_id)) dangling++; });
+    if (dangling) bad('cart_items → users/product_variants 참조 오류 ' + dangling + '건'); else ok('cart_items → users/product_variants 외래키 정상');
+
+    dangling = 0;
+    db.orders.forEach(function (o) { if (!currentUserById(o.user_id)) dangling++; });
+    if (dangling) bad('orders → users 참조 오류 ' + dangling + '건'); else ok('orders → users 외래키 정상');
+
+    dangling = 0;
+    db.order_items.forEach(function (oi) { if (!orderById(oi.order_id) || !variantById(oi.variant_id)) dangling++; });
+    if (dangling) bad('order_items → orders/product_variants 참조 오류 ' + dangling + '건'); else ok('order_items → orders/product_variants 외래키 정상');
+
+    var neg = db.product_variants.filter(function (v) { return !(v.stock >= 0) || v.stock !== Math.floor(v.stock); });
+    if (neg.length) bad('재고가 음수이거나 정수가 아닌 옵션 ' + neg.length + '건'); else ok('모든 옵션 재고 0 이상의 정수');
+
+    var badEnum = db.products.filter(function (p) { return !db.categories.some(function (c) { return c.id === p.category; }); }).length;
+    /* v1.9.1 — 사이즈는 카테고리별 사이즈 코드(95·100·240·FREE 등)이므로 비어있지 않은지만 검사한다 */
+    badEnum += db.product_variants.filter(function (v) { return !String(v.size || '').trim(); }).length;
+    badEnum += db.categories.filter(function (c) { return !Array.isArray(c.size_codes) || !c.size_codes.length; }).length;
+    badEnum += db.orders.filter(function (o) { return !STATUS[o.status]; }).length;
+    badEnum += db.users.filter(function (u) { return !GRADES[gradeOf(u)]; }).length;
+    if (badEnum) bad('허용되지 않은 카테고리/사이즈/상태/등급 값 ' + badEnum + '건'); else ok('카테고리·사이즈·주문상태·회원등급 enum 정상');
+    var dupCat = 0, catIds = {};
+    db.categories.forEach(function (c) { if (catIds[c.id]) dupCat++; catIds[c.id] = 1; });
+    if (dupCat) bad('카테고리 id 중복 ' + dupCat + '건'); else ok('카테고리 id 고유 (' + db.categories.length + '개)');
+
+    var mismatch = 0;
+    db.orders.forEach(function (o) {
+      var sum = orderItemsOf(o.id).reduce(function (s, oi) { return s + oi.unit_price * oi.quantity; }, 0);
+      if (sum + (o.shipping_fee || 0) - (o.discount_amount || 0) !== o.total_amount) mismatch++;
+    });
+    if (mismatch) bad('주문 총액 ≠ 상품합계+배송비−쿠폰할인 ' + mismatch + '건'); else ok('주문 총액 = 상품합계 + 배송비 − 쿠폰할인 (전 건 일치)');
+
+    var couponIds = {}, couponDup = 0;
+    db.coupons.forEach(function (c) { if (couponIds[c.code]) couponDup++; couponIds[c.code] = 1; });
+    if (couponDup) bad('쿠폰 코드 중복 ' + couponDup + '건'); else ok('쿠폰 코드 고유 (' + db.coupons.length + '장)');
+    var badCoupon = db.coupons.filter(function (c) {
+      return ['percent', 'fixed'].indexOf(c.discount_type) < 0 || !(c.discount_value > 0) ||
+        (c.discount_type === 'percent' && c.discount_value > 100) || !(c.min_order_amount >= 0);
+    }).length;
+    if (badCoupon) bad('할인 유형·값이 올바르지 않은 쿠폰 ' + badCoupon + '건'); else ok('쿠폰 할인 유형·값·최소금액 정상');
+    var usedMissing = db.orders.filter(function (o) { return o.coupon_code && !couponByCode(o.coupon_code); });
+    if (usedMissing.length) warn('주문에 기록된 쿠폰 코드 ' + usedMissing.length + '건이 쿠폰 목록에 없음');
+    else ok('주문 → 쿠폰 참조 정상');
+    var badTarget = 0, targeted = 0;
+    db.coupons.forEach(function (c) {
+      var t = couponTargets(c);
+      if (t.length || couponTargetGrades(c).length) targeted++;
+      t.forEach(function (id) { if (!currentUserById(id)) badTarget++; });
+      if (couponTargetGrades(c).length !== (Array.isArray(c.target_grades) ? c.target_grades.length : 0)) badTarget++;
+    });
+    if (badTarget) bad('쿠폰 발급 대상(회원·등급) → 참조 오류 ' + badTarget + '건');
+    else ok('쿠폰 발급 대상(회원·등급) 정상 (대상 지정 쿠폰 ' + targeted + '장)');
+    var badBadge = db.products.filter(function (p) { return p.badge != null && String(p.badge).trim().length > 16; }).length;
+    if (badBadge) bad('뱃지 문구가 16자를 넘는 상품 ' + badBadge + '건'); else ok('상품 뱃지 문구 정상');
+
+    var dupReview = 0, seenOI = {};
+    (db.product_reviews || []).forEach(function (r) { if (seenOI[r.order_item_id]) dupReview++; seenOI[r.order_item_id] = 1; });
+    if (dupReview) bad('같은 주문항목에 리뷰 중복 ' + dupReview + '건'); else ok('주문항목당 리뷰 1건 (' + (db.product_reviews || []).length + '건)');
+    var badReview = (db.product_reviews || []).filter(function (r) {
+      return !productById(r.product_id) || !currentUserById(r.user_id) || !(r.rating >= 1 && r.rating <= 5) || !String(r.content || '').trim();
+    }).length;
+    if (badReview) bad('리뷰 참조·별점·내용 오류 ' + badReview + '건'); else ok('리뷰 참조·별점(1~5)·내용 정상');
+    var badMedia = (db.product_reviews || []).filter(function (r) {
+      return (r.media || []).some(function (m) { return !m || ['image', 'video'].indexOf(m.type) < 0 || !m.src; });
+    }).length;
+    if (badMedia) bad('리뷰 첨부(사진·동영상) 형식 오류 ' + badMedia + '건'); else ok('리뷰 첨부 (사진·동영상) 형식 정상');
+    var balanceBad = 0;
+    db.users.forEach(function (u) {
+      var sum = (db.point_logs || []).filter(function (l) { return l.user_id === u.id; })
+        .reduce(function (s, l) { return s + l.amount; }, 0);
+      if (userPoints(u) !== sum) balanceBad++;
+    });
+    if (balanceBad) bad('보유 포인트 ≠ 포인트 내역 합계 ' + balanceBad + '명'); else ok('보유 포인트 = 포인트 내역 합계');
+    var dupConfirm = (db.order_items || []).filter(function (oi) { return oi.confirm_points > 0 && !oi.confirmed_at; }).length;
+    if (dupConfirm) bad('구매확정 시각 없이 적립된 주문상품 ' + dupConfirm + '건'); else ok('구매확정 → 적립 상태 정상');
+    var faqOrder = (db.faqs || []).map(function (f) { return f.sort_order; });
+    if (faqOrder.some(function (o, i) { return o !== i + 1; })) bad('FAQ 노출순서가 1..n 이 아닙니다'); else ok('FAQ 노출순서 1..n (' + (db.faqs || []).length + '건)');
+
+    var imgDangling = db.product_images.filter(function (pi) { return !productById(pi.product_id); }).length;
+    if (imgDangling) bad('product_images → products 참조 오류 ' + imgDangling + '건'); else ok('product_images → products 외래키 정상');
+    var noImg = db.products.filter(function (p) { return productImages(p).length < 2; }).length;
+    if (noImg) warn('갤러리 이미지가 1장뿐인 상품 ' + noImg + '건'); else ok('모든 상품에 갤러리 2장 이상');
+    var badShip = db.products.filter(function (p) {
+      var th = p.free_shipping_threshold;
+      return !(th == null || (th >= 0 && th === Math.floor(th)));
+    }).length;
+    if (badShip) bad('무료배송 기준값이 올바르지 않은 상품 ' + badShip + '건'); else ok('상품별 무료배송 기준값 정상');
+
+    var noDup = {};
+    var dupNo = 0;
+    db.orders.forEach(function (o) { if (noDup[o.order_no]) dupNo++; noDup[o.order_no] = 1; });
+    if (dupNo) bad('주문번호 중복 ' + dupNo + '건'); else ok('주문번호(order_no) 고유');
+
+    var noVariant = db.products.filter(function (p) { return variantsOf(p.id).length === 0; });
+    if (noVariant.length) warn('옵션이 없는 상품 ' + noVariant.length + '건'); else ok('모든 상품에 옵션 1개 이상');
+
+    var overQty = db.cart_items.filter(function (c) {
+      var v = variantById(c.variant_id);
+      return v && c.quantity > v.stock;
+    });
+    if (overQty.length) warn('재고보다 많이 담긴 장바구니 항목 ' + overQty.length + '건 (결제 시 차단됩니다)');
+    else if (db.cart_items.length) ok('장바구니 수량 ≤ 재고');
+
+    /* ---- 교환/반품 접수 정합성 */
+    var cDangling = 0, cBadEnum = 0, cBadFee = 0, cDupOrder = 0;
+    var seenOrder = {};
+    db.order_claims.forEach(function (c) {
+      if (!orderById(c.order_id) || !currentUserById(c.user_id)) cDangling++;
+      if (!CLAIM_TYPES[c.claim_type] || !CLAIM_REASONS[c.reason_category] ||
+          !CLAIM_STATUS[c.status] || ['free', 'paid', 'pending'].indexOf(c.payment_status) < 0) cBadEnum++;
+      if (c.shipping_fee !== claimFeeOf(c.claim_type, c.reason_category)) cBadFee++;
+      if (seenOrder[c.order_id]) cDupOrder++; else seenOrder[c.order_id] = 1;
+    });
+    if (cDangling) bad('order_claims → orders/users 참조 오류 ' + cDangling + '건');
+    else ok('order_claims → orders/users 외래키 정상 (' + db.order_claims.length + '건)');
+    if (cBadEnum) bad('교환/반품 유형·사유·상태 enum 오류 ' + cBadEnum + '건'); else ok('교환/반품 유형·사유·상태 enum 정상');
+    if (cBadFee) bad('사유·유형과 배송비가 맞지 않는 접수 ' + cBadFee + '건');
+    else ok('배송비 정책 일치 (판매자 귀책 0원 / 반품 3,000원 / 교환 6,000원)');
+    if (cDupOrder) bad('한 주문에 교환/반품 접수 중복 ' + cDupOrder + '건'); else ok('한 주문당 교환/반품 1건');
+    return out;
+  }
+  function currentUserById(id) { return db.users.filter(function (u) { return u.id === id; })[0] || null; }
+  /* ------------------------------------------------ v1.9.8 테이블 레지스트리
+     테이블 현황(화면)과 JSON 다운로드(파일)가 같은 함수에서 행을 읽는다. */
+  function storeTableRows(name) {
+    if (name === 'coupon_targets') {
+      var rows = [];
+      (db.coupons || []).forEach(function (c) {
+        couponTargets(c).forEach(function (uid) {
+          rows.push({ id: 'ct_' + c.id + '_' + uid, coupon_id: c.id, user_id: uid, created_at: c.created_at || null });
+        });
+      });
+      return rows;
+    }
+    if (name === 'site_settings') {
+      return db.site_settings && typeof db.site_settings === 'object' ? [db.site_settings] : [];
+    }
+    var v = db[name];
+    return Array.isArray(v) ? v : [];
+  }
+  function storeTableCount(name) { return storeTableRows(name).length; }
+  function storeTableSummary() {
+    return STORE_TABLES.map(function (t) {
+      return { name: t.name, label: t.label, count: storeTableCount(t.name) };
+    });
+  }
+  function storeTableTotal() {
+    return STORE_TABLES.reduce(function (n, t) { return n + storeTableCount(t.name); }, 0);
+  }
+  function storeTableSnapshot() {
+    var out = {};
+    STORE_TABLES.forEach(function (t) { out[t.name] = storeTableRows(t.name); });
+    return out;
+  }
+
+  /* ------------------------------------------------------------- rendering */
+  function renderAll() {
+    renderAnnounce();
+    renderHeader();
+    renderView();
+    renderCart();
+    renderModal();
+    renderLightbox();
+    renderMediaViewer();
+    syncLock();
+  }
+  function syncLock() {
+    var lock = !!ui.modal || !!ui.lightbox || !!ui.media || ui.cartOpen;
+    document.body.classList.toggle('locked', lock);
+  }
+
+  function renderHeader() {
+    var user = currentUser();
+    var count = cartCount();
+    var st = siteSettings();
+    var brand = esc(st.site_title || TITLE_TEXT_DEFAULTS.site_title);
+    var navHtml = storeCategories().map(function (c) {
+      var active = ui.view === 'home' && ui.category === c.id;
+      return '<button data-action="nav-category" data-cat="' + c.id + '" class="' + (active ? 'active' : '') + '">' + c.label + '</button>';
+    }).join('');
+    if (isAdmin()) {
+      navHtml += '<button class="admin-nav' + (ui.view === 'admin' ? ' active' : '') + '" data-action="go-admin">관리자</button>';
+    }
+    var header = '' +
+      '<div class="header-main">' +
+        '<a class="brand" href="#" data-action="go-home" aria-label="' + brand + ' 홈">' + brand + '</a>' +
+        '<nav class="nav" aria-label="카테고리">' + navHtml + '</nav>' +
+        '<div class="header-tools">' +
+          (isAdmin() ? '<button class="admin-entry" data-action="go-admin" aria-label="관리자 콘솔 열기">관리자</button>' : '') +
+          (user
+            ? '<button class="icon-btn" data-action="go-mypage" aria-label="마이페이지" title="마이페이지">' + iconUser() + '</button>'
+            : '<button class="icon-btn" data-action="open-auth" aria-label="로그인" title="로그인">' + iconUser() + '</button>') +
+          '<button class="icon-btn cart-btn" data-action="open-cart" aria-label="장바구니" title="장바구니">' + iconBag() +
+            (count ? '<span class="cart-count">' + count + '</span>' : '') +
+          '</button>' +
+        '</div>';
+    $('#site-header').innerHTML = header;
+    applySiteTitle(st);
+  }
+  /* v1.9.14 — 브라우저 탭 제목(<title>)도 관리자 「메인/사이트 → 타이틀/푸터」 저장값을 따른다 */
+  function applySiteTitle(s) {
+    var st = s || siteSettings();
+    var t = String(st.page_title || '').trim() ||
+      (String(st.site_title || TITLE_TEXT_DEFAULTS.site_title) + ' — 모노 아틀리에');
+    if (document.title !== t) document.title = t;
+  }
+  function iconUser() {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="3.4"/><path d="M4.8 20c.5-3.6 3.5-5.8 7.2-5.8s6.7 2.2 7.2 5.8"/></svg>';
+  }
+  function iconBag() {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 7.5h13l-.9 12.5h-11.2z"/><path d="M9 7.5V6a3 3 0 0 1 6 0v1.5"/></svg>';
+  }
+  /* v1.9.5 — 검색은 SHOP 카테고리 줄의 검색창(#shop-search) 하나뿐이다.
+     헤더의 검색창/자동완성 팝업/모바일 접이식 검색을 없애고,
+     입력한 검색어는 아래 상품 목록(그리드)에만 반영한다(중복 목록 없음). */
+  function matchesQuery(p, q) {
+    var hay = [p.name, p.brand, p.description, catLabel(p.category), productCodeOf(p)].join(' ').toLowerCase();
+    return hay.indexOf(q.toLowerCase()) >= 0;
+  }
+  /* 검색어 변경 → 상품 목록·제목·건수만 갱신한다. 검색창 DOM 은 건드리지 않아
+     입력값·포커스·커서 위치가 그대로 유지된다. */
+  function applySearchQuery(value) {
+    ui.query = String(value == null ? '' : value);
+    if (ui.view !== 'home') { ui.view = 'home'; renderAll(); return; }
+    renderShopResults();
+  }
+  function renderView() {
+    var app = $('#app');
+    if (!app) return;
+    if (ui.view === 'home') app.innerHTML = homeHTML();
+    else if (ui.view === 'checkout') app.innerHTML = checkoutHTML();
+    else if (ui.view === 'mypage') app.innerHTML = mypageHTML();
+    else if (ui.view === 'admin') app.innerHTML = adminHTML();
+    else app.innerHTML = homeHTML();
+  }
+
+  /* ------------------------------------------------------------ home view */
+  function visibleProducts() {
+    var q = ui.query.trim();
+    return db.products.filter(function (p) { return p.is_active; }).filter(function (p) {
+      if (ui.category !== 'all' && p.category !== ui.category) return false;
+      if (q && !matchesQuery(p, q)) return false;
+      return true;
+    });
+  }
+  function sortedProducts(list) {
+    var arr = list.slice();
+    if (ui.sort === 'low') return arr.sort(function (a, b) { return a.price - b.price; });
+    if (ui.sort === 'high') return arr.sort(function (a, b) { return b.price - a.price; });
+    function rank(p) { return p.badge === 'BEST' ? 3 : p.badge === 'NEW' ? 2 : p.badge === 'SALE' ? 1 : 0; }
+    if (ui.sort === 'popular') {
+      return arr.sort(function (a, b) {
+        return (rank(b) - rank(a)) || (timeOf(b.created_at) - timeOf(a.created_at));
+      });
+    }
+    /* 기본(최신순) — 방금 등록한 상품이 언제나 맨 앞. created_at 내림차순 */
+    return arr.sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
+  }
+  /* ---------------------------------------------- 사이트 설정 (히어로·푸터·HELP)
+     관리자 「메인/사이트 관리」에서 편집하고 스토어에 즉시 반영한다. */
+  var HERO_EFFECTS = { none: '없음', zoom: '부드러운 줌인', fade: '페이드', slide: '슬라이드' };
+  var HERO_TEXT_KEYS = ['hero_image', 'hero_eyebrow', 'hero_title', 'hero_subtitle', 'hero_cta_label', 'hero_cta2_label'];
+  var STORY_TEXT_KEYS = ['story_image', 'story_eyebrow', 'story_title', 'story_subtitle', 'story_body'];
+  /* v1.9.3 — 상단 검은 안내 띠 문구(관리자 「메인/사이트」에서 편집) */
+  var BANNER_TEXT_KEYS = ['top_banner_text', 'top_banner_sub'];
+  /* v1.9.10 — 상품 섹션(「이번 시즌, 새로 도착한 옷」) 헤더 문구 */
+  var SHOP_TEXT_KEYS = ['shop_eyebrow', 'shop_title', 'shop_desc'];
+  /* v1.9.14 — 사이트 타이틀(상단 로고·브라우저 탭 제목)과 푸터 카피라이트 */
+  var TITLE_TEXT_KEYS = ['site_title', 'page_title', 'footer_copyright'];
+  var TITLE_TEXT_DEFAULTS = {
+    site_title: 'MONO ATELIER',
+    page_title: 'MONO ATELIER — 모노 아틀리에',
+    footer_copyright: '© 2026 MONO ATELIER. ALL RIGHTS RESERVED.'
+  };
+  var SHOP_TEXT_DEFAULTS = {
+    shop_eyebrow: 'SHOP — NEW ARRIVALS',
+    shop_title: '이번 시즌, 새로 도착한 옷',
+    shop_desc: '단정한 실루엣과 좋은 소재. 유행보다 오래 입는 옷을 제안합니다.'
+  };
+  var FOOTER_TEXT_KEYS = ['brand_blurb', 'company_name', 'company_ceo', 'company_reg_no',
+    'company_mail_order_no', 'company_address', 'company_phone', 'company_email'];
+  /* ============================================ v1.9.13 사이트 미디어·코드·멤버십 기준
+     · 히어로/브랜드 스토리 사진은 상품 사진(ALL_IMAGES)과 분리된 전용 목록으로 관리한다
+     · 뱃지 코드 목록·멤버십 등급 기준은 site_settings 에 저장하고 관리자 화면과 공유한다 */
+  function normalizeBadgeCode(v) {
+    var s = String(v == null ? '' : v).trim().replace(/\s+/g, ' ').toUpperCase();
+    return s ? s.slice(0, BADGE_CUSTOM_MAX) : '';
+  }
+  function normalizeBadgeList(v) {
+    var out = [];
+    (Array.isArray(v) ? v : []).forEach(function (x) {
+      var c = normalizeBadgeCode(x);
+      if (c && out.indexOf(c) < 0) out.push(c);
+    });
+    return out;
+  }
+  /* 관리자 「뱃지 관리」 목록(저장 값 → 기본값) */
+  function badgeList() {
+    var s = siteSettings();
+    var list = normalizeBadgeList(s.product_badges);
+    return list.length ? list : BADGE_PRESETS.slice();
+  }
+  function normalizeGradeRules(v) {
+    var out = { months: DEFAULT_GRADE_RULES.months, thresholds: clone(DEFAULT_GRADE_RULES.thresholds) };
+    var src = v && typeof v === 'object' ? v : {};
+    var m = parseInt(src.months, 10);
+    if (isFinite(m) && m >= 1 && m <= 60) out.months = m;
+    var t = (src.thresholds && typeof src.thresholds === 'object') ? src.thresholds : src;
+    GRADE_ORDER.forEach(function (g) {
+      var n = parseInt(t[g], 10);
+      out.thresholds[g] = (isFinite(n) && n >= 0) ? n : DEFAULT_GRADE_RULES.thresholds[g];
+    });
+    return out;
+  }
+  function gradeRules() { return normalizeGradeRules(siteSettings().member_grade_rules); }
+  /* 사이트 전용 미디어 목록 — 현재 적용 사진은 반드시 목록에 포함한다 */
+  function siteMediaListOf(kind, s) {
+    var st = s || siteSettings();
+    var src = kind === 'hero' ? st.hero_images : st.story_images;
+    var def = kind === 'hero' ? DEFAULT_HERO_MEDIA : DEFAULT_STORY_MEDIA;
+    var cur = kind === 'hero' ? st.hero_image : st.story_image;
+    var out = [];
+    (Array.isArray(src) && src.length ? src : def).forEach(function (x) {
+      var v = String(x || '').trim();
+      if (v && out.indexOf(v) < 0) out.push(v);
+    });
+    if (!out.length) out = def.slice();
+    if (cur && out.indexOf(cur) < 0) out.unshift(cur);
+    return out.slice(0, SITE_MEDIA_MAX);
+  }
+  function siteMediaLabel(v) {
+    if (isDataImage(v)) return '업로드 사진';
+    if (/^https?:\/\//i.test(String(v || ''))) return String(v).replace(/^https?:\/\//i, '').slice(0, 40);
+    return String(v || '');
+  }
+  function siteSettings() {
+    var base = (SEED && SEED.site_settings) || {};
+    var cur = db.site_settings || {};
+    var out = {};
+    Object.keys(base).forEach(function (k) { out[k] = cur[k] == null ? base[k] : cur[k]; });
+    Object.keys(cur).forEach(function (k) { out[k] = cur[k]; });
+    out.id = out.id || 'default';
+    out.hero_effect = HERO_EFFECTS[out.hero_effect] ? out.hero_effect : 'none';
+    out.hero_overlay = Math.max(0, Math.min(90, parseInt(out.hero_overlay, 10) || 0));
+    out.brand_story_enabled = isOn(out.brand_story_enabled);   // v1.9.9 — 기본 ON
+    out.top_banner_enabled = isOn(out.top_banner_enabled);     // v1.9.10 — 기본 ON
+    /* v1.9.10 — 상품 섹션 헤더 문구 기본값 */
+    SHOP_TEXT_KEYS.forEach(function (k) {
+      if (out[k] == null || String(out[k]) === '') out[k] = SHOP_TEXT_DEFAULTS[k];
+    });
+    /* v1.9.14 — 사이트 타이틀·푸터 카피라이트 기본값(비우면 기본 문구로) */
+    TITLE_TEXT_KEYS.forEach(function (k) {
+      if (out[k] == null || !String(out[k]).trim()) out[k] = TITLE_TEXT_DEFAULTS[k];
+    });
+    /* v1.9.13 — 뱃지 코드 목록 · 사이트 전용 미디어 · 멤버십 등급 기준을 항상 정상형으로 돌려준다 */
+    out.product_badges = normalizeBadgeList(out.product_badges);
+    if (!out.product_badges.length) out.product_badges = BADGE_PRESETS.slice();
+    out.member_grade_rules = normalizeGradeRules(out.member_grade_rules);
+    out.hero_images = siteMediaListOf('hero', out);
+    out.story_images = siteMediaListOf('story', out);
+    return out;
+  }
+  /* v1.9.9 — 사이트 설정 스위치(1/0 · true/false · 'on'/'off')를 불리언으로 읽는다 */
+  function isOn(v) {
+    return !(v === false || v === 0 || v === '0' || v === 'false' || v === 'off' || v === 'OFF' || v === 'n');
+  }
+  function brandStoryEnabled(s) { return isOn((s || siteSettings()).brand_story_enabled); }
+  function helpTopics() {
+    var list = Array.isArray(db.help_topics) ? db.help_topics : ((SEED && SEED.help_topics) || []);
+    return list.slice().sort(function (a, b) { return (a.sort_order || 0) - (b.sort_order || 0); });
+  }
+  /* v1.9.3 — 스토어 맨 위 검은 안내 띠는 관리자 「메인/사이트」에서 저장한 문구로 그린다.
+     ‘—’(em dash) 뒤 문구는 굵게 강조하고, 보조 문구는 흐리게 붙인다. 둘 다 비우면 띠를 숨긴다. */
+  function topBannerInnerHTML(s) {
+    var text = String((s && s.top_banner_text) || '').trim();
+    var sub = String((s && s.top_banner_sub) || '').trim();
+    if (!isOn((s || siteSettings()).top_banner_enabled)) return '';   // v1.9.10 — 노출 OFF
+    if (!text && !sub) return '';
+    var html = '';
+    if (text) {
+      var at = text.lastIndexOf('—');
+      if (at >= 0 && text.slice(at + 1).trim()) {
+        html = esc(text.slice(0, at + 1)) + ' <b>' + esc(text.slice(at + 1).trim()) + '</b>';
+      } else {
+        html = esc(text);
+      }
+    }
+    if (sub) html += '<span class="announce-sub">' + (text ? ' · ' : '') + esc(sub) + '</span>';
+    return html;
+  }
+  function renderAnnounce() {
+    var host = $('#announce');
+    if (!host) return;
+    var html = topBannerInnerHTML(siteSettings());
+    host.innerHTML = html;
+    host.hidden = !html;
+  }
+  function helpTopicById(id) {
+    var list = helpTopics();
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+  /* 예전 저장소(v1.7 이하)에는 사이트 설정이 없다 — 시드 기본값으로 한 번 채운다 */
+  function migrateSiteData() {
+    if (!db.meta) db.meta = {};
+    var changed = false;
+    if (!db.site_settings) { db.site_settings = clone((SEED && SEED.site_settings) || {}); changed = true; }
+    if (!Array.isArray(db.help_topics)) { db.help_topics = clone((SEED && SEED.help_topics) || []); changed = true; }
+    /* v1.9.5 — FAQ 카테고리 목록(코드)이 없던 저장소는 시드 목록으로 한 번 채운다 */
+    if (!Array.isArray(db.site_settings.faq_categories) || !db.site_settings.faq_categories.length) {
+      var seedCats = (SEED && SEED.site_settings && SEED.site_settings.faq_categories) || [];
+      db.site_settings.faq_categories = (seedCats.length ? seedCats : ['배송', '주문/결제', '교환/반품', '회원/포인트', '상품', '기타']).slice();
+      changed = true;
+    }
+    /* v1.9.10 — 상품 섹션 헤더 문구가 없던 저장소는 기본값으로 한 번 체운다 */
+    var shopChanged = false;
+    SHOP_TEXT_KEYS.forEach(function (k) {
+      if (db.site_settings[k] == null || String(db.site_settings[k]) === '') {
+        db.site_settings[k] = SHOP_TEXT_DEFAULTS[k];
+        shopChanged = true;
+      }
+    });
+    if (shopChanged) changed = true;
+    /* v1.9.14 — 사이트 타이틀·푸터 카피라이트가 없던 저장소는 기본값으로 한 번 채운다 */
+    var titleChanged = false;
+    TITLE_TEXT_KEYS.forEach(function (k) {
+      if (db.site_settings[k] == null || !String(db.site_settings[k]).trim()) {
+        db.site_settings[k] = TITLE_TEXT_DEFAULTS[k];
+        titleChanged = true;
+      }
+    });
+    if (titleChanged) changed = true;
+    /* v1.9.13 — 뱃지 코드 목록 · 사이트 전용 미디어 · 멤버십 기준이 없던 저장소는 시드 기본값으로 한 번 채운다 */
+    var v1913Changed = false;
+    if (!Array.isArray(db.site_settings.product_badges) || !db.site_settings.product_badges.length) {
+      db.site_settings.product_badges = badgeList().slice();
+      v1913Changed = true;
+    }
+    ['hero', 'story'].forEach(function (kind) {
+      var key = kind + '_images';
+      if (!Array.isArray(db.site_settings[key]) || !db.site_settings[key].length) {
+        db.site_settings[key] = siteMediaListOf(kind);
+        v1913Changed = true;
+      }
+    });
+    if (!db.site_settings.member_grade_rules || typeof db.site_settings.member_grade_rules !== 'object') {
+      db.site_settings.member_grade_rules = clone(DEFAULT_GRADE_RULES);
+      v1913Changed = true;
+    }
+    if (v1913Changed) changed = true;
+    if (changed || !db.meta.site_settings_v18) {
+      db.meta.site_settings_v18 = true;
+      save();
+    }
+  }
+  function saveSiteSettings(input) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var next = siteSettings();
+    HERO_TEXT_KEYS.concat(STORY_TEXT_KEYS, FOOTER_TEXT_KEYS, BANNER_TEXT_KEYS, SHOP_TEXT_KEYS, TITLE_TEXT_KEYS).forEach(function (k) {
+      if (input[k] != null) next[k] = String(input[k]).trim();
+    });
+    if (input.story_tags != null) {
+      next.story_tags = Array.isArray(input.story_tags) ? input.story_tags.slice(0, 8)
+        : String(input.story_tags).split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 8);
+    }
+    /* v1.9.9 — 메인페이지 브랜드 스토리 노출 ON/OFF */
+    if (input.brand_story_enabled != null) next.brand_story_enabled = isOn(input.brand_story_enabled);
+    /* v1.9.10 — 상단 안내 띠 노출 ON/OFF */
+    if (input.top_banner_enabled != null) next.top_banner_enabled = isOn(input.top_banner_enabled);
+    if (!next.hero_title) return { ok: false, message: '메인 타이틀을 입력해 주세요.' };
+    /* v1.9.10 — 상품 섹션 문구는 비우면 기본값으로 되돌린다(홈에 빈 제목이 남지 않게) */
+    SHOP_TEXT_KEYS.forEach(function (k) {
+      if (!String(next[k] || '').trim()) next[k] = SHOP_TEXT_DEFAULTS[k];
+    });
+    /* v1.9.14 — 타이틀·카피라이트도 비우면 기본 문구로 돌린다 */
+    TITLE_TEXT_KEYS.forEach(function (k) {
+      if (!String(next[k] || '').trim()) next[k] = TITLE_TEXT_DEFAULTS[k];
+    });
+    var eff = String(input.hero_effect || next.hero_effect || 'none');
+    if (!HERO_EFFECTS[eff]) return { ok: false, message: '히어로 효과를 다시 선택해 주세요.' };
+    next.hero_effect = eff;
+    var ov = parseInt(input.hero_overlay, 10);
+    next.hero_overlay = Math.max(0, Math.min(90, isNaN(ov) ? next.hero_overlay : ov));
+    if (!next.hero_image) next.hero_image = 'hero.webp';
+    if (next.company_email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(next.company_email)) {
+      return { ok: false, message: '고객센터 이메일 형식을 확인해 주세요.' };
+    }
+    next.updated_at = nowISO();
+    db.site_settings = next;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, settings: next };
+  }
+  function saveHelpTopics(list) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var rows = [], seen = {};
+    (list || []).forEach(function (t) {
+      var title = String((t && t.title) || '').trim();
+      var body = String((t && t.body) || '').trim();
+      if (!title) return;
+      var id = String((t && t.id) || '').trim() || newId('help');
+      if (seen[id]) id = newId('help');
+      seen[id] = 1;
+      rows.push({ id: id, title: title, body: body, sort_order: rows.length + 1 });
+    });
+    if (!rows.length) return { ok: false, message: 'HELP 항목을 1개 이상 입력해 주세요.' };
+    db.help_topics = rows;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, topics: rows };
+  }
+
+  /* ============================================================ v1.9.1 알림
+     · 회원가입 이메일 인증(6자리 OTP) — 테스트 모드: 화면에 코드 표시 / API 모드: 설정한 URL 로 발송
+     · 주문 완료 SMS — 테스트 모드: 실제 발송 없이 sms_logs 에 기록 */
+  var EMAIL_CODE_TTL = 5 * 60 * 1000;   // 인증번호 유효 시간 5분
+  function notifySettings() {
+    var s = siteSettings();
+    return {
+      email_auth_mode: s.email_auth_mode === 'api' ? 'api' : 'test',
+      email_api_url: String(s.email_api_url || '').trim(),
+      sms_enabled: !(s.sms_enabled === false || s.sms_enabled === 0 || s.sms_enabled === 'false' || s.sms_enabled === '0'),
+      sms_mode: s.sms_mode === 'api' ? 'api' : 'test',
+      sms_api_url: String(s.sms_api_url || '').trim(),
+      sms_sender: String(s.sms_sender || '').trim()
+    };
+  }
+  function koreanPhone(v) {
+    var d = String(v || '').replace(/[^0-9]/g, '');
+    if (d.length === 11) return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+    if (d.length === 10) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+    return String(v || '').trim();
+  }
+  function saveNotifySettings(input) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var next = siteSettings();
+    next.email_auth_mode = input.email_auth_mode === 'api' ? 'api' : 'test';
+    next.email_api_url = String(input.email_api_url || '').trim().slice(0, 300);
+    next.sms_enabled = !!input.sms_enabled;
+    next.sms_mode = input.sms_mode === 'api' ? 'api' : 'test';
+    next.sms_api_url = String(input.sms_api_url || '').trim().slice(0, 300);
+    next.sms_sender = String(input.sms_sender || '').trim().slice(0, 40);
+    if (next.email_auth_mode === 'api' && next.email_api_url && !/^https?:\/\//i.test(next.email_api_url)) {
+      return { ok: false, message: '이메일 API URL 은 http:// 또는 https:// 로 시작해야 합니다.' };
+    }
+    if (next.sms_mode === 'api' && !next.sms_api_url) {
+      return { ok: false, message: 'SMS API(Webhook) URL 을 입력해 주세요.' };
+    }
+    if (next.sms_mode === 'api' && next.sms_api_url && !/^https?:\/\//i.test(next.sms_api_url)) {
+      return { ok: false, message: 'SMS API URL 은 http:// 또는 https:// 로 시작해야 합니다.' };
+    }
+    next.updated_at = nowISO();
+    db.site_settings = next;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, settings: notifySettings() };
+  }
+  function newEmailCode() {
+    return String(Math.floor(100000 + Math.random() * 900000));
+  }
+  function emailAuthState() {
+    if (!ui.emailAuth) ui.emailAuth = { email: '', code: '', verified: false, sentAt: 0, mode: 'test' };
+    return ui.emailAuth;
+  }
+  function emailCodeExpired() {
+    var a = emailAuthState();
+    return !a.sentAt || (Date.now() - a.sentAt > EMAIL_CODE_TTL);
+  }
+  function sendEmailCode(email) {
+    var e = String(email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) return { ok: false, message: '올바른 이메일 주소를 입력해 주세요.' };
+    var s = notifySettings();
+    /* v1.9.2 — 같은 이메일 연속 발송 쿨다운(기본 60초). 차단 시도도 로그에 blocked 로 남긴다. */
+    var left = emailCooldownLeft(e);
+    if (left > 0) {
+      addDispatchLog({
+        channel: 'email', to: e, kind: 'email_otp', mode: s.email_auth_mode, status: 'blocked',
+        summary: '인증번호 재발송 차단 — 쿨다운 ' + Math.ceil(left / 1000) + '초 남음'
+      });
+      save();
+      return { ok: false, blocked: true, message: '인증번호를 너무 자주 요청했습니다. ' + Math.ceil(left / 1000) + '초 후 다시 시도해 주세요.' };
+    }
+    var resend = dispatchLogsOf().some(function (l) {
+      return l.channel === 'email' && l.status !== 'blocked' && String(l.to || '').toLowerCase() === e;
+    });
+    var code = newEmailCode();
+    ui.emailAuth = { email: e, code: code, verified: false, sentAt: Date.now(), mode: s.email_auth_mode };
+    var sendStatus = 'test';
+    if (s.email_auth_mode === 'api' && s.email_api_url) {
+      sendStatus = 'sent';
+      try {
+        fetch(s.email_api_url, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: e, subject: 'MONO ATELIER 이메일 인증번호', code: code })
+        })['catch'](function () {});
+      } catch (err) { /* 정적 데모에서는 서버 응답을 기다리지 않는다 */ }
+    }
+    /* 인증번호 자체는 로그에 남기지 않는다(6자리 코드는 화면·메일로만) */
+    addDispatchLog({
+      channel: 'email', to: e, kind: resend ? 'email_resend' : 'email_otp', mode: s.email_auth_mode, status: sendStatus,
+      summary: '[MONO ATELIER] ' + (resend ? '이메일 인증번호 재발송' : '회원가입 이메일 인증번호 발송') + ' (6자리, 5분 유효)'
+    });
+    save();
+    return { ok: true, code: code, mode: s.email_auth_mode };
+  }
+  function verifyEmailCode(email, code) {
+    var a = emailAuthState();
+    var e = String(email || '').trim().toLowerCase();
+    if (!a.sentAt) return { ok: false, message: '인증번호를 먼저 발송해 주세요.' };
+    if (a.email !== e) return { ok: false, message: '인증번호를 발송한 이메일과 다릅니다. 다시 발송해 주세요.' };
+    if (emailCodeExpired()) return { ok: false, message: '인증번호가 만료되었습니다. 다시 발송해 주세요.' };
+    if (String(code || '').trim() !== a.code) return { ok: false, message: '인증번호가 일치하지 않습니다.' };
+    a.verified = true;
+    return { ok: true };
+  }
+  function emailVerifiedFor(email) {
+    var a = ui.emailAuth;
+    return !!(a && a.verified && a.email === String(email || '').trim().toLowerCase());
+  }
+  function buildOrderSmsBody(order) {
+    var items = orderItemsOf(order.id);
+    var first = items[0] ? items[0].product_name + (items.length > 1 ? ' 외 ' + (items.length - 1) + '건' : '') : '주문 상품';
+    return '[MONO ATELIER] ' + (order.recipient_name || '고객') + '님 주문이 접수되었습니다. ' +
+      order.order_no + ' · ' + first + ' · 결제 ' + won(order.total_amount) + '. 배송은 준비 후 순차적으로 진행됩니다.';
+  }
+  function smsLogsOf(orderId) {
+    return (db.sms_logs || []).filter(function (l) { return !orderId || l.order_id === orderId; })
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
+  }
+  var SMS_STATUS = { test: '테스트 발송', sent: '발송 완료', failed: '발송 실패', skipped: '발송 안 함' };
+  function smsStatusLabel(s) { return SMS_STATUS[s] || s || '-'; }
+  /* ============================================== v1.9.2 발송 로그(통합)
+     SMS · 이메일 인증번호 발송을 한 표(dispatch_logs)에 남긴다.
+     status: test(테스트) / sent(발송) / blocked(쿨다운·과다로 차단) / failed(실패) */
+  function dispatchLogsOf() {
+    if (!Array.isArray(db.dispatch_logs)) db.dispatch_logs = [];
+    return db.dispatch_logs.slice().sort(function (a, b) {
+      return timeOf(b.created_at) - timeOf(a.created_at);
+    });
+  }
+  function addDispatchLog(entry) {
+    if (!Array.isArray(db.dispatch_logs)) db.dispatch_logs = [];
+    var row = {
+      id: newId('dsp'),
+      channel: entry.channel === 'email' ? 'email' : 'sms',
+      to: String(entry.to || '').trim(),
+      kind: entry.kind || (entry.channel === 'email' ? 'email_otp' : 'order_created'),
+      summary: String(entry.summary || '').slice(0, 300),
+      status: DISPATCH_STATUS[entry.status] ? entry.status : 'test',
+      mode: entry.mode === 'api' ? 'api' : 'test',
+      order_id: entry.order_id || null,
+      created_at: entry.created_at || nowISO()
+    };
+    db.dispatch_logs.push(row);
+    return row;
+  }
+  function dispatchStatusLabel(s) { return DISPATCH_STATUS[s] || s || '-'; }
+  function dispatchKindLabel(k) { return DISPATCH_KINDS[k] || k || '-'; }
+  /* 같은 이메일로의 연속 발송 쿨다운 — 남은 시간(ms). 차단 로그는 쿨다운을 연장하지 않는다. */
+  function emailCooldownLeft(email) {
+    var e = String(email || '').trim().toLowerCase();
+    if (!e) return 0;
+    var now = Date.now();
+    var last = 0;
+    dispatchLogsOf().forEach(function (l) {
+      if (l.channel !== 'email' || l.status === 'blocked' || l.status === 'failed') return;
+      if (String(l.to || '').toLowerCase() !== e) return;
+      var t = new Date(l.created_at).getTime();
+      if (t > last && now - t < EMAIL_SEND_COOLDOWN) last = t;
+    });
+    return last ? Math.max(0, EMAIL_SEND_COOLDOWN - (now - last)) : 0;
+  }
+  /* 과다 발송(악의적 공격) 감지
+     · 같은 수신자(SMS·이메일별)에게 10분 내 3회 이상
+     · 전체 발송이 5분 내 12건 이상(발송 급증) */
+  function dispatchAnomalies() {
+    var now = Date.now();
+    var rows = dispatchLogsOf();
+    var groups = {}, out = [];
+    rows.forEach(function (l) {
+      var t = new Date(l.created_at).getTime();
+      if (!isFinite(t) || now - t > DISPATCH_WINDOW_MS) return;
+      var key = l.channel + '|' + String(l.to || '').toLowerCase();
+      var g = groups[key] || (groups[key] = { channel: l.channel, to: l.to, count: 0, blocked: 0, first: t, last: t });
+      g.count++;
+      if (l.status === 'blocked') g.blocked++;
+      g.first = Math.min(g.first, t);
+      g.last = Math.max(g.last, t);
+    });
+    Object.keys(groups).forEach(function (k) {
+      var g = groups[k];
+      if (g.count >= DISPATCH_RECIPIENT_LIMIT) out.push(g);
+    });
+    out.sort(function (a, b) { return b.count - a.count || b.last - a.last; });
+    var burst = rows.filter(function (l) {
+      var t = new Date(l.created_at).getTime();
+      return isFinite(t) && now - t <= DISPATCH_BURST_WINDOW_MS;
+    }).length;
+    return { recipients: out, burst: burst, burstLimit: DISPATCH_BURST_LIMIT, windowMin: Math.round(DISPATCH_WINDOW_MS / 60000) };
+  }
+  /* 주문 완료 SMS — 테스트 모드는 실제 발송·과금 없이 로그만 남긴다 */
+  function sendOrderSms(order, kind) {
+    if (!order) return null;
+    var s = notifySettings();
+    if (!s.sms_enabled) return null;
+    var body = buildOrderSmsBody(order);
+    var status = s.sms_mode === 'test' ? 'test' : 'sent';
+    if (s.sms_mode === 'api' && s.sms_api_url) {
+      try {
+        fetch(s.sms_api_url, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: koreanPhone(order.recipient_phone), from: s.sms_sender, text: body, order_no: order.order_no })
+        })['catch'](function () {});
+      } catch (err) { status = 'failed'; }
+    }
+    var row = {
+      id: newId('sms'), order_id: order.id, user_id: order.user_id || null,
+      phone: koreanPhone(order.recipient_phone), message: body, kind: kind || 'order_created',
+      status: status, mode: s.sms_mode, sender: s.sms_sender,
+      api_url: s.sms_mode === 'api' ? s.sms_api_url : '', created_at: nowISO()
+    };
+    if (!Array.isArray(db.sms_logs)) db.sms_logs = [];
+    db.sms_logs.push(row);
+    /* v1.9.2 — 발송 로그(통합)에도 같은 건을 남긴다 */
+    addDispatchLog({
+      channel: 'sms', to: row.phone, kind: row.kind, summary: body,
+      status: status === 'sent' ? 'sent' : (status === 'failed' ? 'failed' : 'test'),
+      mode: s.sms_mode, order_id: order.id, created_at: row.created_at
+    });
+    return row;
+  }
+  /* 관리자 「데이터 관리」 — 알림 설정(이메일 인증·주문 SMS) 과 SMS 발송 로그 */
+  function notifySettingsHTML() {
+    var s = notifySettings();
+    return '<div class="data-card notify-settings" data-notify-settings="1" style="margin-top:16px">' +
+      '<h3>알림 설정 (이메일 인증 · 주문 SMS)</h3>' +
+      '<p>기본은 <b>테스트 모드</b>입니다. 실제 발송 없이 화면·로그로 동작을 확인하고, API URL 을 넣으면 실서버(Resend·Brevo·SMTP/SMS 백엔드 프록시)로 전환됩니다.</p>' +
+      '<div class="form-grid">' +
+        '<div class="field"><label>이메일 인증 모드</label><select id="ns-email-mode">' +
+          '<option value="test"' + (s.email_auth_mode === 'test' ? ' selected' : '') + '>테스트 (화면에 인증번호 표시)</option>' +
+          '<option value="api"' + (s.email_auth_mode === 'api' ? ' selected' : '') + '>실서버 API</option></select></div>' +
+        '<div class="field"><label>이메일 API URL <small>예: https://api.resend.com/emails 프록시</small></label>' +
+          '<input id="ns-email-url" value="' + esc(s.email_api_url) + '" placeholder="https://…"></div>' +
+        '<div class="field"><label>주문 SMS 발송</label><label class="toggle' + (s.sms_enabled ? ' on' : '') + '" data-hook="sms-toggle">' +
+          '<input type="checkbox" id="ns-sms-enabled"' + (s.sms_enabled ? ' checked' : '') + '> <span data-hook="sms-enabled-label">' + (s.sms_enabled ? '사용' : '사용 안 함') + '</span></label></div>' +
+        '<div class="field"><label>SMS 모드</label><select id="ns-sms-mode">' +
+          '<option value="test"' + (s.sms_mode === 'test' ? ' selected' : '') + '>테스트 (로그만 기록)</option>' +
+          '<option value="api"' + (s.sms_mode === 'api' ? ' selected' : '') + '>실서버 API</option></select></div>' +
+        '<div class="field span2"><label>SMS Webhook/API URL</label><input id="ns-sms-url" value="' + esc(s.sms_api_url) + '" placeholder="https://…"></div>' +
+        '<div class="field"><label>발신번호(사이너)</label><input id="ns-sms-sender" maxlength="40" value="' + esc(s.sms_sender) + '" placeholder="예: 02-0000-0000"></div>' +
+      '</div>' +
+      '<div class="site-actions"><span class="site-hint" data-hook="notify-hint">테스트 모드에서는 실제 발송·과금이 없습니다.</span>' +
+        '<button class="btn small" data-action="save-notify-settings">알림 설정 저장</button></div>' +
+      '<div class="sms-log" data-sms-log="1">' +
+        '<div class="sms-log-head"><b>SMS · 이메일 발송 로그</b><span>최근 ' + dispatchLogsOf().length + '건 · 테스트/실서버 발송 내역</span></div>' +
+        '<p class="sms-log-move">발송 내역은 별도 <b>「발송 로그」</b> 탭에서 채널·상태·키워드로 검색하고, 과다 발송(이상 징후)까지 확인할 수 있습니다.</p>' +
+        '<div class="row"><button class="btn ghost small" data-action="admin-tab" data-tab="logs">발송 로그 열기</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ============================================== v1.9.2 관리자 「발송 로그」 탭
+     SMS·이메일 인증 발송 로그 + 채널/상태/키워드 필터 + 과다 발송 경고 */
+  function dispatchFilterRows() {
+    var q = String(ui.logQuery || '').trim().toLowerCase();
+    var ch = ui.logChannel || 'all';
+    var st = ui.logStatus || 'all';
+    return dispatchLogsOf().filter(function (l) {
+      if (ch !== 'all' && l.channel !== ch) return false;
+      if (st !== 'all' && l.status !== st) return false;
+      if (!q) return true;
+      var hay = [l.to, l.summary, dispatchKindLabel(l.kind), l.channel === 'email' ? '이메일' : 'SMS', l.status].join(' ').toLowerCase();
+      return hay.indexOf(q) >= 0;
+    });
+  }
+  function anomalyCardHTML() {
+    var a = dispatchAnomalies();
+    var hits = a.recipients.length > 0 || a.burst >= a.burstLimit;
+    if (!hits) {
+      return '<div class="dispatch-guard ok" data-hook="dispatch-guard" data-anomaly="0">' +
+        '<b>과다 발송 이상 징후 없음</b> — 최근 ' + a.windowMin + '분 내 동일 수신자 ' + DISPATCH_RECIPIENT_LIMIT +
+        '회 이상 발송, 5분 내 전체 ' + a.burstLimit + '건 이상 발송이 감지되면 이곳에 경고가 표시됩니다.</div>';
+    }
+    return '<div class="dispatch-guard warn" data-hook="dispatch-guard" data-anomaly="1" role="alert">' +
+      '<div class="dg-head">⚠️ 과다 발송 이상 징후 감지</div>' +
+      '<ul class="dg-list">' +
+        (a.burst >= a.burstLimit ? '<li>전체 발송 급증 — 최근 5분 &#8203;' + a.burst + '건 (기준 ' + a.burstLimit + '건)</li>' : '') +
+        a.recipients.map(function (g) {
+          return '<li>' + esc(DISPATCH_CHANNELS[g.channel] || g.channel) + ' · <b>' + esc(g.to) + '</b> — 최근 ' + a.windowMin + '분 ' +
+            g.count + '회' + (g.blocked ? ' (차단 ' + g.blocked + '회)' : '') +
+            ' · 마지막 ' + fmtDateTime(new Date(g.last).toISOString()) + '</li>';
+        }).join('') +
+      '</ul>' +
+      '<p class="dg-hint">같은 수신자에게 짧은 시간에 반복 발송되면 악의적 대량 발송(문자·메일 폭탄)일 수 있습니다. 같은 이메일 연속 요청은 ' +
+        Math.round(EMAIL_SEND_COOLDOWN / 1000) + '초 쿨다운으로 자동 차단되고 <b>blocked</b> 로 기록됩니다.</p>' +
+    '</div>';
+  }
+  function dispatchListHTML() {
+    var rows = dispatchFilterRows();
+    var total = dispatchLogsOf().length;
+    if (!rows.length) {
+      return '<div class="log-empty" data-hook="log-empty">' +
+        (total ? '조건에 맞는 발송 내역이 없습니다.' : '아직 발송 내역이 없습니다.<br>주문 결제·회원가입 인증번호 발송 시 이곳에 기록됩니다.') + '</div>';
+    }
+    var info = adminPagerInfo(rows, 'logs', [ui.logChannel, ui.logStatus, ui.logQuery].join('|'));
+    return '<div class="log-count" data-hook="log-count">' + rows.length + '건' + (rows.length !== total ? ' / 전체 ' + total + '건' : '') + '</div>' +
+      '<div class="log-cards" data-hook="log-cards">' + info.rows.map(function (l, i) {
+        return '<article class="log-card" data-log="' + esc(l.id) + '" data-channel="' + esc(l.channel) + '" data-status="' + esc(l.status) + '">' +
+          '<div class="lc-top">' +
+            '<span class="lc-no" data-seq="' + adminSeqNo(info, i) + '">' + adminSeqNo(info, i) + '</span>' +
+            '<span class="lc-ch ' + esc(l.channel) + '">' + esc(DISPATCH_CHANNELS[l.channel] || l.channel) + '</span>' +
+            '<span class="lc-to">' + esc(l.to) + '</span>' +
+            '<span class="sms-pill ' + esc(l.status) + '">' + esc(dispatchStatusLabel(l.status)) + '</span>' +
+          '</div>' +
+          '<div class="lc-meta">' + esc(dispatchKindLabel(l.kind)) + ' · ' + fmtDateTime(l.created_at) + ' · ' + esc(l.mode === 'api' ? '실서버 API' : '테스트 모드') + '</div>' +
+          '<p class="lc-body">' + esc(l.summary) + '</p>' +
+        '</article>';
+      }).join('') + '</div>' + adminPagerHTML(info);
+  }
+  function adminLogsHTML() {
+    var rows = dispatchLogsOf();
+    var channelChips = [{ value: 'all', label: '전체', count: rows.length }].concat(
+      Object.keys(DISPATCH_CHANNELS).map(function (k) {
+        return { value: k, label: DISPATCH_CHANNELS[k], count: rows.filter(function (l) { return l.channel === k; }).length };
+      })
+    );
+    var statusChips = [{ value: 'all', label: '전체', count: rows.length }].concat(
+      Object.keys(DISPATCH_STATUS).map(function (k) {
+        return { value: k, label: DISPATCH_STATUS[k].replace(' 발송', ''), count: rows.filter(function (l) { return l.status === k; }).length };
+      })
+    );
+    return '<div class="data-card dispatch-admin" data-dispatch-admin="1">' +
+      '<h3>발송 로그</h3>' +
+      '<p>SMS(주문 완료 안내) 와 이메일 인증번호 발송을 한곳에 기록합니다. 채널·상태·키워드(수신번호·이메일·본문·유형)로 바로 찾을 수 있습니다.</p>' +
+      anomalyCardHTML() +
+      '<div class="log-filters">' +
+        '<div class="lf-group"><span class="lf-label">채널</span>' + adminFilterChipsHTML('log-channel', channelChips, ui.logChannel || 'all') + '</div>' +
+        '<div class="lf-group"><span class="lf-label">상태</span>' + adminFilterChipsHTML('log-status', statusChips, ui.logStatus || 'all') + '</div>' +
+        '<div class="lf-search">' +
+          '<input id="log-search" type="search" value="' + esc(ui.logQuery || '') + '" placeholder="수신번호·이메일·본문·유형 검색" aria-label="발송 로그 검색" autocomplete="off">' +
+          '<button class="btn ghost small" data-action="log-reset">초기화</button>' +
+        '</div>' +
+      '</div>' +
+      '<div data-hook="log-list">' + dispatchListHTML() + '</div>' +
+    '</div>';
+  }
+  /* 필터·검색은 목록만 다시 그린다(검색창 포커스·입력값 유지) */
+  function refreshDispatchList() {
+    var host = $('[data-hook=log-list]');
+    if (host) host.innerHTML = dispatchListHTML();
+    var guard = $('[data-hook=dispatch-guard]');
+    if (guard && guard.parentNode) {
+      var holder = document.createElement('div');
+      holder.innerHTML = anomalyCardHTML();
+      guard.parentNode.replaceChild(holder.firstElementChild, guard);
+    }
+  }
+
+  /* ============================================================== v1.9 포인트
+     · 등급별 적립률(%)은 관리자 「포인트/회원」에서 db.point_policies 로 저장
+     · 구매확정: 상품 실결제 금액(쿠폰 할인 안분 후)의 confirm_rate%
+     · 포토·영상 리뷰: 같은 금액의 photo_rate% 를 주문항목당 1회 추가 */
+  function clampRate(v, def) {
+    var n = Number(v);
+    if (!isFinite(n) || n < 0) return def;
+    return Math.round(Math.min(POINT_POLICY_LIMIT, Math.max(0, n)) * 100) / 100;
+  }
+  function pointPolicyMap() {
+    var out = {};
+    var list = Array.isArray(db && db.point_policies) ? db.point_policies : [];
+    GRADE_ORDER.forEach(function (g) {
+      var row = list.filter(function (p) { return String(p.grade).toUpperCase() === g; })[0] || {};
+      var def = DEFAULT_POINT_POLICIES[g];
+      out[g] = {
+        grade: g,
+        confirm_rate: clampRate(row.confirm_rate, def.confirm_rate),
+        photo_rate: clampRate(row.photo_rate, def.photo_rate)
+      };
+    });
+    return out;
+  }
+  function pointPolicyOf(user) {
+    var map = pointPolicyMap();
+    return map[gradeOf(user)] || map.NORMAL;
+  }
+  function pointRateLabel(v) {
+    return (Math.round(Number(v) * 100) / 100).toString() + '%';
+  }
+  function userPoints(user) { return Math.max(0, Math.round(Number(user && user.points) || 0)); }
+  var POINT_TYPES = {
+    signup: { label: '가입', sign: '+' },
+    confirm: { label: '구매확정', sign: '+' },
+    photo_review: { label: '포토·영상 리뷰', sign: '+' },
+    review: { label: '리뷰', sign: '+' },
+    use: { label: '사용', sign: '−' },
+    refund: { label: '환급', sign: '+' },
+    review_reclaim: { label: '리뷰 반려 회수', sign: '−' },
+    adjust: { label: '조정', sign: '' }
+  };
+  function pointLogsOf(userId) {
+    return (db.point_logs || []).filter(function (l) { return l.user_id === userId; })
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
+  }
+  function pointTypeLabel(t) { return (POINT_TYPES[t] || { label: t }).label; }
+  function addPointLog(user, type, amount, meta) {
+    var m = meta || {};
+    var amt = Math.round(Number(amount) || 0);
+    if (!user || !amt) return null;
+    var row = {
+      id: newId('pl'), user_id: user.id, type: type, amount: amt,
+      base_amount: Math.round(Number(m.base_amount) || 0), rate: Number(m.rate) || 0,
+      order_id: m.order_id || null, order_item_id: m.order_item_id || null, review_id: m.review_id || null,
+      description: String(m.description || pointTypeLabel(type) + ' 포인트'), created_at: nowISO()
+    };
+    user.points = Math.max(0, userPoints(user) + amt);
+    db.point_logs.push(row);
+    return row;
+  }
+  function savePointPolicies(input) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var map = pointPolicyMap();
+    var next = [];
+    for (var i = 0; i < GRADE_ORDER.length; i++) {
+      var g = GRADE_ORDER[i];
+      var src = (input && input[g]) || {};
+      var cr = clampRate(src.confirm_rate, map[g].confirm_rate);
+      var pr = clampRate(src.photo_rate, map[g].photo_rate);
+      if (!(cr > 0) || !(pr > 0)) return { ok: false, message: GRADES[g].label + ' 등급 적립률을 0보다 크게 입력해 주세요.' };
+      next.push({ grade: g, confirm_rate: cr, photo_rate: pr, updated_at: nowISO() });
+    }
+    db.point_policies = next;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, policies: pointPolicyMap() };
+  }
+  function maskUserName(name) {
+    var s = String(name || '').trim();
+    if (!s) return '고객';
+    return s.slice(0, 1) + s.slice(1).replace(/./g, '*');
+  }
+  function orderItemProductId(oi) {
+    var v = oi ? variantById(oi.variant_id) : null;
+    return v ? v.product_id : null;
+  }
+  /* 상품 실결제 금액 — 쿠폰 할인을 상품 금액 비율로 나눈 금액(배송비 제외) */
+  function orderItemNetAmount(order, oi) {
+    var items = orderItemsOf(order.id);
+    var subtotal = items.reduce(function (s, x) { return s + x.unit_price * x.quantity; }, 0);
+    var gross = oi.unit_price * oi.quantity;
+    if (!subtotal) return gross;
+    var discount = Math.max(0, Number(order.discount_amount) || 0);
+    return Math.max(0, Math.round(gross - discount * (gross / subtotal)));
+  }
+  function canConfirmItem(order, oi) {
+    if (!order || order.status !== 'delivered' || oi.confirmed_at) return false;
+    var claim = claimOfOrder(order.id);
+    if (claim && claim.status !== 'rejected') return false;  // 교환·반품 진행 중인 상품은 확정 불가
+    return true;
+  }
+  function confirmOrderItem(oiId) {
+    var u = currentUser();
+    if (!u) return { ok: false, message: '로그인이 필요합니다.' };
+    var oi = db.order_items.filter(function (x) { return x.id === oiId; })[0];
+    if (!oi) return { ok: false, message: '주문 상품을 찾을 수 없습니다.' };
+    var order = orderById(oi.order_id);
+    if (!order || order.user_id !== u.id) return { ok: false, message: '본인 주문만 구매확정할 수 있습니다.' };
+    if (order.status === 'cancelled') return { ok: false, message: '취소된 주문은 구매확정할 수 없습니다.' };
+    if (order.status !== 'delivered') return { ok: false, message: '배송완료된 상품만 구매확정할 수 있습니다.' };
+    if (oi.confirmed_at) return { ok: false, message: '이미 구매확정된 상품입니다. (포인트 중복 지급 불가)' };
+    var policy = pointPolicyOf(u);
+    var base = orderItemNetAmount(order, oi);
+    var points = Math.floor(base * policy.confirm_rate / 100);
+    oi.confirmed_at = nowISO();
+    oi.confirm_points = points;
+    if (points > 0) {
+      addPointLog(u, 'confirm', points, {
+        base_amount: base, rate: policy.confirm_rate, order_id: order.id, order_item_id: oi.id,
+        description: '구매확정 적립 (' + GRADES[gradeOf(u)].label + ' ' + pointRateLabel(policy.confirm_rate) + ')'
+      });
+    }
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, item: oi, points: points, balance: userPoints(u), rate: policy.confirm_rate };
+  }
+
+  /* ============================================================== v1.9 리뷰 */
+  /* 한 주문항목의 리뷰 이력 — 1차(최초 작성) + 2차(반려 후 재작성) 최대 2건 */
+  function reviewsOfOrderItem(oiId) {
+    return (db.product_reviews || []).filter(function (r) { return r.order_item_id === oiId; })
+      .sort(function (a, b) {
+        var d = (Number(a.attempt) || 1) - (Number(b.attempt) || 1);
+        return d !== 0 ? d : timeOf(a.created_at) - timeOf(b.created_at);
+      });
+  }
+  /* 현재 유효한(가장 마지막) 리뷰 — 반려 후 재작성했으면 2차 리뷰 */
+  function reviewOfOrderItem(oiId) {
+    var list = reviewsOfOrderItem(oiId);
+    return list.length ? list[list.length - 1] : null;
+  }
+  function reviewAttemptsOf(oi) {
+    if (!oi) return 0;
+    var n = Math.round(Number(oi.review_attempts) || 0);
+    if (n > 0) return n;
+    return reviewsOfOrderItem(oi.id).length;   // 예전 데이터 보정
+  }
+  /* 반려·포인트 회수된 주문항목에 한해 딱 1번 재작성할 수 있다(2차까지) */
+  function reviewRewriteAvailable(oi) {
+    var last = reviewOfOrderItem(oi && oi.id);
+    if (!last || !reviewIsHidden(last)) return false;
+    if (oi.rewrite_used) return false;
+    return reviewAttemptsOf(oi) < REVIEW_MAX_ATTEMPTS;
+  }
+  function reviewIsHidden(r) { return !!r && r.status === 'rejected'; }
+  /* 관리자 검수용 — 반려 리뷰까지 전부 */
+  function allReviews() {
+    return (db.product_reviews || []).slice()
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
+  }
+  /* 스토어 노출용 - 반려(rejected) 리뷰는 제외한다 */
+  function productReviews(pid) {
+    return allReviews().filter(function (r) { return r.product_id === pid && !reviewIsHidden(r); });
+  }
+  function reviewMedia(r) { return Array.isArray(r && r.media) ? r.media : []; }
+  function reviewStats(pid) {
+    var list = productReviews(pid);
+    var sum = list.reduce(function (s, r) { return s + (Number(r.rating) || 0); }, 0);
+    return {
+      count: list.length,
+      avg: list.length ? Math.round((sum / list.length) * 10) / 10 : 0,
+      photos: list.filter(function (r) { return reviewMedia(r).length > 0; }).length
+    };
+  }
+  /* ================================================= v1.9.11 리뷰 추천/비추천
+     · 로그인한 다른 이용자가 리뷰 1건에 추천/비추천 1회(선택·취소·전환)
+     · 본인이 쓴 리뷰에는 투표할 수 없다(자기 점수 조작 차단)
+     · 표는 review_votes 표에 회원 1명당 1행으로 남기고, 화면의 숫자는 그 합계다 */
+  function reviewVoteRows(rid) {
+    return (db.review_votes || []).filter(function (v) { return v && v.review_id === rid; });
+  }
+  function reviewVoteCounts(rid) {
+    var rows = reviewVoteRows(rid);
+    var up = rows.filter(function (v) { return v.vote === 'up'; }).length;
+    var down = rows.filter(function (v) { return v.vote === 'down'; }).length;
+    return { up: up, down: down, net: up - down };
+  }
+  function myReviewVote(rid) {
+    var u = currentUser();
+    if (!u) return null;
+    var row = reviewVoteRows(rid).filter(function (v) { return v.user_id === u.id; })[0];
+    return row ? row.vote : null;
+  }
+  /* 추천(up)/비추천(down) 토글 — 같은 표를 다시 누르면 취소, 반대 표는 전환 */
+  function toggleReviewVote(rid, vote) {
+    if (vote !== 'up' && vote !== 'down') return { ok: false, message: '추천 또는 비추천을 선택해 주세요.' };
+    var r = reviewById(rid);
+    if (!r) return { ok: false, message: '리뷰를 찾을 수 없습니다.' };
+    if (reviewIsHidden(r)) return { ok: false, message: '반려된 리뷰에는 추천할 수 없습니다.' };
+    var u = currentUser();
+    if (!u) return { ok: false, needLogin: true, message: '로그인 후 추천할 수 있습니다.' };
+    if (r.user_id === u.id) return { ok: false, message: '본인이 작성한 리뷰는 추천·비추천할 수 없습니다.' };
+    var mine = reviewVoteRows(rid).filter(function (v) { return v.user_id === u.id; })[0];
+    var before = mine ? mine.vote : null;
+    var action;
+    if (!mine) {
+      db.review_votes.push({ id: newId('rvv'), review_id: rid, user_id: u.id, vote: vote, created_at: nowISO() });
+      action = 'added';
+    } else if (mine.vote === vote) {
+      db.review_votes = db.review_votes.filter(function (v) { return !(v.review_id === rid && v.user_id === u.id); });
+      action = 'removed';
+    } else {
+      mine.vote = vote;
+      mine.created_at = nowISO();
+      action = 'switched';
+    }
+    if (!save()) {
+      /* 저장 실패 시 되돌린다 */
+      if (action === 'added') db.review_votes = db.review_votes.filter(function (v) { return v.review_id !== rid || v.user_id !== u.id; });
+      else if (action === 'removed') db.review_votes.push({ id: newId('rvv'), review_id: rid, user_id: u.id, vote: vote, created_at: nowISO() });
+      else { var back = reviewVoteRows(rid).filter(function (v) { return v.user_id === u.id; })[0]; if (back) back.vote = before; }
+      return { ok: false, message: quotaMessage() };
+    }
+    var c = reviewVoteCounts(rid);
+    var msg = action === 'added' ? (vote === 'up' ? '추천했습니다.' : '비추천했습니다.')
+      : action === 'removed' ? '표를 취소했습니다.'
+      : (vote === 'up' ? '추천으로 바꿨습니다.' : '비추천으로 바꿨습니다.');
+    return { ok: true, action: action, vote: action === 'removed' ? null : vote, up: c.up, down: c.down, my: myReviewVote(rid), message: msg };
+  }
+  /* 상품 상세 리뷰 정렬 — 최신순(created_at DESC) / 추천순(추천−비추천 DESC, 동률은 최신순) */
+  function sortedProductReviews(pid) {
+    var list = productReviews(pid);
+    if ((ui.reviewSort || 'new') !== 'top') return list;
+    return list.slice().sort(function (a, b) {
+      var d = reviewVoteCounts(b.id).net - reviewVoteCounts(a.id).net;
+      return d !== 0 ? d : (timeOf(b.created_at) - timeOf(a.created_at));
+    });
+  }
+  function starText(rating) {
+    var n = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+    return '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+  }
+  /* 리뷰로 지급된 포토·영상 포인트 — 회수(reclaimed)된 금액까지 합산해 '지급 이력'을 보여준다 */
+  function reviewGrantedPoints(r) {
+    if (!r) return 0;
+    var oi = db.order_items.filter(function (x) { return x.id === r.order_item_id; })[0];
+    return Math.max(0, Math.round(Number(oi && oi.photo_bonus) || 0)) + Math.max(0, Math.round(Number(r.reclaimed_points) || 0));
+  }
+  function reviewRemainingPoints(r) {
+    if (!r) return 0;
+    var oi = db.order_items.filter(function (x) { return x.id === r.order_item_id; })[0];
+    return Math.max(0, Math.round(Number(oi && oi.photo_bonus) || 0));
+  }
+  /* 리뷰 작성 조건 — ① 배송완료 ② 해당 주문항목 구매확정(confirmed_at) ③ 교환·반품 진행 중이 아님 */
+  function orderItemReviewableEntry(oi, user) {
+    if (!oi) return null;
+    var o = orderById(oi.order_id);
+    if (!o || o.user_id !== user.id) return null;
+    if (o.status !== 'delivered') return null;               // 배송완료 전에는 리뷰 작성 불가
+    if (!oi.confirmed_at) return null;                       // v1.9.2: 구매확정 이후에만 작성 가능
+    var claim = claimOfOrder(o.id);
+    if (claim && claim.status !== 'rejected') return null;    // 교환·반품 진행 중이면 제외
+    var p = productById(orderItemProductId(oi));
+    if (!p) return null;
+    return { order: o, item: oi, product: p };
+  }
+  /* 리뷰를 쓸 수 있는 주문항목 — 본인의 배송완료·구매확정 주문
+     · 아직 리뷰가 없는 항목
+     · 반려된 리뷰의 1회 재작성 기회가 남은 항목 */
+  function reviewableItems(pid, user) {
+    var u = user || currentUser();
+    if (!u) return [];
+    var out = [];
+    db.orders.filter(function (o) { return o.user_id === u.id && o.status === 'delivered'; }).forEach(function (o) {
+      orderItemsOf(o.id).forEach(function (oi) {
+        var entry = orderItemReviewableEntry(oi, u);
+        if (!entry) return;
+        if (pid && entry.product.id !== pid) return;
+        if (reviewOfOrderItem(oi.id) && !reviewRewriteAvailable(oi)) return;
+        out.push(entry);
+      });
+    });
+    return out;
+  }
+  function cleanReviewMedia(list) {
+    return (list || []).slice(0, REVIEW_MAX_MEDIA).filter(function (m) {
+      return m && m.src && (m.type === 'image' || m.type === 'video');
+    });
+  }
+  function readReviewInput(input) {
+    var rating = Math.round(Number(input && input.rating));
+    if (!(rating >= 1 && rating <= 5)) return { ok: false, message: '별점을 1~5점 사이로 선택해 주세요.' };
+    var content = String((input && input.content) || '').trim();
+    if (content.length < 5) return { ok: false, message: '후기를 5자 이상 적어 주세요.' };
+    if (content.length > 600) content = content.slice(0, 600);
+    return { ok: true, rating: rating, content: content, media: cleanReviewMedia(input && input.media) };
+  }
+  function addReview(input) {
+    var u = currentUser();
+    if (!u) return { ok: false, message: '로그인 후 리뷰를 작성할 수 있습니다.' };
+    var oi = db.order_items.filter(function (x) { return x.id === input.oi; })[0];
+    if (!oi) return { ok: false, message: '구매하신 주문 상품을 선택해 주세요.' };
+    var order = orderById(oi.order_id);
+    if (!order || order.user_id !== u.id || order.status === 'cancelled') {
+      return { ok: false, message: '구매한 상품에만 리뷰를 작성할 수 있습니다.' };
+    }
+    if (order.status !== 'delivered') {
+      return { ok: false, message: '배송완료된 상품만 리뷰를 작성할 수 있습니다.' };
+    }
+    /* v1.9.2 — 리뷰 작성은 구매확정(confirmed_at) 이후에만 */
+    if (!oi.confirmed_at) {
+      return { ok: false, message: '구매확정 후에 리뷰를 작성할 수 있습니다. 마이페이지 주문 내역에서 구매확정을 먼저 눌러 주세요.' };
+    }
+    if (!orderItemReviewableEntry(oi, u)) {
+      return { ok: false, message: '교환·반품이 진행 중인 상품은 리뷰를 작성할 수 없습니다.' };
+    }
+    var existing = reviewOfOrderItem(oi.id);
+    var rewrite = false;
+    if (existing) {
+      if (!reviewRewriteAvailable(oi)) {
+        return {
+          ok: false,
+          message: reviewIsHidden(existing)
+            ? '반려된 리뷰의 재작성 기회를 이미 사용했습니다. 이 주문 상품은 더 이상 리뷰를 작성할 수 없습니다.'
+            : '이 주문 상품의 리뷰는 이미 등록되었습니다.'
+        };
+      }
+      rewrite = true;
+    }
+    var read = readReviewInput(input);
+    if (!read.ok) return read;
+    var pid = orderItemProductId(oi);
+    var attempt = rewrite ? (Number(existing.attempt) || 1) + 1 : 1;
+    var review = {
+      id: newId('rv'), product_id: pid, user_id: u.id, user_name: maskUserName(u.name),
+      order_item_id: oi.id, attempt: attempt, rating: read.rating, content: read.content, media: read.media,
+      status: 'published', rejected_reason: null, reclaimed_points: 0, rejected_at: null,
+      created_at: nowISO(), updated_at: null
+    };
+    var prevAttempts = reviewAttemptsOf(oi);
+    var prevRewriteUsed = oi.rewrite_used ? 1 : 0;
+    db.product_reviews.push(review);
+    oi.review_attempts = attempt;
+    if (rewrite) oi.rewrite_used = 1;
+    var bonus = 0, policy = pointPolicyOf(u), log = null;
+    if (read.media.length && !oi.photo_bonus) {
+      var base = orderItemNetAmount(order, oi);
+      bonus = Math.floor(base * policy.photo_rate / 100);
+      if (bonus > 0) {
+        oi.photo_bonus = bonus;
+        oi.photo_bonus_at = nowISO();
+        log = addPointLog(u, 'photo_review', bonus, {
+          base_amount: base, rate: policy.photo_rate, order_id: order.id, order_item_id: oi.id, review_id: review.id,
+          description: (rewrite ? '재작성 포토·영상 리뷰 추가 적립 (' : '포토·영상 리뷰 추가 적립 (') +
+            GRADES[gradeOf(u)].label + ' ' + pointRateLabel(policy.photo_rate) + ')'
+        });
+      }
+    }
+    if (!save()) {
+      db.product_reviews = db.product_reviews.filter(function (r) { return r.id !== review.id; });
+      oi.review_attempts = prevAttempts;
+      oi.rewrite_used = prevRewriteUsed;
+      if (log) {
+        db.point_logs = db.point_logs.filter(function (l) { return l.id !== log.id; });
+        u.points = Math.max(0, userPoints(u) - log.amount);
+        oi.photo_bonus = 0; oi.photo_bonus_at = null;
+      }
+      return { ok: false, message: quotaMessage() };
+    }
+    return { ok: true, review: review, bonus: bonus, balance: userPoints(u), rate: policy.photo_rate, rewrite: rewrite };
+  }
+  /* 리뷰 수정 — 본인(또는 관리자)만, 반려된 리뷰는 수정 불가.
+     포토·영상 포인트는 주문항목당 1회만 지급하므로 수정 시 중복 지급되지 않는다(추가 첨부 시 1회만). */
+  function updateReview(input) {
+    var u = currentUser();
+    if (!u) return { ok: false, message: '로그인 후 리뷰를 수정할 수 있습니다.' };
+    var r = (db.product_reviews || []).filter(function (x) { return x.id === input.id; })[0];
+    if (!r) return { ok: false, message: '리뷰를 찾을 수 없습니다.' };
+    if (r.user_id !== u.id && !isAdmin()) return { ok: false, message: '본인이 작성한 리뷰만 수정할 수 있습니다.' };
+    if (reviewIsHidden(r)) return { ok: false, message: '반려된 리뷰는 수정할 수 없습니다. 고객센터로 문의해 주세요.' };
+    var oi = db.order_items.filter(function (x) { return x.id === r.order_item_id; })[0];
+    var order = oi ? orderById(oi.order_id) : null;
+    if (order && order.status === 'cancelled') return { ok: false, message: '취소된 주문의 리뷰는 수정할 수 없습니다.' };
+    var read = readReviewInput(input);
+    if (!read.ok) return read;
+    r.rating = read.rating;
+    r.content = read.content;
+    r.media = read.media;
+    r.updated_at = nowISO();
+    var bonus = 0, policy = pointPolicyOf(u);
+    if (read.media.length && oi && !oi.photo_bonus) {
+      var base = orderItemNetAmount(order, oi);
+      bonus = Math.floor(base * policy.photo_rate / 100);
+      if (bonus > 0) {
+        oi.photo_bonus = bonus;
+        oi.photo_bonus_at = nowISO();
+        addPointLog(u, 'photo_review', bonus, {
+          base_amount: base, rate: policy.photo_rate, order_id: order.id, order_item_id: oi.id, review_id: r.id,
+          description: '포토·영상 리뷰 추가 적립 (' + GRADES[gradeOf(u)].label + ' ' + pointRateLabel(policy.photo_rate) + ')'
+        });
+      }
+    }
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, review: r, bonus: bonus, balance: userPoints(u) };
+  }
+  /* 관리자 리뷰 검수 — 반려 + 해당 리뷰의 포토·영상 포인트 회수(1회) */
+  function rejectReview(id, reason) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 리뷰를 반려할 수 있습니다.' };
+    var r = (db.product_reviews || []).filter(function (x) { return x.id === id; })[0];
+    if (!r) return { ok: false, message: '리뷰를 찾을 수 없습니다.' };
+    if (reviewIsHidden(r)) return { ok: false, message: '이미 반려된 리뷰입니다. 포인트는 중복 회수되지 않습니다.' };
+    var oi = db.order_items.filter(function (x) { return x.id === r.order_item_id; })[0];
+    var bonus = Math.max(0, Math.round(Number(oi && oi.photo_bonus) || 0));
+    var author = currentUserById(r.user_id);
+    var reclaimed = 0;
+    if (bonus > 0 && author) {
+      /* 보유 포인트보다 많이 회수해 마이너스 잔액이 되지 않도록 실제 차감액만 기록(내역 합계 = 보유 포인트 유지) */
+      var deduct = Math.min(bonus, userPoints(author));
+      if (deduct > 0) {
+        var reclaimProd = productById(r.product_id);
+        var reclaimReason = r.rejected_reason || String(reason || '').trim() || '상품과 무관한 사진·부적절한 내용';
+        addPointLog(author, 'review_reclaim', -deduct, {
+          base_amount: 0, rate: 0, order_id: oi.order_id, order_item_id: oi.id, review_id: r.id,
+          description: '리뷰 반려 포인트 회수 · ' + (reclaimProd ? reclaimProd.name : '리뷰') + ' · ' + reclaimReason
+        });
+        reclaimed = deduct;
+      }
+      oi.photo_bonus = 0;
+      oi.photo_bonus_at = null;
+    }
+    r.status = 'rejected';
+    r.rejected_reason = String(reason || '').trim().slice(0, 200) || '상품과 무관한 사진·부적절한 내용';
+    r.reclaimed_points = Math.max(0, Math.round(Number(r.reclaimed_points) || 0)) + reclaimed;
+    r.rejected_at = nowISO();
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, review: r, reclaimed: reclaimed, balance: author ? userPoints(author) : 0 };
+  }
+  function iPointGrantNotYetReclaimed(bonus, r) {
+    if (!(bonus > 0)) return false;
+    return !(Number(r && r.reclaimed_points) > 0);
+  }
+
+  /* ============================================================== v1.9 FAQ 게시판 */
+  function faqList() {
+    return (db.faqs || []).filter(function (f) { return f.is_active !== false && f.is_active !== 0; })
+      .slice().sort(function (a, b) { return (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0); });
+  }
+  /* v1.9.5 — FAQ 카테고리는 고정 텍스트가 아니라 관리 목록(site_settings.faq_categories)으로 관리한다.
+     관리자 「FAQ 관리」의 「FAQ 카테고리 관리」에서 추가·삭제·순서 변경. */
+  var FAQ_DEFAULT_CATEGORIES = ['배송', '주문/결제', '교환/반품', '회원/포인트', '상품', '기타'];
+  function faqCategoryNames() {
+    var raw = siteSettings().faq_categories;
+    if (typeof raw === 'string') raw = raw.split(',');
+    if (!Array.isArray(raw)) raw = [];
+    var out = [], seen = {};
+    raw.forEach(function (c) {
+      var v = String(c == null ? '' : c).trim();
+      if (!v || seen[v]) return;
+      seen[v] = 1; out.push(v);
+    });
+    return out.length ? out : FAQ_DEFAULT_CATEGORIES.slice();
+  }
+  function faqCatUsage(name) {
+    var n = String(name || '').trim();
+    if (!n) return 0;
+    return faqList().filter(function (f) { return String(f.category || '').trim() === n; }).length;
+  }
+  /* 게시판 필터·카드 선택에 쓰는 실제 목록 — 관리 목록 순서 + (목록에 없는) 사용 중 카테고리 */
+  function faqCategories() {
+    var out = faqCategoryNames(), seen = {};
+    out.forEach(function (c) { seen[c] = 1; });
+    faqList().forEach(function (f) {
+      var c = String(f.category || '').trim();
+      if (c && !seen[c]) { seen[c] = 1; out.push(c); }
+    });
+    return out;
+  }
+  function faqCatOptionsHTML(current) {
+    var cats = faqCategories();
+    var val = String(current == null ? '' : current).trim();
+    if (val && cats.indexOf(val) < 0) cats = cats.concat([val]);
+    if (!cats.length) cats = FAQ_DEFAULT_CATEGORIES.slice();
+    return cats.map(function (c) {
+      return '<option value="' + esc(c) + '"' + (c === val ? ' selected' : '') + '>' + esc(c) + '</option>';
+    }).join('');
+  }
+  function saveFaqCategories(names, renames) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var out = [], seen = {};
+    (names || []).forEach(function (n) {
+      var v = String(n == null ? '' : n).trim().slice(0, 12);
+      if (!v || seen[v]) return;
+      seen[v] = 1; out.push(v);
+    });
+    if (!out.length) return { ok: false, message: 'FAQ 카테고리를 1개 이상 입력해 주세요.' };
+    var next = siteSettings();
+    next.faq_categories = out;
+    next.updated_at = nowISO();
+    db.site_settings = next;
+    /* 이름을 고친 카테고리를 쓰던 FAQ 도 같은 이름으로 옮긴다(고아 카테고리 방지) */
+    var moved = 0;
+    (renames || []).forEach(function (pair) {
+      var from = String((pair && pair.from) || '').trim();
+      var to = String((pair && pair.to) || '').trim();
+      if (!from || !to || from === to) return;
+      (db.faqs || []).forEach(function (f) {
+        if (String(f.category || '').trim() === from) { f.category = to; moved += 1; }
+      });
+    });
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, categories: out, moved: moved };
+  }
+  /* 카테고리 목록이 바뀌면 각 FAQ 카드의 선택 목록만 그 자리에서 갱신한다
+     (아직 저장하지 않은 질문·답변 입력은 건드리지 않는다) */
+  function syncFaqCatSelects(renames) {
+    var map = {};
+    (renames || []).forEach(function (pair) {
+      var from = String((pair && pair.from) || '').trim();
+      var to = String((pair && pair.to) || '').trim();
+      if (from && to && from !== to) map[from] = to;
+    });
+    $$('select[data-faq-category]').forEach(function (sel) {
+      var cur = map[sel.value] || sel.value;
+      sel.innerHTML = faqCatOptionsHTML(cur);
+      sel.value = cur;
+    });
+  }
+  /* 카테고리 행의 원래 이름·사용 건수 표시를 화면 값에 맞춘다(저장 직후) */
+  function syncFaqCatRows() {
+    $$('[data-hook=faq-cat-rows] .faq-cat-row').forEach(function (r, i) {
+      var input = r.querySelector('[data-faq-cat-name]');
+      var name = String(input ? input.value : '').trim();
+      if (input) input.value = name;
+      r.dataset.catName = name;
+      var use = r.querySelector('.faq-cat-use');
+      if (use) { var n = faqCatUsage(name); use.textContent = n ? n + '건 사용' : '미사용'; }
+      var no = r.querySelector('.faq-no'); if (no) no.textContent = i + 1;
+    });
+  }
+  function filteredFaqs() {
+    var q = String(ui.faqQuery || '').trim().toLowerCase();
+    return faqList().filter(function (f) {
+      if (ui.faqCat !== 'all' && String(f.category) !== ui.faqCat) return false;
+      if (!q) return true;
+      return (String(f.question) + ' ' + String(f.answer) + ' ' + String(f.category)).toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  function saveFaqs(list) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var rows = [], seen = {};
+    (list || []).forEach(function (f) {
+      var q = String((f && f.question) || '').trim();
+      var a = String((f && f.answer) || '').trim();
+      if (!q) return;
+      var id = String((f && f.id) || '').trim() || newId('faq');
+      if (seen[id]) id = newId('faq');
+      seen[id] = 1;
+      rows.push({
+        id: id, category: String((f && f.category) || '기타').trim() || '기타',
+        question: q.slice(0, 120), answer: a.slice(0, 800),
+        sort_order: rows.length + 1, is_active: true, created_at: (f && f.created_at) || nowISO()
+      });
+    });
+    if (!rows.length) return { ok: false, message: 'FAQ 항목을 1개 이상 입력해 주세요.' };
+    db.faqs = rows;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, faqs: rows };
+  }
+  /* ============================================================== v1.9 주소 검색
+     카카오(다음) 우편번호 서비스를 임베드로 열고, 로드 실패·차단 시에는
+     내장 도로명 주소 목록(예시)으로 같은 흐름(우편번호 + 기본주소 선택)을 제공한다. */
+  var ADDRESS_SAMPLES = [
+    ['05551', '서울특별시 송파구 올림픽로 300', '롯데월드타워'],
+    ['03925', '서울특별시 마포구 양화로 160', '홍대입구역'],
+    ['06236', '서울특별시 강남구 테헤란로 152', '강남파이낸스센터'],
+    ['03154', '서울특별시 종로구 종로 1', '종로타워'],
+    ['04323', '서울특별시 용산구 한강대로 405', '서울역'],
+    ['07236', '서울특별시 영등포구 여의대로 108', '파크원'],
+    ['04793', '서울특별시 성동구 성수이로 51', '서울숲'],
+    ['01795', '서울특별시 노원구 동일로 1414', '노원역'],
+    ['13529', '경기도 성남시 분당구 판교역로 166', '판교테크노밸리'],
+    ['16648', '경기도 수원시 영통구 광교로 105', '광교센트럴타운'],
+    ['10442', '경기도 고양시 일산동구 중앙로 1305', '일산센트럴'],
+    ['48058', '부산광역시 해운대구 센텀중앙로 79', '센텀시티'],
+    ['41911', '대구광역시 중구 동성로 30', '동성로'],
+    ['34126', '대전광역시 유성구 대덕대로 989', '대덕연구단지'],
+    ['61947', '광주광역시 서구 상무중앙로 58', '상무지구'],
+    ['21984', '인천광역시 연수구 컨벤시아대로 165', '송도컨벤시아'],
+    ['54847', '전라북도 전주시 덕진구 백제대로 567', '전북대학교'],
+    ['24341', '강원도 춘천시 강원대학길 1', '강원대학교'],
+    ['63149', '제주특별자치도 제주시 연동 273-18', '제주시청'],
+    ['35015', '충청남도 홍성군 홍북읍 충남대로 21', '충남도청']
+  ];
+  var daumPostcodePromise = null;
+  function loadDaumPostcode() {
+    if (window.daum && window.daum.Postcode) return Promise.resolve(true);
+    if (daumPostcodePromise) return daumPostcodePromise;
+    daumPostcodePromise = new Promise(function (resolve) {
+      var done = false;
+      var finish = function (ok) { if (done) return; done = true; resolve(!!ok); };
+      try {
+        var s = document.createElement('script');
+        s.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+        s.async = true;
+        s.onload = function () { finish(!!(window.daum && window.daum.Postcode)); };
+        s.onerror = function () { finish(false); };
+        document.head.appendChild(s);
+      } catch (e) { finish(false); }
+      setTimeout(function () { finish(!!(window.daum && window.daum.Postcode)); }, 3500);
+    });
+    return daumPostcodePromise;
+  }
+  function ensureAddressLayer() {
+    var layer = document.getElementById('addr-layer');
+    if (layer) return layer;
+    layer = document.createElement('div');
+    layer.id = 'addr-layer';
+    layer.className = 'addr-layer';
+    layer.hidden = true;
+    layer.setAttribute('data-addr-layer', '1');
+    layer.innerHTML =
+      '<div class="addr-scrim" data-action="close-addr-layer"></div>' +
+      '<div class="addr-panel" role="dialog" aria-modal="true" aria-label="주소 검색">' +
+        '<div class="al-head"><b>주소 검색</b><button type="button" class="icon-x" data-action="close-addr-layer" aria-label="주소 검색 닫기">✕</button></div>' +
+        '<div class="al-loading" data-hook="addr-loading">카카오 우편번호 서비스를 불러오는 중…</div>' +
+        '<div class="al-daum" data-hook="addr-daum" hidden></div>' +
+        '<div class="al-fallback" data-hook="addr-fallback" hidden>' +
+          '<p class="al-hint">우편번호 서비스를 불러오지 못했습니다. 내장 도로명 주소 목록에서 선택해 주세요.</p>' +
+          '<input type="search" id="addr-search" class="al-search" placeholder="도로명·건물명·지역 검색" autocomplete="off" aria-label="주소 검색어">' +
+          '<div class="al-list" data-hook="addr-list"></div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(layer);
+    return layer;
+  }
+  function renderAddressFallback(query) {
+    var layer = ensureAddressLayer();
+    var load = layer.querySelector('[data-hook=addr-loading]');
+    var daum = layer.querySelector('[data-hook=addr-daum]');
+    var fb = layer.querySelector('[data-hook=addr-fallback]');
+    if (load) load.hidden = true;
+    if (daum) { daum.hidden = true; daum.innerHTML = ''; }
+    if (fb) fb.hidden = false;
+    var q = String(query || '').trim().toLowerCase();
+    var list = ADDRESS_SAMPLES.filter(function (a) {
+      return !q || (a[1] + ' ' + a[2] + ' ' + a[0]).toLowerCase().indexOf(q) >= 0;
+    });
+    var host = layer.querySelector('[data-hook=addr-list]');
+    if (host) {
+      host.innerHTML = list.length ? list.map(function (a) {
+        return '<button type="button" class="al-item" data-action="pick-address" data-zip="' + esc(a[0]) + '" data-base="' + esc(a[1]) + '">' +
+          '<b>' + esc(a[2]) + '</b><span>' + esc(a[1]) + '</span><em>' + esc(a[0]) + '</em></button>';
+      }).join('') : '<div class="al-empty">검색 결과가 없습니다. 다른 검색어를 입력해 주세요.</div>';
+    }
+  }
+  function openAddressSearch(prefix) {
+    ui.addressPrefix = prefix;
+    var layer = ensureAddressLayer();
+    layer.hidden = false;
+    var load = layer.querySelector('[data-hook=addr-loading]');
+    var daum = layer.querySelector('[data-hook=addr-daum]');
+    var fb = layer.querySelector('[data-hook=addr-fallback]');
+    if (load) load.hidden = false;
+    if (daum) { daum.hidden = false; daum.innerHTML = ''; }
+    if (fb) fb.hidden = true;
+    loadDaumPostcode().then(function (ok) {
+      if (ui.addressPrefix !== prefix) return;
+      if (ok && window.daum && window.daum.Postcode) {
+        try {
+          new window.daum.Postcode({
+            width: '100%', height: '100%',
+            oncomplete: function (data) {
+              var base = data.roadAddress || data.jibunAddress || data.address || '';
+              fillAddressFields(prefix, { zip: data.zonecode || '', base: base, detail: '' });
+              closeAddressLayer();
+            }
+          }).embed(daum);
+          if (load) load.hidden = true;
+          return;
+        } catch (e) { /* 임베드 실패 → 내장 검색 */ }
+      }
+      renderAddressFallback('');
+    });
+  }
+  function closeAddressLayer() {
+    var layer = document.getElementById('addr-layer');
+    if (!layer) return;
+    layer.hidden = true;
+    ui.addressPrefix = null;
+  }
+  function fillAddressFields(prefix, res) {
+    var zip = document.getElementById(prefix + '-postcode');
+    var base = document.getElementById(prefix + '-address');
+    var detail = document.getElementById(prefix + '-detail');
+    if (zip) zip.value = res.zip || '';
+    if (base) base.value = res.base || '';
+    var msg = document.querySelector('[data-addr-msg="' + prefix + '"]');
+    if (msg) msg.textContent = (res.zip ? '우편번호 ' + res.zip + ' · ' : '') + '상세 주소(동·호수)를 입력해 주세요.';
+    if (detail) { try { detail.focus(); } catch (e) {} }
+  }
+  function readAddressGroup(prefix) {
+    var val = function (id) { var el = document.getElementById(prefix + '-' + id); return el ? el.value : ''; };
+    var postcode = String(val('postcode') || '').trim();
+    var base = String(val('address') || '').trim();
+    var detail = String(val('detail') || '').trim();
+    return { postcode: postcode, base: base, detail: detail, full: base + (detail ? ' ' + detail : '') };
+  }
+  function addressGroupHTML(prefix, val) {
+    var v = val || {};
+    return '<div class="addr-group" data-addr="' + esc(prefix) + '">' +
+      '<div class="field-row addr-row">' +
+        '<div class="field addr-zip"><label>우편번호</label>' +
+          '<input id="' + esc(prefix) + '-postcode" value="' + esc(v.postcode || '') + '" readonly placeholder="주소 검색" aria-label="우편번호"></div>' +
+        '<div class="field addr-base"><label>기본 주소</label>' +
+          '<div class="addr-search-row"><input id="' + esc(prefix) + '-address" value="' + esc(v.base || '') + '" readonly placeholder="주소 검색으로 입력" aria-label="기본 주소">' +
+          '<button type="button" class="btn ghost small addr-btn" data-action="open-postcode" data-prefix="' + esc(prefix) + '">주소 검색</button></div></div>' +
+      '</div>' +
+      '<div class="field"><label>상세 주소 <small>동·호수만 직접 입력</small></label>' +
+        '<input id="' + esc(prefix) + '-detail" value="' + esc(v.detail || '') + '" placeholder="예: 101동 1203호" aria-label="상세 주소"></div>' +
+      '<p class="addr-hint" data-addr-msg="' + esc(prefix) + '">' + (v.postcode ? '우편번호 ' + esc(v.postcode) + ' · ' : '') + '상세 주소(동·호수)를 입력해 주세요.</p>' +
+    '</div>';
+  }
+
+  /* ============================================================== v1.9 브랜드 스토리 */
+  function storyTagsOf(s) {
+    var t = s && s.story_tags;
+    if (Array.isArray(t)) return t.map(function (x) { return String(x).trim(); }).filter(Boolean);
+    return String(t || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+  }
+  function storyParagraphs(body) {
+    return String(body || '').split(/\n{2,}/).map(function (p) { return p.trim(); }).filter(Boolean);
+  }
+  function storySectionHTML() {
+    var s = siteSettings();
+    var tags = storyTagsOf(s);
+    if (!brandStoryEnabled(s)) return '';   // v1.9.9 — 관리자 스위치 OFF 면 홈에서 숨김
+    if (!s.story_title) return '';
+    return '<section class="wrap"><div class="editorial story-section" id="editorial" data-story="1">' +
+      '<div class="editorial-media"><img src="' + imgSrc(s.story_image || 'coat.webp') + '" alt="' + esc(s.story_title) + '" data-hook="story-image"></div>' +
+      '<div class="editorial-body">' +
+        (s.story_eyebrow ? '<div class="eyebrow" data-hook="story-eyebrow">' + esc(s.story_eyebrow) + '</div>' : '') +
+        '<h2 data-hook="story-title">' + heroTitleHTML(s.story_title) + '</h2>' +
+        (s.story_subtitle ? '<p class="story-subtitle" data-hook="story-subtitle">' + esc(s.story_subtitle) + '</p>' : '') +
+        storyParagraphs(s.story_body).map(function (p) { return '<p data-hook="story-body">' + heroTitleHTML(p) + '</p>'; }).join('') +
+        (tags.length ? '<div class="story-tags" data-hook="story-tags">' + tags.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</div>' : '') +
+        '<button class="btn outline-light" data-action="scroll-shop">신상품 보기</button>' +
+      '</div>' +
+    '</div></section>';
+  }
+
+  function heroTitleHTML(t) {
+    return esc(t).replace(/\n/g, '<br>');
+  }
+  function heroHTML() {
+    var s = siteSettings();
+    var eff = HERO_EFFECTS[s.hero_effect] ? s.hero_effect : 'none';
+    var overlay = (s.hero_overlay || 0) / 100;
+    return '' +
+      '<section class="hero hero--' + eff + '" data-hero-effect="' + eff + '" style="--hero-overlay:' + overlay.toFixed(2) + '">' +
+        '<img src="' + imgSrc(s.hero_image) + '" alt="' + esc(s.hero_title || 'MONO ATELIER') + '">' +
+        '<div class="hero-inner">' +
+          (s.hero_eyebrow ? '<div class="eyebrow">' + esc(s.hero_eyebrow) + '</div>' : '') +
+          '<h1>' + heroTitleHTML(s.hero_title) + '</h1>' +
+          (s.hero_subtitle ? '<p>' + heroTitleHTML(s.hero_subtitle) + '</p>' : '') +
+          '<div class="hero-actions">' +
+            (s.hero_cta_label ? '<button class="btn light" data-action="scroll-shop">' + esc(s.hero_cta_label) + '</button>' : '') +
+            (s.hero_cta2_label && brandStoryEnabled(s) ? '<button class="btn outline-light" data-action="scroll-editorial">' + esc(s.hero_cta2_label) + '</button>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="hero-meta"><span>SEOUL 37.56°N</span><span>EST. 2026</span><span>MADE IN KOREA</span></div>' +
+      '</section>';
+  }
+  /* v1.9.5 — 검색창은 SHOP 카테고리 줄(『잡화』 오른쪽)에 하나만 있다.
+     상품 목록 제목·건수·그리드만 따로 갱신해, 입력 중인 검색창(포커스·커서)과
+     카테고리 칩은 다시 그리지 않는다. */
+  function shopHeadingHTML() {
+    var q = ui.query.trim();
+    if (q) return '‘' + esc(q) + '’ 검색 결과';
+    return ui.category === 'all' ? esc(siteSettings().shop_title) : catLabel(ui.category);
+  }
+  function shopEyebrowHTML() {
+    if (ui.query.trim()) return 'SHOP — SEARCH';
+    return ui.category === 'all' ? esc(siteSettings().shop_eyebrow) : 'SHOP — ' + catLabel(ui.category).toUpperCase();
+  }
+  function shopHeadHTML() {
+    return '<div class="section-head" data-hook="shop-head">' +
+      '<div><div class="eyebrow" data-hook="shop-eyebrow">' + shopEyebrowHTML() + '</div>' +
+        '<h2 data-hook="shop-title">' + shopHeadingHTML() + '</h2></div>' +
+      '<p class="desc" data-hook="shop-desc">' + esc(siteSettings().shop_desc) + '</p>' +
+    '</div>';
+  }
+  /* v1.9.9 — 상품 목록 보기 방식 토글(썸네일 / 목록). 정렬 셀렉트 바로 옆에 둔다.
+     v1.9.10 — 좁은 줄에 맞도록 글자 라벨을 빼고 아이콘만(aria-label·title 로 접근성 유지) */
+  function viewToggleHTML() {
+    var isList = ui.storeView === 'list';
+    return '<div class="view-toggle" role="group" aria-label="보기 방식" data-hook="view-toggle">' +
+      '<button type="button" class="vt-btn' + (isList ? '' : ' active') + '" data-action="store-view" data-value="grid"' +
+        ' aria-pressed="' + (isList ? 'false' : 'true') + '" aria-label="썸네일 보기" title="썸네일 보기">' +
+        '<span class="vt-ico" aria-hidden="true">▦</span></button>' +
+      '<button type="button" class="vt-btn' + (isList ? ' active' : '') + '" data-action="store-view" data-value="list"' +
+        ' aria-pressed="' + (isList ? 'true' : 'false') + '" aria-label="목록 보기" title="목록 보기">' +
+        '<span class="vt-ico" aria-hidden="true">☰</span></button>' +
+    '</div>';
+  }
+  function syncViewToggle() {
+    var isList = ui.storeView === 'list';
+    $$('[data-hook=view-toggle] .vt-btn').forEach(function (b) {
+      var on = (b.dataset.value === 'list') === isList;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  /* v1.9.9 — 목록 보기: 좌측 작은 썸네일 + 상품명·가격·색상/뱃지·재고/품절을 한 행에 */
+  function productRowHTML(p) {
+    var soldout = stockOf(p.id) <= 0;
+    var pct = discountPct(p);
+    var badge = productBadge(p);
+    var colors = colorsOf(p.id);
+    var stock = stockOf(p.id);
+    return '<article class="prow' + (soldout ? ' is-soldout' : '') + '" data-action="open-product" data-pid="' + p.id + '" data-price="' + p.price + '" tabindex="0" role="button" aria-label="' + esc(p.name) + ' 상세 보기">' +
+      '<div class="prow-thumb"><img src="' + imgSrc(p.image) + '" alt="' + esc(p.name) + '" loading="lazy">' +
+        (soldout ? '<span class="prow-sold">Sold out</span>' : '') + '</div>' +
+      '<div class="prow-body">' +
+        '<div class="prow-top"><span class="prow-brand">' + esc(p.brand) + '</span>' +
+          (badge ? '<span class="card-badge prow-badge ' + badgeClass(badge) + '">' + esc(badge) + '</span>' : '') +
+        '</div>' +
+        '<h3 class="prow-name">' + esc(p.name) + '</h3>' +
+        '<div class="prow-meta"><div class="card-colors prow-colors">' + colors.map(function (c) {
+          return '<i class="dot' + (isLightHex(c.hex) ? ' light' : '') + '" style="background:' + esc(c.hex) + '" title="' + esc(c.color) + '"></i>';
+        }).join('') + '</div>' +
+          '<span class="prow-stock' + (soldout ? ' zero' : '') + '">' + (soldout ? '품절' : '재고 ' + stock + '개') + '</span></div>' +
+      '</div>' +
+      '<div class="prow-price">' +
+        (pct ? '<span class="pct">' + pct + '%</span>' : '') +
+        '<span class="prow-won">' + won(p.price) + '</span>' +
+        (p.original_price ? '<s>' + won(p.original_price) + '</s>' : '') +
+      '</div>' +
+    '</article>';
+  }
+  function shopResultsHTML() {
+    var list = sortedProducts(visibleProducts());
+    if (!list.length) {
+      return '<div class="empty-state"><h3>찾으시는 상품이 없습니다</h3><p>다른 카테고리를 보거나 검색어를 지워 보세요.</p>' +
+        '<div style="margin-top:20px"><button class="btn ghost small" data-action="clear-filter">전체 상품 보기</button></div></div>';
+    }
+    if (ui.storeView === 'list') {
+      return '<div class="product-list" data-view="list" data-hook="shop-list">' + list.map(productRowHTML).join('') + '</div>';
+    }
+    return '<div class="grid" data-view="grid">' + list.map(cardHTML).join('') + '</div>';
+  }
+  function shopSearchHTML() {
+    return '<div class="shop-search" role="search">' +
+      '<input id="shop-search" class="search-input" type="search" placeholder="상품 검색" autocomplete="off"' +
+        ' value="' + esc(ui.query) + '" aria-label="상품 검색">' +
+      '<svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>' +
+      '<button type="button" class="shop-search-clear" data-action="clear-search" aria-label="검색어 지우기"' +
+        (ui.query.trim() ? '' : ' hidden') + '>✕</button>' +
+    '</div>';
+  }
+  function shopSectionHTML() {
+    var list = sortedProducts(visibleProducts());
+    return '' +
+      '<section class="wrap section" id="shop">' +
+        shopHeadHTML() +
+        '<div class="filterbar">' +
+          '<div class="tabs" role="tablist">' + storeCategories().map(function (c) {
+            return '<button role="tab" aria-selected="' + (ui.category === c.id) + '" class="' + (ui.category === c.id ? 'active' : '') + '" data-action="nav-category" data-cat="' + c.id + '">' + c.label + '</button>';
+          }).join('') + '</div>' +
+          shopSearchHTML() +
+          '<div class="filter-right">' +
+            '<span class="result-count" data-hook="shop-count">' + list.length + ' ITEMS</span>' +
+            /* v1.9.11 — 정렬 드롭다운을 우측 썸네일/목록 아이콘 바로 옆에 붙인다 */
+            '<div class="filter-tools">' +
+              '<select class="sort-select" id="sort-select" aria-label="정렬">' +
+                '<option value="new"' + (ui.sort === 'new' ? ' selected' : '') + '>최신순</option>' +
+                '<option value="popular"' + (ui.sort === 'popular' ? ' selected' : '') + '>인기순</option>' +
+                '<option value="low"' + (ui.sort === 'low' ? ' selected' : '') + '>낮은 가격순</option>' +
+                '<option value="high"' + (ui.sort === 'high' ? ' selected' : '') + '>높은 가격순</option>' +
+              '</select>' +
+              viewToggleHTML() +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div data-hook="shop-results">' + shopResultsHTML() + '</div>' +
+      '</section>';
+  }
+  /* 검색어 입력 → 제목·건수·그리드만 교체(검색창·칩 유지) */
+  function renderShopResults() {
+    var host = $('[data-hook=shop-results]');
+    if (!host) return false;
+    var list = sortedProducts(visibleProducts());
+    host.innerHTML = shopResultsHTML();
+    var title = $('[data-hook=shop-title]');
+    if (title) title.innerHTML = shopHeadingHTML();
+    var eyebrow = $('[data-hook=shop-eyebrow]');
+    if (eyebrow) eyebrow.innerHTML = shopEyebrowHTML();
+    var count = $('[data-hook=shop-count]');
+    if (count) count.textContent = list.length + ' ITEMS';
+    var clear = $('.shop-search-clear');
+    if (clear) { if (ui.query.trim()) clear.removeAttribute('hidden'); else clear.setAttribute('hidden', ''); }
+    syncViewToggle();
+    return true;
+  }
+  function scrollToShop() {
+    var shop = $('#shop');
+    if (shop) window.scrollTo({ top: shop.offsetTop - 80, behavior: 'smooth' });
+  }
+  /* v1.9.10 — 메인 회사소개(푸터) 위 안내 구역 = 홈 4칸
+     · 배송 안내 · 교환·반품 안내 · FAQ · 고객센터 (3번째 칸은 FAQ 게시판으로 연결)
+     · 앞 3칸은 관리자 「홈 안내 카드(4박스)」의 help_topics 를 그대로 쓰고, 누르면 안내 모달이 열린다
+     · 무료배송·당일출고 칸은 없앴다(내용은 「배송 안내」 안에 있다)
+     · 사이즈·세탁 가이드 항목은 이 구역에서 제외 */
+  var HOME_HELP_FALLBACK = [
+    { title: '배송 안내', body: '평일 오후 2시 이전 결제 시 당일 출고' },
+    { title: '교환·반품 안내', body: '수령 후 7일 이내 간편하게 교환·반품' },
+    { title: '고객센터', body: '평일 10:00–17:00 · 1:1 문의' }
+  ];
+  var HOME_HELP_SLOTS = 3;                       // FAQ 칸을 뺀, 관리자에서 고치는 칸 수
+  var HOME_FAQ_CELL = { title: 'FAQ', body: '자주 묻는 질문 · 배송·교환·결제 안내 모음' };
+  var HOME_HELP_HIDE = /사이즈|세탁|무료배송|당일출고/;
+  function homeHelpItems() {
+    var list = helpTopics()
+      .filter(function (t) { return t.title && !HOME_HELP_HIDE.test(t.title); })
+      .map(function (t) { return { id: t.id, title: t.title, body: t.body || '' }; });
+    HOME_HELP_FALLBACK.forEach(function (fb) {
+      if (list.length >= HOME_HELP_SLOTS) return;
+      if (list.some(function (x) { return x.title === fb.title; })) return;
+      list.push({ id: null, title: fb.title, body: fb.body });
+    });
+    var fixed = list.slice(0, HOME_HELP_SLOTS);
+    var extra = list.slice(HOME_HELP_SLOTS);   // 관리자에서 항목을 더 만들면 뒤에 이어 붙인다
+    fixed.splice(Math.min(2, fixed.length), 0,
+      { id: null, faq: true, title: HOME_FAQ_CELL.title, body: HOME_FAQ_CELL.body });
+    return fixed.concat(extra);
+  }
+  function homeHelpLine(body) {
+    var first = String(body || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean)[0] || '';
+    return first.length > 54 ? first.slice(0, 54) + '…' : first;
+  }
+  function homeHelpHTML() {
+    var items = homeHelpItems();
+    return '<section class="service home-help" data-home-help="' + items.length + '"><div class="wrap"><div class="service-grid">' +
+      items.map(function (it) {
+        if (it.faq) {
+          return '<button type="button" class="service-item help-cell faq-cell" data-action="open-faq" data-faq="1">' +
+            '<h4>' + esc(it.title) + '</h4><p>' + esc(homeHelpLine(it.body)) + '</p>' +
+            '<span class="hh-more" aria-hidden="true">게시판 열기 →</span></button>';
+        }
+        var inner = '<h4>' + esc(it.title) + '</h4><p>' + esc(homeHelpLine(it.body)) + '</p>' +
+          (it.id ? '<span class="hh-more" aria-hidden="true">자세히 보기 →</span>' : '');
+        return it.id
+          ? '<button type="button" class="service-item help-cell" data-action="open-help" data-help="' + esc(it.id) + '">' + inner + '</button>'
+          : '<div class="service-item help-cell is-static">' + inner + '</div>';
+      }).join('') +
+    '</div></div></section>';
+  }
+  function homeHTML() {
+    return heroHTML() + shopSectionHTML() +
+      storySectionHTML() +
+      homeHelpHTML() +
+      footerHTML();
+  }
+  function cardHTML(p) {
+    var soldout = stockOf(p.id) <= 0;
+    var pct = discountPct(p);
+    var badge = productBadge(p);
+    var colors = colorsOf(p.id);
+    return '' +
+      '<article class="card' + (soldout ? ' is-soldout' : '') + '" data-action="open-product" data-pid="' + p.id + '" data-price="' + p.price + '" tabindex="0" role="button" aria-label="' + esc(p.name) + ' 상세 보기">' +
+        '<div class="card-media">' +
+          '<img src="' + imgSrc(p.image) + '" alt="' + esc(p.name) + '" loading="lazy">' +
+          (badge ? '<span class="card-badge ' + badgeClass(badge) + '">' + esc(badge) + '</span>' : '') +
+          (soldout ? '<div class="card-soldout"><span>Sold out</span></div>' : '<button class="card-quick" data-action="quick-add" data-pid="' + p.id + '">옵션 선택하기</button>') +
+        '</div>' +
+        '<div class="card-body">' +
+          '<div class="card-brand">' + esc(p.brand) + '</div>' +
+          '<h3 class="card-name">' + esc(p.name) + '</h3>' +
+          '<div class="card-price">' +
+            (pct ? '<span class="pct">' + pct + '%</span>' : '') +
+            '<span>' + won(p.price) + '</span>' +
+            (p.original_price ? '<s>' + won(p.original_price) + '</s>' : '') +
+          '</div>' +
+          '<div class="card-colors">' + colors.map(function (c) {
+            return '<i class="dot' + (isLightHex(c.hex) ? ' light' : '') + '" style="background:' + esc(c.hex) + '" title="' + esc(c.color) + '"></i>';
+          }).join('') + '</div>' +
+        '</div>' +
+      '</article>';
+  }
+  /* v1.9.10 — 푸터는 브랜드 소개·사업자 정보·저작권만 남긴다
+     · 브랜드 스토리 아래 4칸(HELP·FAQ)과 겹치던 「Help」·「Contact」 목록은 삭제 */
+  function footerHTML() {
+    var s = siteSettings();
+    return '' +
+      '<footer class="site-footer"><div class="wrap">' +
+        '<div class="footer-grid">' +
+          '<div class="footer-brandcol">' +
+            '<div class="footer-brand">' + esc(s.site_title || TITLE_TEXT_DEFAULTS.site_title) + '</div>' +
+            '<p class="footer-note" data-footer="brand-blurb">' + heroTitleHTML(s.brand_blurb) + '</p>' +
+          '</div>' +
+          '<div class="footer-infocol">' +
+            '<ul class="footer-company" data-footer="company">' +
+              '<li>상호 ' + esc(s.company_name) + ' · 대표 ' + esc(s.company_ceo) + '</li>' +
+              '<li>사업자등록번호 ' + esc(s.company_reg_no) + ' · 통신판매업 신고 ' + esc(s.company_mail_order_no) + '</li>' +
+              '<li>' + esc(s.company_address) + '</li>' +
+              '<li>고객센터 ' + esc(s.company_phone) + ' · ' + esc(s.company_email) + '</li>' +
+            '</ul>' +
+          '</div>' +
+        '</div>' +
+        '<div class="footer-bottom">' +
+          '<span data-footer="copyright">' + esc(s.footer_copyright || TITLE_TEXT_DEFAULTS.footer_copyright) + '</span>' +
+          '<span>본 페이지는 데모용 프로토타입입니다 · 실제 결제가 발생하지 않습니다 · v' + APP_VERSION + '</span>' +
+        '</div>' +
+      '</div></footer>';
+  }
+
+  /* ---------------------------------------------------------- product modal */
+  function openProduct(pid) {
+    var p = productById(pid);
+    if (!p) return;
+    var colors = colorsOf(pid);
+    ui.modal =
+      { type: 'product', pid: pid, color: colors.length ? colors[0].color : '', size: '', qty: 1, img: 0, zoom: 1, px: 0, py: 0 };
+    ui.reviewPage = 1;
+    renderModal();
+    syncLock();
+  }
+  /* 옵션 변경 시 모달에서 달라지는 부분만 계산한다 */
+  function stockHintOf(p, m) {
+    var v = m.size ? findVariant(p.id, m.color, m.size) : null;
+    if (!v) return { text: '컬러와 사이즈를 선택해 주세요', cls: ' low' };
+    if (v.stock <= 0) return { text: '선택한 옵션은 품절입니다', cls: ' out' };
+    if (v.stock <= 3) return { text: '재고 ' + v.stock + '개 · 품절 임박', cls: ' low' };
+    return { text: '재고 ' + v.stock + '개 · 바로 출고 가능', cls: '' };
+  }
+  /* 주문 항목의 색 — 상품 대표색 > 색상명 매핑 > 기본색 */
+  function orderedColorHex(p, oi) {
+    return hexOfColor(p ? p.id : '', oi.color) || colorHexFromName(oi.color) || DEFAULT_HEX;
+  }
+  function colorChipsHTML(p, m) {
+    return colorsOf(p.id).map(function (c) {
+      var on = m.color === c.color;
+      return '<button class="chip' + (on ? ' active' : '') + '" data-action="pick-color" data-color="' + esc(c.color) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+        '<i class="' + swatchClass(c.hex) + '" style="background:' + esc(c.hex) + '" data-hex="' + esc(c.hex) + '"></i>' + esc(c.color) + '</button>';
+    }).join('');
+  }
+  function sizesHTML(p, m) {
+    return sizesOf(p.id, m.color).map(function (sv) {
+      return '<button class="size-btn' + (m.size === sv.size ? ' active' : '') + '" data-action="pick-size" data-size="' + sv.size + '"' +
+        (sv.stock <= 0 ? ' disabled aria-disabled="true"' : '') + '>' + sv.size + '</button>';
+    }).join('');
+  }
+  /* 현재 선택 옵션 요약 — 구매 버튼 바로 위에서 한눈에 보이게 한다 */
+  function selectedSummaryHTML(m) {
+    var color = m.color ? '<b>' + esc(m.color) + '</b>' : '<span class="empty">컬러</span>';
+    var size = m.size ? '<b>' + esc(m.size) + '</b>' : '<span class="empty">사이즈</span>';
+    return '선택: ' + color + ' <i>/</i> ' + size + ' <i>·</i> <b class="qty">' + (m.qty || 1) + '개</b>';
+  }
+  function productModalHTML() {
+    var m = ui.modal;
+    var p = productById(m.pid);
+    if (!p) return '';
+    var soldout = stockOf(p.id) <= 0;
+    var pct = discountPct(p);
+    var hint = stockHintOf(p, m);
+    var images = productImages(p);
+    var idx = Math.max(0, Math.min(images.length - 1, m.img || 0));
+    var badge = productBadge(p);
+    var shipLabel = shippingLabelOf(p);
+    var th = freeShipThresholdOf(p);
+    return '' +
+      '<div class="modal product-modal" role="dialog" aria-modal="true" aria-label="상품 상세">' +
+        '<div class="pm-media" data-gallery>' +
+          '<div class="pm-stage" data-hook="stage">' +
+            '<img data-hook="main-img" src="' + imgSrc(images[idx]) + '" alt="' + esc(imageAltOf(p, idx)) + '" draggable="false" aria-label="이미지 확대 보기">' +
+          '</div>' +
+          (images.length > 1
+            ? '<button class="pm-nav prev" data-action="gallery-prev" aria-label="이전 이미지">‹</button>' +
+              '<button class="pm-nav next" data-action="gallery-next" aria-label="다음 이미지">›</button>' +
+              '<div class="pm-thumbs" data-hook="thumbs">' + images.map(function (img, i) {
+                return '<button class="pm-thumb' + (i === idx ? ' active' : '') + '" data-action="pick-image" data-idx="' + i + '" aria-label="' + esc(imageAltOf(p, i)) + '" aria-pressed="' + (i === idx ? 'true' : 'false') + '">' +
+                  '<img src="' + imgSrc(img) + '" alt="" loading="lazy"></button>';
+              }).join('') + '</div>'
+            : '') +
+          '<div class="pm-media-foot">' +
+            '<span class="pm-hint pm-stage-hint" data-hook="stage-hint">이미지를 누르면 확대 · 좌우로 밀어 다른 컷</span>' +
+            (images.length > 1 ? '<span class="pm-photocount" data-hook="img-count">' + (idx + 1) + ' / ' + images.length + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="pm-info">' +
+          '<div class="pm-topline">' +
+            '<span class="pm-code" data-hook="pm-code">' + esc(productCodeOf(p)) + '</span>' +
+            '<button type="button" class="pm-close" data-action="close-modal" aria-label="상품 상세 닫기">닫기 ✕</button>' +
+          '</div>' +
+          (badge ? '<div><span class="pm-badge ' + badgeClass(badge) + '" data-hook="badge">' + esc(badge) + '</span></div>' : '') +
+          '<div class="pm-brand">' + esc(p.brand) + ' — ' + catLabel(p.category) + '</div>' +
+          '<h2 class="pm-title">' + esc(p.name) + '</h2>' +
+          '<div class="pm-price">' +
+            (pct ? '<span class="pct">' + pct + '%</span>' : '') +
+            '<span>' + won(p.price) + '</span>' +
+            (p.original_price ? '<s>' + won(p.original_price) + '</s>' : '') +
+          '</div>' +
+          '<p class="pm-desc">' + esc(p.description) + '</p>' +
+          '<div class="pm-divider"></div>' +
+          '<div class="opt-group">' +
+            '<div class="opt-label"><span>컬러</span><b data-hook="color-name" data-selected="' + (m.color ? 'true' : 'false') + '">' + esc(m.color || '선택') + '</b></div>' +
+            '<div class="chips" data-hook="chips">' + colorChipsHTML(p, m) + '</div>' +
+          '</div>' +
+          '<div class="opt-group" style="margin-top:20px">' +
+            '<div class="opt-label"><span>사이즈</span><span class="opt-right">' +
+              '<span class="stock-hint' + hint.cls + '" data-hook="stock" aria-live="polite">' + hint.text + '</span>' +
+              '<b data-hook="size-name" data-selected="' + (m.size ? 'true' : 'false') + '">' + esc(m.size || '선택') + '</b>' +
+            '</span></div>' +
+            '<div class="sizes" data-hook="sizes">' + sizesHTML(p, m) + '</div>' +
+          '</div>' +
+          '<div class="pm-qty-row">' +
+            '<div class="stepper">' +
+              '<button data-action="pm-dec" aria-label="수량 줄이기">−</button>' +
+              '<span data-hook="qty">' + m.qty + '</span>' +
+              '<button data-action="pm-inc" aria-label="수량 늘리기">+</button>' +
+            '</div>' +
+            '<div class="qty-total">총 상품금액<b data-hook="total">' + won(p.price * m.qty) + '</b></div>' +
+          '</div>' +
+          '<div class="pm-shipnote" data-hook="shipnote"><b>' + esc(shipLabel) + '</b>' +
+            (th === 0 ? ' · 이 상품은 배송비가 없습니다' : ' · 미만 3,000원') + ' · 평일 오후 2시 이전 결제 시 당일 출고</div>' +
+          '<dl class="pm-meta">' +
+            (p.model_info ? '<div data-model-info="1"><dt>모델 정보</dt><dd>' + esc(p.model_info) + '</dd></div>' : '') +
+            '<div><dt>소재</dt><dd>울 80% · 캐시미어 20%</dd></div>' +
+            '<div><dt>배송</dt><dd>' + esc(shipLabel) + (th === 0 ? ' · 배송비 없음' : ' / 미만 ' + won(SHIPPING_FEE)) + '</dd></div>' +
+            '<div><dt>교환·반품</dt><dd>수령 후 7일 이내 가능</dd></div>' +
+          '</dl>' +
+          productReviewsBlockHTML(p, m) +
+          productQnaBlockHTML(p) +
+        '</div>' +
+        /* 구매 바는 모달의 마지막 자식 — 모바일에서 모달 전체가 스크롤돼도 하단에 sticky 로 붙는다 */
+        '<div class="pm-buybar">' +
+          '<div class="pm-selected" data-hook="selected-summary" aria-live="polite">' + selectedSummaryHTML(m) + '</div>' +
+          '<div class="pm-actions">' +
+            '<button class="btn ghost" data-action="add-cart"' + (soldout ? ' disabled' : '') + '>장바구니 담기</button>' +
+            '<button class="btn" data-action="buy-now"' + (soldout ? ' disabled' : '') + '>바로 구매</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+  /* 갤러리 전환은 대표 이미지 <img> 의 src 만 바꾼다 — 모달 전체·옵션 상태 유지 */
+  /* ------------------------------------------------------- 상품 리뷰 (v1.9) */
+  function reviewMediaSrc(m) {
+    if (!m) return '';
+    if (m.type === 'video') return String(m.src || '');
+    return imgSrc(m.src);
+  }
+  /* v1.9.12 — 리뷰 카드의 추천/비추천은 「추천·비추천」 글자 없이 아이콘+숫자만,
+     리뷰 머리글(작성일) 바로 옆 같은 줄에 붙인다. 본인 리뷰는 버튼만 비활성(안내는 title·aria-label) */
+  function reviewVoteHTML(r) {
+    var u = currentUser();
+    var c = reviewVoteCounts(r.id);
+    var my = u ? myReviewVote(r.id) : null;
+    var self = !!u && r.user_id === u.id;
+    var mk = function (kind, glyph, label, count) {
+      var on = my === kind;
+      return '<button type="button" class="rv-vote ' + kind + (on ? ' active' : '') + '"' +
+        ' data-action="review-vote" data-rid="' + esc(r.id) + '" data-vote="' + kind + '"' +
+        ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + label + ' ' + count + '"' +
+        (self ? ' disabled aria-disabled="true"' : '') +
+        ' title="' + (self ? '본인 리뷰는 추천할 수 없습니다' : (kind === 'up' ? '이 리뷰를 추천합니다' : '이 리뷰를 비추천합니다')) + '">' +
+        '<span class="rv-vote-ico" aria-hidden="true">' + glyph + '</span>' +
+        '<b data-hook="vote-' + kind + '">' + count + '</b></button>';
+    };
+    return '<div class="pmr-votes" data-hook="rv-votes" data-rid="' + esc(r.id) + '"' +
+      ' data-up="' + c.up + '" data-down="' + c.down + '">' +
+      mk('up', '👍', '추천', c.up) + mk('down', '👎', '비추천', c.down) +
+    '</div>';
+  }
+  function reviewItemHTML(r) {
+    var media = reviewMedia(r);
+    var u = currentUser();
+    var mine = u && r.user_id === u.id && !reviewIsHidden(r);
+    return '<article class="pmr-item" data-review="' + esc(r.id) + '" data-review-state="' + esc(r.status || 'published') + '">' +
+      '<div class="pmr-top"><b>' + esc(r.user_name || '고객') + '</b>' +
+        '<span class="pmr-stars" aria-label="별점 ' + (Number(r.rating) || 0) + '점">' + starText(r.rating) + '</span>' +
+        '<span class="pmr-tail">' +
+          '<span class="pmr-date">' + fmtDate(r.created_at) + (r.updated_at ? ' · 수정됨' : '') + '</span>' +
+          reviewVoteHTML(r) +
+          (mine ? '<button type="button" class="txt-btn pmr-edit" data-action="edit-review" data-rid="' + esc(r.id) + '" data-pid="' + esc(r.product_id) + '">수정</button>' : '') +
+        '</span>' +
+      '</div>' +
+      (r.content ? '<p class="pmr-text">' + esc(r.content) + '</p>' : '') +
+      (media.length ? '<div class="pmr-media">' + media.map(function (m, i) {
+        return '<button type="button" class="pmr-thumb' + (m.type === 'video' ? ' video' : '') + '" data-action="open-review-media" data-type="' + esc(m.type) + '" data-src="' + esc(reviewMediaSrc(m)) + '" data-rid="' + esc(r.id) + '" data-midx="' + i + '" aria-label="' + esc(m.type === 'video' ? '리뷰 동영상 재생' : '리뷰 사진 확대') + '">' +
+          (m.type === 'video'
+            ? '<video src="' + esc(reviewMediaSrc(m)) + '" muted playsinline preload="metadata"></video><span class="play" aria-hidden="true">▶</span>'
+            : '<img src="' + esc(reviewMediaSrc(m)) + '" alt="' + esc(m.name || '리뷰 사진') + '" loading="lazy">') +
+        '</button>';
+      }).join('') + '</div>' : '') +
+    '</article>';
+  }
+  /* 리뷰 목록은 5개씩 페이징 — 1페이지 5건, 2페이지부터 나머지 */
+  function reviewPageCount(total) {
+    return Math.max(1, Math.ceil(total / REVIEW_PAGE_SIZE));
+  }
+  function reviewPagerHTML(page, pages, total) {
+    if (pages <= 1) return '';
+    var nums = [];
+    for (var i = 1; i <= pages; i++) {
+      nums.push('<button type="button" class="rv-page-num' + (i === page ? ' active' : '') + '" data-action="review-page" data-page="' + i + '" aria-label="리뷰 ' + i + '페이지" aria-current="' + (i === page ? 'page' : 'false') + '">' + i + '</button>');
+    }
+    return '<nav class="rv-pager" data-hook="rv-pager" aria-label="리뷰 페이지">' +
+      '<button type="button" class="rv-page-step" data-action="review-page" data-page="' + Math.max(1, page - 1) + '" aria-label="이전 페이지"' + (page <= 1 ? ' disabled' : '') + '>‹ 이전</button>' +
+      '<span class="rv-page-nums">' + nums.join('') + '</span>' +
+      '<button type="button" class="rv-page-step" data-action="review-page" data-page="' + Math.min(pages, page + 1) + '" aria-label="다음 페이지"' + (page >= pages ? ' disabled' : '') + '>다음 ›</button>' +
+      '<span class="rv-page-info">' + page + ' / ' + pages + ' 페이지 · 총 ' + total + '건</span>' +
+    '</nav>';
+  }
+  function productReviewsInnerHTML(p) {
+    var stats = reviewStats(p.id);
+    var list = sortedProductReviews(p.id);
+    var u = currentUser();
+    var items = u ? reviewableItems(p.id, u) : [];
+    var can = items.length > 0;
+    var onlyRewrite = can && items.every(function (x) { return !!reviewOfOrderItem(x.item.id); });
+    var pages = reviewPageCount(list.length);
+    var page = Math.min(pages, Math.max(1, parseInt(ui.reviewPage, 10) || 1));
+    ui.reviewPage = page;
+    var shown = list.slice((page - 1) * REVIEW_PAGE_SIZE, page * REVIEW_PAGE_SIZE);
+    var sort = ui.reviewSort === 'top' ? 'top' : 'new';
+    var sortBtn = function (value, label) {
+      var on = sort === value;
+      return '<button type="button" class="rv-sort-btn' + (on ? ' active' : '') + '"' +
+        ' data-action="review-sort" data-value="' + value + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + label + '</button>';
+    };
+    return '<div class="pmr-head">' +
+        '<span class="pmr-title">리뷰 <b>' + stats.count + '</b></span>' +
+        (stats.count ? '<span class="pmr-avg">★ ' + stats.avg.toFixed(1) + '</span>' : '') +
+        (stats.count ? '<span class="pmr-photos">사진·영상 ' + stats.photos + '</span>' : '<span class="pmr-empty">아직 리뷰가 없습니다</span>') +
+        (can ? '<button type="button" class="btn ghost small pmr-write" data-action="open-review" data-pid="' + p.id + '"' +
+          (onlyRewrite ? ' data-rewrite="1"' : '') + '>' + (onlyRewrite ? '리뷰 다시 쓰기' : '리뷰 쓰기') + '</button>' : '') +
+      '</div>' +
+      (list.length > 1 ? '<div class="pmr-sortrow" data-hook="rv-sort" role="group" aria-label="리뷰 정렬">' +
+        sortBtn('new', '최신순') + sortBtn('top', '추천순') + '</div>' : '') +
+      (list.length ? '<div class="pmr-list">' + shown.map(reviewItemHTML).join('') + '</div>' : '') +
+      reviewPagerHTML(page, pages, list.length) +
+      (!u ? '<p class="pmr-note">구매 후 로그인하면 리뷰를 작성할 수 있습니다.</p>' : '') +
+      (u && !can && !list.length ? '<p class="pmr-note">배송완료 후 구매확정한 주문의 상품만 리뷰를 작성할 수 있습니다.</p>' : '') +
+      (u && !can && list.length ? '<p class="pmr-note">리뷰는 배송완료 후 구매확정한 주문을 구매한 회원만 작성할 수 있습니다.</p>' : '');
+  }
+  function productReviewsBlockHTML(p, m) {
+    return '<div class="pm-reviews" id="pm-reviews-section" data-hook="pm-reviews" data-pid="' + p.id + '">' + productReviewsInnerHTML(p) + '</div>';
+  }
+  /* ========================================================== v1.9.11 상품 Q&A
+     · 상품 상세에서 리뷰 아래에 붙는 상품별 Q&A (5건씩 페이징, 최신순)
+     · 로그인한 회원은 문의 작성 — 문의 유형·제목·내용·비밀글 여부
+     · 비밀글은 작성자 본인과 관리자만 본문을 보고, 다른 회원에게는 「비밀글입니다」 */
+  function qnaById(id) {
+    return (db.product_qnas || []).filter(function (q) { return q && q.id === id; })[0] || null;
+  }
+  function qnaStatusOf(q) { return String((q && q.answer) || '').trim() ? 'answered' : 'pending'; }
+  function qnaTypeLabel(t) { return QNA_TYPES[t] || QNA_TYPES.product; }
+  function productQnas(pid) {
+    return (db.product_qnas || []).filter(function (q) { return q && q.product_id === pid; })
+      .sort(function (a, b) {
+        var d = timeOf(b.created_at) - timeOf(a.created_at);
+        return d !== 0 ? d : String(a.id).localeCompare(String(b.id));
+      });
+  }
+  function qnaCanRead(q) {
+    if (!q || !q.is_secret) return true;
+    var u = currentUser();
+    return !!u && (u.id === q.user_id || isAdmin());
+  }
+  function qnaPagerHTML(page, pages, total) {
+    if (pages <= 1) return '';
+    var nums = [];
+    for (var i = 1; i <= pages; i++) {
+      nums.push('<button type="button" class="rv-page-num' + (i === page ? ' active' : '') + '" data-action="qna-page" data-page="' + i + '" aria-label="Q&A ' + i + '페이지" aria-current="' + (i === page ? 'page' : 'false') + '">' + i + '</button>');
+    }
+    return '<nav class="rv-pager" data-hook="qna-pager" aria-label="Q&A 페이지">' +
+      '<button type="button" class="rv-page-step" data-action="qna-page" data-page="' + Math.max(1, page - 1) + '" aria-label="이전 페이지"' + (page <= 1 ? ' disabled' : '') + '>‹ 이전</button>' +
+      '<span class="rv-page-nums">' + nums.join('') + '</span>' +
+      '<button type="button" class="rv-page-step" data-action="qna-page" data-page="' + Math.min(pages, page + 1) + '" aria-label="다음 페이지"' + (page >= pages ? ' disabled' : '') + '>다음 ›</button>' +
+      '<span class="rv-page-info">' + page + ' / ' + pages + ' 페이지 · 총 ' + total + '건</span>' +
+    '</nav>';
+  }
+  function qnaItemHTML(q) {
+    var st = qnaStatusOf(q);
+    var readable = qnaCanRead(q);
+    var u = currentUser();
+    var mine = !!u && q.user_id === u.id;
+    /* v1.9.13 — 비밀글은 작성자·관리자 외에는 제목까지 마스킹한다(제목으로 내용을 유추하지 못하게) */
+    var titleHTML = readable
+      ? esc(q.title)
+      : '<span class="pmq-title-masked" data-hook="qna-title-masked">비밀글입니다</span>';
+    return '<article class="pmq-item" data-qna="' + esc(q.id) + '" data-qna-state="' + st + '" data-secret="' + (q.is_secret ? '1' : '0') + '">' +
+      '<div class="pmq-top">' +
+        '<span class="pmq-type">' + esc(qnaTypeLabel(q.qna_type)) + '</span>' +
+        '<b class="pmq-title">' + (q.is_secret ? '<span class="pmq-lock" aria-label="비밀글" title="비밀글">🔒</span> ' : '') + titleHTML + '</b>' +
+        '<span class="pmq-badge ' + st + '" data-hook="qna-status">' + (st === 'answered' ? '답변완료' : '미답변') + '</span>' +
+        '<span class="pmq-date">' + esc(q.user_name || '고객') + ' · ' + fmtDate(q.created_at) + '</span>' +
+        (mine ? '<span class="pmq-mine">내 문의</span>' : '') +
+      '</div>' +
+      (readable
+        ? '<p class="pmq-body" data-hook="qna-body">' + esc(q.content) + '</p>'
+        : '<p class="pmq-secret" data-hook="qna-secret">🔒 비밀글입니다 <small>작성자와 관리자만 확인할 수 있습니다.</small></p>') +
+      (st === 'answered'
+        ? '<div class="pmq-answer' + (readable ? '' : ' locked') + '" data-hook="qna-answer">' +
+            '<span class="pmq-answer-label">답변</span>' +
+            (readable ? '<p>' + esc(q.answer) + '</p>' : '<p>🔒 비밀글입니다 <small>답변도 작성자와 관리자만 볼 수 있습니다.</small></p>') +
+          '</div>'
+        : '') +
+    '</article>';
+  }
+  function productQnaInnerHTML(p) {
+    var list = productQnas(p.id);
+    var u = currentUser();
+    var pages = Math.max(1, Math.ceil(list.length / QNA_PAGE_SIZE));
+    var page = Math.min(pages, Math.max(1, parseInt(ui.qnaPage, 10) || 1));
+    ui.qnaPage = page;
+    var shown = list.slice((page - 1) * QNA_PAGE_SIZE, page * QNA_PAGE_SIZE);
+    var unanswered = list.filter(function (q) { return qnaStatusOf(q) !== 'answered'; }).length;
+    var draft = ui.qnaDraft || {};
+    var form = '';
+    if (ui.qnaForm) {
+      form = '<div class="pmq-form" data-hook="qna-form">' +
+        '<div class="pmq-form-row">' +
+          '<label class="pmq-f"><span>문의 유형</span><select id="qna-type" aria-label="문의 유형">' +
+            QNA_TYPE_ORDER.map(function (t) {
+              var cur = draft.qna_type || ui.qnaType || 'product';
+              return '<option value="' + t + '"' + (cur === t ? ' selected' : '') + '>' + esc(QNA_TYPES[t]) + '</option>';
+            }).join('') +
+          '</select></label>' +
+          '<label class="pmq-f grow"><span>제목</span>' +
+            '<input id="qna-title" type="text" maxlength="' + QNA_TITLE_MAX + '" value="' + esc(draft.title || '') + '" placeholder="예: 사이즈가 어떻게 되나요?" aria-label="문의 제목"></label>' +
+        '</div>' +
+        '<label class="pmq-f"><span>문의 내용</span>' +
+          '<textarea id="qna-content" rows="3" maxlength="' + QNA_CONTENT_MAX + '" placeholder="궁금한 점을 적어 주세요." aria-label="문의 내용">' + esc(draft.content || '') + '</textarea></label>' +
+        '<label class="pmq-secret-check"><input type="checkbox" id="qna-secret"' + (draft.is_secret ? ' checked' : '') + '> 비밀글로 작성 <small>(작성자와 관리자만 볼 수 있습니다)</small></label>' +
+        (ui.qnaError ? '<p class="pmq-error" data-hook="qna-error">' + esc(ui.qnaError) + '</p>' : '') +
+        '<div class="pmq-form-actions">' +
+          '<button type="button" class="btn small" data-action="submit-qna" data-pid="' + p.id + '">문의 등록</button>' +
+          '<button type="button" class="btn ghost small" data-action="qna-cancel">취소</button>' +
+        '</div>' +
+      '</div>';
+    }
+    return '<div class="pmq-head">' +
+        '<span class="pmq-head-title">상품 Q&A <b>' + list.length + '</b></span>' +
+        (list.length ? '<span class="pmq-head-sub">답변완료 ' + (list.length - unanswered) + ' · 미답변 ' + unanswered + '</span>' : '<span class="pmq-head-sub">궁금한 점을 남겨 주세요</span>') +
+        (u
+          ? '<button type="button" class="btn ghost small pmq-write" data-action="qna-form-toggle" data-pid="' + p.id + '">' + (ui.qnaForm ? '작성 취소' : '문의하기') + '</button>'
+          : '<button type="button" class="btn ghost small pmq-write" data-action="qna-login" data-pid="' + p.id + '">로그인 후 문의</button>') +
+      '</div>' +
+      form +
+      (list.length ? '<div class="pmq-list">' + shown.map(qnaItemHTML).join('') + '</div>' : '<p class="pmq-empty">아직 등록된 문의가 없습니다.</p>') +
+      qnaPagerHTML(page, pages, list.length);
+  }
+  function productQnaBlockHTML(p) {
+    return '<div class="pm-qna" id="pm-qna-section" data-hook="pm-qna" data-pid="' + p.id + '">' + productQnaInnerHTML(p) + '</div>';
+  }
+  /* 문의 등록 — 로그인한 회원만. 제목·내용 필수, 비밀글 옵션 */
+  function submitQna(pid, input) {
+    var u = currentUser();
+    if (!u) return { ok: false, message: '로그인 후 문의를 남길 수 있습니다.' };
+    var p = productById(pid);
+    if (!p) return { ok: false, message: '상품을 찾을 수 없습니다.' };
+    var type = QNA_TYPES[input && input.qna_type] ? input.qna_type : 'product';
+    var title = String((input && input.title) || '').trim().slice(0, QNA_TITLE_MAX);
+    var content = String((input && input.content) || '').trim().slice(0, QNA_CONTENT_MAX);
+    if (!title) return { ok: false, message: '문의 제목을 입력해 주세요.' };
+    if (title.length < 2) return { ok: false, message: '문의 제목을 2자 이상 입력해 주세요.' };
+    if (!content) return { ok: false, message: '문의 내용을 입력해 주세요.' };
+    var q = {
+      id: newId('q'), product_id: p.id, user_id: u.id, user_name: maskUserName(u.name),
+      qna_type: type, title: title, content: content,
+      is_secret: input && input.is_secret ? 1 : 0,
+      answer: '', answered_by: null, answered_at: null, status: 'pending',
+      created_at: nowISO(), updated_at: null
+    };
+    db.product_qnas.push(q);
+    if (!save()) {
+      db.product_qnas = db.product_qnas.filter(function (x) { return x.id !== q.id; });
+      return { ok: false, message: quotaMessage() };
+    }
+    return { ok: true, qna: q };
+  }
+  /* 관리자 답변 등록·수정( 빈 답변 = 미답변으로 되돌림 ) */
+  function answerQna(qid, answer) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 답변할 수 있습니다.' };
+    var q = qnaById(qid);
+    if (!q) return { ok: false, message: '문의를 찾을 수 없습니다.' };
+    var text = String(answer || '').trim().slice(0, QNA_ANSWER_MAX);
+    q.answer = text;
+    q.status = text ? 'answered' : 'pending';
+    q.answered_by = text ? (currentUser() || {}).id || 'u_002' : null;
+    q.answered_at = text ? nowISO() : null;
+    q.updated_at = nowISO();
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, qna: q, status: q.status };
+  }
+  /* 관리자 문의 삭제 */
+  function deleteQna(qid) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 삭제할 수 있습니다.' };
+    var q = qnaById(qid);
+    if (!q) return { ok: false, message: '문의를 찾을 수 없습니다.' };
+    db.product_qnas = db.product_qnas.filter(function (x) { return x.id !== qid; });
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, qid: qid };
+  }
+  function openReviewModal(pid, oiId, rid) {
+    if (requiresLogin('로그인 후 리뷰를 작성할 수 있습니다.')) return;
+    var u = currentUser();
+    var edit = rid ? (db.product_reviews || []).filter(function (r) { return r.id === rid; })[0] : null;
+    if (rid && !edit) { toast('리뷰를 찾을 수 없습니다.', 'warn'); return; }
+    if (edit) {
+      if (edit.user_id !== u.id && !isAdmin()) { toast('본인이 작성한 리뷰만 수정할 수 있습니다.', 'warn'); return; }
+      if (reviewIsHidden(edit)) { toast('반려된 리뷰는 수정할 수 없습니다. 고객센터로 문의해 주세요.', 'warn'); return; }
+      var eoi = db.order_items.filter(function (x) { return x.id === edit.order_item_id; })[0];
+      var eorder = eoi ? orderById(eoi.order_id) : null;
+      var eproduct = eoi ? productById(orderItemProductId(eoi)) : null;
+      if (!eoi || !eorder || !eproduct) { toast('주문 정보를 찾을 수 없습니다.', 'warn'); return; }
+      ui.review = {
+        mode: 'edit', rid: edit.id, pid: eproduct.id, oi: eoi.id,
+        rating: Number(edit.rating) || 5, content: String(edit.content || ''), media: clone(reviewMedia(edit)), error: '',
+        scroll: captureModalScroll(),
+        returnModal: ui.modal ? clone(ui.modal) : null
+      };
+      ui.modal = { type: 'review', pid: eproduct.id, oi: eoi.id };
+      renderModal(); syncLock();
+      return;
+    }
+    var items = reviewableItems(pid, u);
+    if (!items.length) {
+      var mine = [];
+      db.orders.filter(function (o) { return o.user_id === u.id; }).forEach(function (o) {
+        orderItemsOf(o.id).forEach(function (oi) {
+          if (pid && orderItemProductId(oi) !== pid) return;
+          mine.push(oi);
+        });
+      });
+      var already = oiId
+        ? (db.order_items.filter(function (x) { return x.id === oiId; })[0] && reviewOfOrderItem(oiId))
+        : null;
+      toast(already
+        ? '이미 리뷰를 작성한 주문 상품입니다.'
+        : '구매확정 후에 리뷰를 작성할 수 있습니다. (배송완료 + 구매확정된 주문만 작성 가능)', 'warn');
+      return;
+    }
+    var pick = oiId ? items.filter(function (x) { return x.item.id === oiId; })[0] : null;
+    if (!pick) pick = items[0];
+    var prevReview = reviewOfOrderItem(pick.item.id);
+    var rewrite = !!prevReview;
+    ui.review = {
+      mode: 'create', rid: null, pid: pick.product.id, oi: pick.item.id, rating: 5, content: '', media: [], error: '',
+      rewrite: rewrite,
+      rewrite_reason: prevReview ? String(prevReview.rejected_reason || '') : '',
+      rewrite_points: prevReview ? Math.max(0, Math.round(Number(prevReview.reclaimed_points) || 0)) : 0,
+      scroll: captureModalScroll(),
+      returnModal: ui.modal ? clone(ui.modal) : null
+    };
+    ui.modal = { type: 'review', pid: pick.product.id, oi: pick.item.id };
+    renderModal(); syncLock();
+  }
+  function closeReviewModal() {
+    var back = ui.review && ui.review.returnModal;
+    var scroll = ui.review && ui.review.scroll;
+    ui.review = null;
+    ui.modal = back || null;
+    renderModal();
+    restoreModalScroll(scroll);
+    syncLock();
+  }
+  /* 모달 안 스크롤 위치 저장·복원 — 리뷰·미디어 레이어를 닫을 때 보던 위치를 유지한다 */
+  var MODAL_SCROLL_SELECTORS = ['.product-modal', '.pm-info', '.edit-body', '.claim-body', '.review-body', '.faq-list'];
+  function captureModalScroll() {
+    var out = {};
+    MODAL_SCROLL_SELECTORS.forEach(function (sel) {
+      var el = $('#modal-layer ' + sel);
+      if (el && el.scrollTop > 0) out[sel] = el.scrollTop;
+    });
+    return out;
+  }
+  /* v1.9.13 — 상품 상세 모달 안의 섹션(리뷰·Q&A)을 맨 위로 부드럽게 맞춘다.
+     페이징을 바꿔 내용이 줄어들면 브라우저가 스크롤을 아래에 붙잡아 두던 문제를 없앤다. */
+  function scrollToModalSection(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    try { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+    catch (e) { try { el.scrollIntoView(); } catch (e2) {} }
+  }
+  function restoreModalScroll(state) {
+    if (!state) return;
+    var apply = function () {
+      Object.keys(state).forEach(function (sel) {
+        var el = $('#modal-layer ' + sel);
+        if (el) { try { el.scrollTop = state[sel]; } catch (e) {} }
+      });
+    };
+    apply();
+    /* 리뷰 썸네일·이미지가 늦게 로드되면 높이가 줄어 스크롤이 당겨지므로 한 번 더 되돌린다 */
+    try { if (window.requestAnimationFrame) window.requestAnimationFrame(apply); } catch (e) {}
+    setTimeout(apply, 260);
+  }
+  function reviewModalHTML() {
+    var rv = ui.review;
+    if (!rv) return '';
+    var u = currentUser();
+    var oi = db.order_items.filter(function (x) { return x.id === rv.oi; })[0];
+    var order = oi ? orderById(oi.order_id) : null;
+    var p = oi ? productById(orderItemProductId(oi)) : null;
+    var items = rv.mode === 'edit' ? [] : reviewableItems(rv.pid, u);
+    var policy = pointPolicyOf(u);
+    var base = order && oi ? orderItemNetAmount(order, oi) : 0;
+    var expect = Math.floor(base * policy.photo_rate / 100);
+    var already = !!(oi && (oi.photo_bonus > 0 || (rv.rid && reviewRemainingPoints((db.product_reviews || []).filter(function (r) { return r.id === rv.rid; })[0]) > 0)));
+    var title = rv.mode === 'edit' ? '리뷰 수정' : (rv.rewrite ? '리뷰 다시 작성' : '리뷰 작성');
+    return '<div class="modal review-modal" role="dialog" aria-modal="true" aria-label="' + title + '" data-review-mode="' + (rv.mode || 'create') + '">' +
+      '<button class="modal-close" data-action="close-review" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">REVIEW — ' + esc(productCodeOf(p)) + '</div><h2>' + title + '</h2>' +
+        (p ? '<p class="rv-product">' + esc(p.name) + (oi ? ' · ' + esc(oi.color) + ' ' + esc(oi.size) : '') + '</p>' : '') +
+      '</div>' +
+      '<div class="review-body">' +
+        (rv.error ? '<div class="form-error">' + esc(rv.error) + '</div>' : '') +
+        (rv.rewrite ? '<div class="rv-rewrite-note" data-hook="rv-rewrite-note">반려된 리뷰 대신 <b>다시 작성할 수 있는 기회는 1회</b>입니다. 이번 리뷰도 반려되면 더는 작성할 수 없습니다.' +
+          (rv.rewrite_reason ? '<div class="rw-why" data-hook="rv-rewrite-reason">반려 사유 · ' + esc(rv.rewrite_reason) + '</div>' : '') +
+          (rv.rewrite_points ? '<div class="rw-why">회수된 포인트 · −' + rv.rewrite_points.toLocaleString('ko-KR') + 'P (다시 등록하면 1회 다시 지급)</div>' : '') +
+          '</div>' : '') +
+        (items.length > 1
+          ? '<div class="field"><label>리뷰할 주문 상품</label><select id="rv-item" data-action="review-item">' +
+              items.map(function (x) {
+                return '<option value="' + esc(x.item.id) + '"' + (x.item.id === rv.oi ? ' selected' : '') + '>' +
+                  esc(x.order.order_no) + ' · ' + esc(x.product.name) + ' / ' + esc(x.item.color) + ' ' + esc(x.item.size) + '</option>';
+              }).join('') + '</select></div>'
+          : '') +
+        '<div class="field"><label>별점</label><div class="rv-stars" data-hook="rv-stars" role="radiogroup" aria-label="별점">' +
+          [1, 2, 3, 4, 5].map(function (n) {
+            return '<button type="button" class="rv-star' + (rv.rating >= n ? ' on' : '') + '" data-action="review-star" data-val="' + n + '" aria-label="' + n + '점" aria-pressed="' + (rv.rating === n) + '">★</button>';
+          }).join('') +
+          '<b data-hook="rv-rating">' + rv.rating + '점</b></div></div>' +
+        '<div class="field"><label>후기 <small>5자 이상</small></label>' +
+          '<textarea id="rv-content" rows="4" maxlength="600" placeholder="색감·핏·소재 등 실제로 입어 본 느낌을 적어 주세요">' + esc(rv.content) + '</textarea></div>' +
+        '<div class="field"><label>사진·동영상 <small>선택 — 첨부하면 등급별 추가 적립</small></label>' +
+          '<div class="rv-media-list" data-hook="rv-media">' + (rv.media.length ? rv.media.map(function (m, i) {
+            return '<div class="rv-media-item">' +
+              (m.type === 'video'
+                ? '<video src="' + esc(m.src) + '" muted playsinline preload="metadata"></video><span class="tag">동영상</span>'
+                : '<img src="' + esc(m.src) + '" alt=""><span class="tag">' + esc(m.name || '사진') + '</span>') +
+              '<button type="button" class="icon-x" data-action="remove-review-media" data-idx="' + i + '" aria-label="첨부 삭제">✕</button></div>';
+          }).join('') : '<span class="rv-media-empty">사진·동영상을 첨부하면 포토 리뷰로 표시됩니다.</span>') + '</div>' +
+          '<div class="rv-media-row" data-hook="rv-media-row">' +
+            '<label class="btn ghost small upload-btn rv-upload"><span class="up-ico" aria-hidden="true">📷</span><span class="up-txt">사진·동영상 추가</span>' +
+              '<input type="file" id="rv-file" accept="image/*,video/*" multiple aria-label="리뷰 사진·동영상 첨부"></label>' +
+            '<span class="rv-media-count">' + rv.media.length + ' / ' + REVIEW_MAX_MEDIA + '</span>' +
+          '</div></div>' +
+        '<div class="rv-point-note" data-hook="rv-point-note">' +
+          (already
+            ? '이 주문 상품은 <b>포토·영상 리뷰 포인트가 이미 지급</b>되었습니다. 수정해도 추가 지급되지 않습니다.'
+            : (rv.media.length
+              ? '사진·동영상 리뷰 등록 시 <b>' + pointRateLabel(policy.photo_rate) + ' · 약 ' + won(expect) + '</b> 추가 적립 예상'
+              : '사진·동영상을 1개 이상 첨부하면 <b>' + pointRateLabel(policy.photo_rate) + ' · 약 ' + won(expect) + '</b> 추가 적립')) +
+        '</div>' +
+      '</div>' +
+      '<div class="review-foot">' +
+        '<button class="btn ghost" data-action="close-review">취소</button>' +
+        '<button class="btn" data-action="submit-review">' + (rv.mode === 'edit' ? '수정 저장' : (rv.rewrite ? '다시 등록' : '리뷰 등록')) + '</button>' +
+      '</div>' +
+    '</div>';
+  }
+  /* 리뷰 사진·동영상 확대 보기 — 상세 모달 위에 별도 레이어로 얹어 상세 스크롤·상태를 그대로 둔다 */
+  function mediaViewerHTML() {
+    var md = ui.media;
+    if (!md) return '';
+    return '<div class="modal media-modal" role="dialog" aria-modal="true" aria-label="리뷰 미디어">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      (md.kind === 'video'
+        ? '<video src="' + esc(md.src) + '" controls autoplay playsinline></video>'
+        : '<img src="' + esc(md.src) + '" alt="리뷰 사진">') +
+    '</div>';
+  }
+  function renderMediaViewer() {
+    var host = $('#media-viewer');
+    if (!host) return;
+    if (!ui.media) { host.hidden = true; host.innerHTML = ''; return; }
+    host.hidden = false;
+    host.innerHTML = mediaViewerHTML();
+  }
+  function openReviewMedia(reviewId, idx, kind) {
+    var r = (db.product_reviews || []).filter(function (x) { return x.id === reviewId; })[0];
+    var media = reviewMedia(r);
+    var item = media[Math.max(0, Math.min(media.length - 1, Number(idx) || 0))];
+    if (!item) return;
+    ui.media = { reviewId: reviewId, idx: Number(idx) || 0, kind: kind || item.type || 'image', src: reviewMediaSrc(item) };
+    renderMediaViewer();
+    syncLock();
+    syncRoute();
+  }
+  function closeReviewMedia() {
+    if (!ui.media) return;
+    ui.media = null;
+    renderMediaViewer();
+    syncLock();
+    syncRoute();
+  }
+
+  function syncGallery(root) {
+    var m = ui.modal;
+    if (!root || !m || m.type !== 'product') return;
+    var p = productById(m.pid);
+    if (!p) return;
+    var images = productImages(p);
+    var idx = Math.max(0, Math.min(images.length - 1, m.img || 0));
+    m.img = idx;
+    var img = $('[data-hook=main-img]', root);
+    if (img) { img.src = imgSrc(images[idx]); img.alt = imageAltOf(p, idx); }
+    $$('.pm-thumb', root).forEach(function (t) {
+      var on = Number(t.dataset.idx) === idx;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    var count = $('[data-hook=img-count]', root);
+    if (count) count.textContent = (idx + 1) + ' / ' + images.length;
+    /* 이미지를 바꾸면 확대·이동 상태를 초기화한다 */
+    m.zoom = 1; m.px = 0; m.py = 0;
+    applyStageTransform(root);
+  }
+  /* 상세 이미지 확대(1x ↔ 2x) — 라이트박스 없이 상세 화면 안에서도 더블탭 확대 */
+  function applyStageTransform(root) {
+    var host = root || $('#modal-layer .product-modal');
+    if (!host || !ui.modal || ui.modal.type !== 'product') return;
+    var m = ui.modal;
+    var img = $('[data-hook=main-img]', host);
+    var stage = $('[data-hook=stage]', host);
+    if (!img) return;
+    var z = m.zoom === 2 ? 2 : 1;
+    img.style.transform = 'translate(' + Math.round(m.px || 0) + 'px, ' + Math.round(m.py || 0) + 'px) scale(' + z + ')';
+    if (stage) stage.classList.toggle('zoomed', z > 1);
+    var hint = $('[data-hook=stage-hint]', host);
+    if (hint) hint.textContent = z > 1 ? '2x · 더블탭하면 원래 크기' : '이미지를 누르면 확대 · 좌우로 밀어 다른 컷';
+  }
+  function setStageZoom(z) {
+    var m = ui.modal;
+    if (!m || m.type !== 'product') return;
+    m.zoom = z === 2 ? 2 : 1;
+    if (m.zoom === 1) { m.px = 0; m.py = 0; }
+    applyStageTransform();
+  }
+  function clampStagePan() {
+    var m = ui.modal;
+    if (!m) return;
+    var img = $('#modal-layer [data-hook=main-img]');
+    if (!img || m.zoom !== 2) { m.px = 0; m.py = 0; return; }
+    var w = img.clientWidth || 0, h = img.clientHeight || 0;
+    var maxX = Math.max(0, w / 2), maxY = Math.max(0, h / 2);
+    m.px = Math.max(-maxX, Math.min(maxX, m.px || 0));
+    m.py = Math.max(-maxY, Math.min(maxY, m.py || 0));
+  }
+  /* 좌우 스와이프로 이전/다음 컷 · 드래그 이동(2x) · 더블탭 1x↔2x · 탭(짧게)은 확대 뷰어 열기 */
+  function bindProductStage() {
+    var stage = $('#modal-layer .pm-stage');
+    if (!stage || !ui.modal || ui.modal.type !== 'product') return;
+    var pointers = {}, start = null, moved = 0, lastTap = 0, tapTimer = null, baseZoom = 1;
+    var nowMs = function () { return Date.now(); };
+    stage.addEventListener('pointerdown', function (ev) {
+      if (!ui.modal || ui.modal.type !== 'product') return;
+      pointers[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+      try { stage.setPointerCapture(ev.pointerId); } catch (e) {}
+      var n = Object.keys(pointers).length;
+      moved = 0;
+      if (n === 1) {
+        start = { px: ev.clientX, py: ev.clientY, x: ui.modal.px || 0, y: ui.modal.py || 0, zoom: ui.modal.zoom || 1 };
+      }
+    });
+    stage.addEventListener('pointermove', function (ev) {
+      if (!ui.modal || !pointers[ev.pointerId] || Object.keys(pointers).length !== 1 || !start) return;
+      var dx = ev.clientX - start.px, dy = ev.clientY - start.py;
+      moved = Math.max(moved, Math.abs(dx) + Math.abs(dy));
+      if (ui.modal.zoom === 2) {
+        ui.modal.px = start.x + dx;
+        ui.modal.py = start.y + dy;
+        clampStagePan();
+        applyStageTransform();
+      }
+    });
+    var end = function (ev) {
+      if (!ui.modal || ui.modal.type !== 'product') return;
+      delete pointers[ev.pointerId];
+      if (Object.keys(pointers).length) return;
+      var dx = ev.clientX - (start ? start.px : ev.clientX);
+      var dy = ev.clientY - (start ? start.py : ev.clientY);
+      var s = start; start = null;
+      if (!s) return;
+      /* 1) 좌우 스와이프 — 40px 이상, 가로 우세, 1x 상태 */
+      if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && (ui.modal.zoom || 1) === 1) {
+        var p = productById(ui.modal.pid);
+        var n = productImages(p).length || 1;
+        ui.modal.img = ((ui.modal.img || 0) + (dx < 0 ? 1 : -1) + n) % n;
+        syncGallery($('#modal-layer .product-modal'));
+        return;
+      }
+      if (moved >= 10) return;   // 드래그(이동)는 탭으로 치지 않는다
+      /* 2) 탭 — 300ms 안에 두 번이면 더블탭(1x↔2x), 한 번이면 확대 뷰어 */
+      var t = nowMs();
+      if (t - lastTap < 320) {
+        if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+        lastTap = 0;
+        setStageZoom(baseZoom === 1 ? 2 : 1);
+        return;
+      }
+      lastTap = t;
+      baseZoom = ui.modal.zoom || 1;
+      if (tapTimer) clearTimeout(tapTimer);
+      tapTimer = setTimeout(function () {
+        tapTimer = null;
+        lastTap = 0;
+        if (!ui.modal || ui.modal.type !== 'product') return;
+        openLightbox();
+      }, 260);
+    };
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', function (ev) {
+      delete pointers[ev.pointerId]; start = null;
+    });
+    stage.addEventListener('dblclick', function (ev) { ev.preventDefault(); });
+    stage.addEventListener('dragstart', function (ev) { ev.preventDefault(); });
+  }
+  /* 컬러·사이즈·수량 변경 시 모달의 해당 영역만 부분 갱신한다.
+     모달 전체(innerHTML)나 <img> 를 다시 그리지 않으므로 깜빡임·스크롤 초기화가 없다. */
+  function syncProductModal() {
+    var root = $('#modal-layer .product-modal');
+    if (!root || !ui.modal || ui.modal.type !== 'product') return;
+    var m = ui.modal;
+    var p = productById(m.pid);
+    if (!p) return;
+    $$('.chips .chip', root).forEach(function (chip) {
+      var on = chip.dataset.color === m.color;
+      chip.classList.toggle('active', on);
+      chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    var nameEl = $('[data-hook=color-name]', root);
+    if (nameEl) {
+      nameEl.textContent = m.color || '선택';
+      nameEl.setAttribute('data-selected', m.color ? 'true' : 'false');
+    }
+    var sizeNameEl = $('[data-hook=size-name]', root);
+    if (sizeNameEl) {
+      sizeNameEl.textContent = m.size || '선택';
+      sizeNameEl.setAttribute('data-selected', m.size ? 'true' : 'false');
+    }
+    var sizesEl = $('[data-hook=sizes]', root);
+    if (sizesEl) sizesEl.innerHTML = sizesHTML(p, m);
+    var hint = stockHintOf(p, m);
+    var hintEl = $('[data-hook=stock]', root);
+    if (hintEl) { hintEl.textContent = hint.text; hintEl.className = 'stock-hint' + hint.cls; }
+    var qtyEl = $('[data-hook=qty]', root);
+    if (qtyEl) qtyEl.textContent = m.qty;
+    var totalEl = $('[data-hook=total]', root);
+    if (totalEl) totalEl.textContent = won(p.price * m.qty);
+    var summaryEl = $('[data-hook=selected-summary]', root);
+    if (summaryEl) summaryEl.innerHTML = selectedSummaryHTML(m);
+  }
+
+  /* ============================================== 상품 이미지 확대 (라이트박스)
+     상세 대표 이미지를 탭하거나 「확대」 버튼을 누르면 전체 화면 뷰어가 열린다.
+     · 1x ↔ 2x(3x) 확대·축소, 드래그 이동, 두 손가락 핀치 줌
+     · ‹ › 로 같은 상품의 다른 컷 전환, ✕ · Esc · 브라우저 뒤로가기 로 뷰어만 닫힘(상세 모달 유지) */
+  function lightboxImages() {
+    var lb = ui.lightbox;
+    if (!lb) return [];
+    var p = productById(lb.pid);
+    return p ? productImages(p) : [];
+  }
+  /* 라이트버스 열림·닫힘·컷 전환은 반드시 history 에 한 겹으로 기록한다.
+     (예전에는 상세 이미지를 탭해 열 때 syncRoute 가 호출되지 않아, 뒤로가기 한 번에
+      확대 뷰어와 상세 모달이 함께 닫히고 목록으로 나가졌다) */
+  function openLightbox() {
+    var m = ui.modal;
+    if (!m || m.type !== 'product') return;
+    ui.lightbox = { pid: m.pid, img: m.img || 0, zoom: 1, x: 0, y: 0 };
+    renderLightbox();
+    syncLock();
+    syncRoute();
+  }
+  function closeLightbox() {
+    if (!ui.lightbox) return;
+    ui.lightbox = null;
+    renderLightbox();
+    syncLock();
+    syncRoute();
+  }
+  function applyLightboxTransform() {
+    var lb = ui.lightbox;
+    if (!lb) return;
+    var img = $('#lb-img');
+    if (img) {
+      img.style.transform = 'translate(' + Math.round(lb.x) + 'px, ' + Math.round(lb.y) + 'px) scale(' + lb.zoom + ')';
+    }
+    var zoomEl = $('#lb-zoom');
+    if (zoomEl) zoomEl.textContent = (Math.round(lb.zoom * 10) / 10) + 'x';
+    var stage = $('#lb-stage');
+    if (stage) stage.classList.toggle('zoomed', lb.zoom > 1);
+  }
+  function clampLightboxPan() {
+    var lb = ui.lightbox;
+    if (!lb) return;
+    var img = $('#lb-img');
+    var w = img ? img.clientWidth : 0;
+    var h = img ? img.clientHeight : 0;
+    var maxX = Math.max(0, (w * (lb.zoom - 1)) / 2);
+    var maxY = Math.max(0, (h * (lb.zoom - 1)) / 2);
+    lb.x = lb.zoom > 1 ? Math.max(-maxX, Math.min(maxX, lb.x)) : 0;
+    lb.y = lb.zoom > 1 ? Math.max(-maxY, Math.min(maxY, lb.y)) : 0;
+  }
+  function setLightboxZoom(z) {
+    var lb = ui.lightbox;
+    if (!lb) return;
+    lb.zoom = Math.max(1, Math.min(3, z));
+    clampLightboxPan();
+    applyLightboxTransform();
+  }
+  function lightboxZoomBy(delta) {
+    var lb = ui.lightbox;
+    if (!lb) return;
+    setLightboxZoom(lb.zoom + delta);
+  }
+  function lightboxStep(dir) {
+    var lb = ui.lightbox;
+    if (!lb) return;
+    var images = lightboxImages();
+    if (!images.length) return;
+    lb.img = ((lb.img || 0) + dir + images.length) % images.length;
+    lb.zoom = 1; lb.x = 0; lb.y = 0;
+    renderLightbox();
+    syncRoute();
+  }
+  function lightboxHTML() {
+    var lb = ui.lightbox;
+    var p = lb ? productById(lb.pid) : null;
+    var images = lightboxImages();
+    if (!lb || !p || !images.length) return '';
+    var idx = Math.max(0, Math.min(images.length - 1, lb.img || 0));
+    lb.img = idx;
+    return '<div class="lb-stage" id="lb-stage">' +
+        '<img id="lb-img" src="' + imgSrc(images[idx]) + '" alt="' + esc(imageAltOf(p, idx)) + ' 확대 이미지" draggable="false">' +
+      '</div>' +
+      '<button class="lb-close" data-action="lb-close" aria-label="확대 보기 닫기">✕</button>' +
+      (images.length > 1
+        ? '<button class="lb-nav prev" data-action="lb-prev" aria-label="이전 이미지">‹</button>' +
+          '<button class="lb-nav next" data-action="lb-next" aria-label="다음 이미지">›</button>'
+        : '') +
+      '<div class="lb-bar">' +
+        '<div class="lb-name">' + esc(p.name) +
+          '<span class="lb-count" id="lb-count" data-hook="lb-count">' + (idx + 1) + ' / ' + images.length + '</span></div>' +
+        '<div class="lb-tools">' +
+          '<button type="button" data-action="lb-zoom-out" aria-label="축소">−</button>' +
+          '<span class="lb-zoom" id="lb-zoom" data-hook="lb-zoom">' + lb.zoom + 'x</span>' +
+          '<button type="button" data-action="lb-zoom-in" aria-label="확대">+</button>' +
+          '<button type="button" class="lb-reset" data-action="lb-zoom-reset">원본</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="lb-hint">이미지를 탭하면 1x ↔ 2x · 드래그로 이동 · 두 손가락으로 확대</div>';
+  }
+  function renderLightbox() {
+    var host = $('#lightbox');
+    if (!host) return;
+    if (!ui.lightbox) { host.hidden = true; host.innerHTML = ''; return; }
+    var p = productById(ui.lightbox.pid);
+    if (!p || !productImages(p).length) { ui.lightbox = null; host.hidden = true; host.innerHTML = ''; return; }
+    host.hidden = false;
+    host.innerHTML = lightboxHTML();
+    applyLightboxTransform();
+    bindLightboxGestures();
+  }
+  function pointerDistance(map) {
+    var ids = Object.keys(map);
+    if (ids.length < 2) return 0;
+    var a = map[ids[0]], b = map[ids[1]];
+    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+  }
+  /* 드래그 이동 + 두 손가락 핀치 줌 + 탭(1x ↔ 2x 토글) + 더블탭(1x↔2x) + 좌우 스와이프(컷 전환) */
+  function bindLightboxGestures() {
+    var stage = $('#lb-stage');
+    if (!stage) return;
+    var pointers = {};
+    var start = null;
+    var moved = 0;
+    var lastTap = 0;
+    var tapBase = 1;
+    stage.addEventListener('pointerdown', function (ev) {
+      if (!ui.lightbox) return;
+      pointers[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+      try { stage.setPointerCapture(ev.pointerId); } catch (e) {}
+      var n = Object.keys(pointers).length;
+      moved = 0;
+      if (n === 1) {
+        start = { mode: 'pan', px: ev.clientX, py: ev.clientY, x: ui.lightbox.x, y: ui.lightbox.y };
+      } else if (n === 2) {
+        start = { mode: 'pinch', dist: pointerDistance(pointers), zoom: ui.lightbox.zoom };
+      }
+    });
+    stage.addEventListener('pointermove', function (ev) {
+      if (!ui.lightbox || !pointers[ev.pointerId]) return;
+      pointers[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+      var n = Object.keys(pointers).length;
+      if (n >= 2 && start && start.mode === 'pinch') {
+        var d = pointerDistance(pointers);
+        if (start.dist > 0 && d > 0) setLightboxZoom(start.zoom * (d / start.dist));
+        moved = 99;
+        return;
+      }
+      if (n === 1 && start && start.mode === 'pan' && ui.lightbox.zoom > 1) {
+        var dx = ev.clientX - start.px;
+        var dy = ev.clientY - start.py;
+        moved = Math.max(moved, Math.abs(dx) + Math.abs(dy));
+        ui.lightbox.x = start.x + dx;
+        ui.lightbox.y = start.y + dy;
+        clampLightboxPan();
+        applyLightboxTransform();
+      } else if (n === 1 && start) {
+        moved = Math.max(moved, Math.abs(ev.clientX - start.px) + Math.abs(ev.clientY - start.py));
+      }
+    });
+    var end = function (ev) {
+      if (!ui.lightbox) return;
+      delete pointers[ev.pointerId];
+      var n = Object.keys(pointers).length;
+      if (!n) {
+        var s = start;
+        start = null;
+        if (!s || s.mode !== 'pan') return;
+        var dx = ev.clientX - s.px;
+        var dy = ev.clientY - s.py;
+        if (moved >= 6) {
+          /* 1x 상태의 좌우 스와이프 = 이전/다음 컷 */
+          if (ui.lightbox.zoom === 1 && Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+            lightboxStep(dx < 0 ? 1 : -1);
+          }
+          return;
+        }
+        /* 탭: 한 번이면 1x↔2x 토글, 300ms 안에 두 번이면 더블탭(기준 배율의 반대로) */
+        var t = Date.now();
+        if (t - lastTap < 320) {
+          lastTap = 0;
+          setLightboxZoom(tapBase === 1 ? 2 : 1);
+          return;
+        }
+        lastTap = t;
+        tapBase = ui.lightbox.zoom;
+        setLightboxZoom(ui.lightbox.zoom > 1 ? 1 : 2);   // 탭 = 1x ↔ 2x
+      } else if (n === 1) {
+        var rest = pointers[Object.keys(pointers)[0]];
+        start = { mode: 'pan', px: rest.x, py: rest.y, x: ui.lightbox.x, y: ui.lightbox.y };
+      }
+    };
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', function (ev) { delete pointers[ev.pointerId]; start = null; });
+    stage.addEventListener('dragstart', function (ev) { ev.preventDefault(); });
+  }
+
+  /* ------------------------------------------------------------ cart drawer */
+  /* 쿠폰 입력 + 사용 가능 쿠폰 원클릭 선택 — 장바구니 드로어와 결제 화면이 같은 마크업을 쓴다 */
+  function couponBoxHTML(rows) {
+    var t = totalsOf(rows, null);
+    var applied = ui.coupon;
+    var chk = applied ? couponCheck(applied, t.subtotal, undefined, rows) : null;
+    var me = currentUser();
+    // 현재 로그인한 사용자가 쓸 수 있는 쿠폰만 노출한다(공용 + 본인 전용). 타인 전용 쿠폰은 절대 보이지 않는다.
+    var list = couponsForUser(me);
+    return '<div class="coupon-box" data-coupon-box>' +
+      '<div class="cb-head"><span>할인 쿠폰</span>' +
+        (applied && chk && chk.ok ? '<b class="cb-on">적용됨</b>' : '') + '</div>' +
+      (applied && chk && chk.ok
+        ? '<div class="coupon-applied"><b>' + esc(applied.code) + '</b><span>−' + won(totalsOf(rows, applied).discount) + '</span>' +
+            '<button class="remove-x" data-action="remove-coupon">해제</button></div>'
+        : '<div class="coupon-input"><input class="coupon-code" type="text" placeholder="쿠폰 코드" value="' + esc(ui.couponCode) + '" aria-label="쿠폰 코드" autocomplete="off">' +
+            '<button class="btn small" data-action="apply-coupon">적용</button></div>') +
+      (ui.couponError ? '<div class="coupon-msg err">' + esc(ui.couponError) + '</div>' : '') +
+      (applied && chk && !chk.ok ? '<div class="coupon-msg err">' + esc(chk.message) + ' 쿠폰은 잠시 보류됩니다.</div>' : '') +
+      (ui.couponMessage && applied && chk && chk.ok ? '<div class="coupon-msg ok">' + esc(ui.couponMessage) + '</div>' : '') +
+      (list.length
+        ? '<div class="coupon-chips">' + list.map(function (c) {
+            var chkC = couponCheck(c, t.subtotal, me, rows);
+            var off = !chkC.ok;
+            var on = applied && applied.code === c.code;
+            return '<button class="coupon-chip' + (on ? ' active' : '') + (off ? ' off' : '') + '" data-action="use-coupon" data-code="' + esc(c.code) + '" title="' + esc(c.name + (off ? ' — ' + chkC.message : '')) + '">' +
+              '<b>' + esc(c.code) + '</b> ' + esc(couponValueLabel(c)) +
+              (couponIsPublic(c) ? '' : '<span class="cb-own">' + (couponTargets(c).length ? '내 전용' : '등급 전용') + '</span>') +
+              (couponHasItemConditions(c) ? '<span class="cb-own cond">' + esc(couponConditionLabel(c)) + '</span>' : '') +
+              '<small>' + esc(couponHintOf(c, t.subtotal, rows)) + '</small></button>';
+          }).join('') + '</div>'
+        : '<div class="coupon-msg">' + (me ? '사용 가능한 쿠폰이 없습니다.' : '로그인하면 보유 쿠폰을 사용할 수 있습니다.') + '</div>') +
+      '</div>';
+  }
+  function applyCouponCode(code, rows) {
+    var c = couponByCode(code);
+    ui.couponCode = String(code || '').trim().toUpperCase();
+    ui.couponMessage = '';
+    var t = totalsOf(rows || [], null);
+    var chk = couponCheck(c, t.subtotal, undefined, rows || []);
+    if (!chk.ok) {
+      ui.coupon = null;
+      ui.couponError = chk.message;
+      return chk;
+    }
+    ui.coupon = c;
+    ui.couponError = '';
+    ui.couponMessage = c.code + ' 쿠폰을 적용했습니다' + (c.discount_type === 'percent' ? ' (' + c.discount_value + '%)' : '') + '.';
+    return chk;
+  }
+  function clearCoupon() {
+    ui.coupon = null; ui.couponCode = ''; ui.couponError = ''; ui.couponMessage = '';
+  }
+  /* 장바구니·결제 화면 어디서든 같은 동작을 하도록 활성 행을 추정한다 */
+  function activeRows() {
+    return ui.view === 'checkout' ? checkoutRows() : selectedRows();
+  }
+  function refreshMoneyViews() {
+    renderCart();
+    if (ui.view === 'checkout') renderView();
+    renderHeader();
+  }
+
+  function renderCart() {
+    var drawer = $('#cart-drawer');
+    var scrim = $('#scrim');
+    if (!drawer) return;
+    drawer.classList.toggle('show', ui.cartOpen);
+    drawer.setAttribute('aria-hidden', ui.cartOpen ? 'false' : 'true');
+    if (scrim) scrim.classList.toggle('show', ui.cartOpen);
+    var rows = cartRows();
+    var sel = selectedRows();
+    var t = totalsOf(sel, ui.coupon);
+    var allSel = rows.length > 0 && sel.length === rows.length;
+    var ship = t.ship;
+    var shipLeft = ship.remaining;
+    var body;
+    if (!rows.length) {
+      body = '<div class="cart-empty">' +
+        '<div class="serif">장바구니가 비어 있습니다</div>' +
+        '<p>마음에 드는 옷을 담아보세요.<br>10만 원 이상 구매 시 무료배송입니다.</p>' +
+        '<button class="btn small" data-action="close-cart">쇼핑 계속하기</button>' +
+      '</div>';
+    } else {
+      body = '' +
+        '<div class="cart-toolbar">' +
+          '<label class="cart-all"><input type="checkbox" ' + (allSel ? 'checked' : '') + ' data-action="cart-select-all"> 전체 선택 (' + sel.length + '/' + rows.length + ')</label>' +
+          '<div class="cart-bulk">' +
+            '<button class="btn ghost small" data-action="cart-remove-selected"' + (sel.length ? '' : ' disabled') + '>선택 삭제</button>' +
+            '<button class="btn ghost small danger-text" data-action="cart-remove-all">전체 삭제</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="ship-bar">' +
+          (ship.allFree
+            ? '<p><b>무료배송</b>이 적용되었습니다</p>'
+            : '<p>' + (ship.unpaid[0] ? '‘' + esc(ship.unpaid[0].name) + '’ 무료배송까지 <b>' + won(shipLeft) + '</b> 남았습니다' : '무료배송까지 <b>' + won(shipLeft) + '</b> 남았습니다') + '</p>') +
+          (ship.allFree ? '' : '<div class="ship-track"><i style="width:' + Math.round(Math.max(0, Math.min(1, 1 - shipLeft / Math.max(1, ship.unpaid[0] ? ship.unpaid[0].threshold : FREE_SHIPPING))) * 100) + '%"></i></div>') +
+        '</div>' +
+        '<div class="cart-list">' + rows.map(function (r) {
+          var checked = ui.cartSel[r.item.id] !== false;
+          var th = freeShipThresholdOf(r.product);
+          return '<div class="cart-row' + (checked ? '' : ' unselected') + '">' +
+            '<input class="cart-check" type="checkbox" ' + (checked ? 'checked' : '') + ' data-action="cart-select" data-cid="' + r.item.id + '" aria-label="' + esc(r.product.name) + ' 선택">' +
+            '<img class="cart-thumb" src="' + imgSrc(r.product.image) + '" alt="' + esc(r.product.name) + '">' +
+            '<div class="cart-info">' +
+              '<div class="brand">' + esc(r.product.brand) + '</div>' +
+              '<div class="name">' + esc(r.product.name) + '</div>' +
+              '<div class="opt"><i class="dot opt-dot' + (isLightHex(resolveColorHex(r.variant.color, r.variant.color_hex)) ? ' light' : '') + '" style="background:' + esc(resolveColorHex(r.variant.color, r.variant.color_hex)) + '" data-hex="' + esc(resolveColorHex(r.variant.color, r.variant.color_hex)) + '" title="' + esc(r.variant.color) + '"></i>' + esc(r.variant.color) + ' / ' + esc(r.variant.size) + '</div>' +
+              '<div class="opt cart-ship">' + esc(shippingLabelOf(r.product)) + '</div>' +
+              (r.item.quantity > r.variant.stock ? '<div class="cart-stock-warn">재고가 부족합니다 (남은 수량 ' + Math.max(0, r.variant.stock) + '개)</div>' : '') +
+              '<div class="row">' +
+                '<div class="stepper">' +
+                  '<button data-action="cart-dec" data-cid="' + r.item.id + '" aria-label="수량 줄이기">−</button>' +
+                  '<span>' + r.item.quantity + '</span>' +
+                  '<button data-action="cart-inc" data-cid="' + r.item.id + '" aria-label="수량 늘리기"' + (r.item.quantity >= r.variant.stock ? ' disabled' : '') + '>+</button>' +
+                '</div>' +
+                '<span class="cart-price">' + won(r.product.price * r.item.quantity) + '</span>' +
+              '</div>' +
+              '<div style="margin-top:8px"><button class="remove-x" data-action="cart-remove" data-cid="' + r.item.id + '">삭제</button></div>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>' +
+        couponBoxHTML(sel);
+    }
+    var foot = rows.length ? '' +
+      '<div class="drawer-foot">' +
+        '<div class="sum-line"><span>상품금액 (' + t.count + '개)</span><span>' + won(t.subtotal) + '</span></div>' +
+        (t.discount ? '<div class="sum-line discount"><span>쿠폰 할인</span><span>−' + won(t.discount) + '</span></div>' : '') +
+        '<div class="sum-line ship"><span>배송비</span><span>' + (t.shipping ? won(t.shipping) : '무료') + '</span></div>' +
+        '<div class="sum-line total"><span>결제 예정 금액</span><b>' + won(t.total) + '</b></div>' +
+        '<button class="btn block" data-action="cart-checkout"' + (sel.length ? '' : ' disabled') + '>주문하기</button>' +
+        '<p class="note">장바구니는 이 기기에 저장됩니다 · 실제 결제는 이루어지지 않습니다</p>' +
+      '</div>' : '';
+    drawer.innerHTML = '' +
+      '<div class="drawer-head">' +
+        '<h3>장바구니<span class="count">' + (rows.length ? rows.length + ' ITEMS' : '') + '</span></h3>' +
+        '<button class="icon-btn" data-action="close-cart" aria-label="장바구니 닫기">✕</button>' +
+      '</div>' +
+      '<div class="drawer-body">' + body + '</div>' +
+      foot;
+  }
+
+  /* ------------------------------------------------------------- checkout */
+  function paymentNoticeHTML() {
+    var live = tossAvailable();
+    var lines = [];
+    lines.push(live
+      ? '결제하기를 누르면 <b>토스페이먼츠 테스트 결제창</b>이 열립니다.'
+      : '이 환경(file:// · 오프라인 · SDK 로드 실패)에서는 <b>데모 모의 결제</b>로 진행됩니다.');
+    if (live) lines.push('카드·간편결제를 선택할 수 있고, 실제 금액은 청구되지 않습니다.');
+    lines.push(PAYMENT_CONFIG.confirmApiUrl
+      ? '결제 승인은 서버(' + esc(PAYMENT_CONFIG.confirmApiUrl) + ')에서 처리됩니다.'
+      : '현재는 서버 승인 없이 테스트 승인으로 처리됩니다 · 실서비스 전에는 승인 서버가 필요합니다.');
+    return '<div class="pay-mode' + (live ? '' : ' demo') + '" data-pay-mode="' + (live ? 'test' : 'demo') + '">' +
+      '<div class="pm-tag">' + (live ? 'TEST PAYMENT' : 'DEMO PAYMENT') + '</div>' +
+      '<div class="pm-body">' + lines.join('<br>') + '</div>' +
+      '</div>';
+  }
+
+  function checkoutRows() {
+    return cartRows().filter(function (r) { return ui.checkoutIds.indexOf(r.item.id) >= 0; });
+  }
+  function userAddressParts(u) {
+    var user = u || {};
+    return { postcode: user.postcode || '', base: user.address || '', detail: user.address_detail || '' };
+  }
+  /* 사용할 포인트 — 보유 잔액과 결제 금액을 넘지 않게 자동 조정 */
+  function pointUseApplied(total) {
+    var u = currentUser();
+    if (!u) return 0;
+    var want = Math.max(0, Math.floor(Number(ui.pointUse) || 0));
+    return Math.min(want, userPoints(u), Math.max(0, Math.round(Number(total) || 0)));
+  }
+  function pointBoxHTML(total) {
+    var u = currentUser();
+    if (!u) return '';
+    var bal = userPoints(u);
+    var max = Math.min(bal, Math.max(0, Math.round(Number(total) || 0)));
+    var applied = pointUseApplied(total);
+    return '<div class="point-box" data-point-box>' +
+      '<div class="pb-head"><span>포인트</span><b data-hook="point-balance">보유 ' + bal.toLocaleString('ko-KR') + 'P</b></div>' +
+      '<div class="pb-input">' +
+        '<input id="co-point-use" type="number" min="0" max="' + max + '" step="10" value="' + (ui.pointUse ? ui.pointUse : '') + '" placeholder="사용할 포인트" aria-label="사용할 포인트">' +
+        '<button class="btn small" data-action="apply-points">적용</button>' +
+        '<button class="btn ghost small" data-action="use-all-points">모두 사용</button>' +
+      '</div>' +
+      (ui.pointUseMsg ? '<div class="pb-msg">' + esc(ui.pointUseMsg) + '</div>' : '') +
+      (applied ? '<div class="pb-applied">−' + won(applied) + ' 사용</div>' : '') +
+      (bal <= 0 ? '<div class="pb-msg">적립된 포인트가 없습니다. 구매확정·리뷰로 적립됩니다.</div>' : '') +
+    '</div>';
+  }
+  function checkoutHTML() {
+    var user = currentUser();
+    if (!user) {
+      return '<div class="page"><div class="checkout"><div class="checkout-main">' +
+        '<button class="btn link checkout-back" data-action="go-home">← 쇼핑 계속하기</button>' +
+        '<h1>주문 / 결제</h1>' +
+        '<div class="co-guest"><p>주문과 결제를 위해 로그인이 필요합니다.</p><button class="btn" data-action="open-auth">로그인 / 회원가입</button></div>' +
+      '</div></div></div>';
+    }
+    var rows = checkoutRows();
+    if (!rows.length) {
+      return '<div class="page"><div class="checkout"><div class="checkout-main">' +
+        '<button class="btn link checkout-back" data-action="go-home">← 쇼핑 계속하기</button>' +
+        '<h1>주문 / 결제</h1>' +
+        '<div class="empty-state"><h3>주문할 상품이 없습니다</h3><p>장바구니에서 상품을 선택해 주세요.</p><div style="margin-top:20px"><button class="btn ghost small" data-action="open-cart">장바구니 열기</button></div></div>' +
+      '</div></div></div>';
+    }
+    var t = totalsOf(rows, ui.coupon);
+    var pointApplied = pointUseApplied(t.total);
+    var payable = Math.max(0, t.total - pointApplied);
+    return '<div class="page"><div class="checkout">' +
+      '<div class="checkout-main">' +
+        '<button class="btn link checkout-back" data-action="back-to-cart">← 장바구니로 돌아가기</button>' +
+        '<h1>주문 / 결제</h1>' +
+        '<div class="co-section"><div class="panel">' +
+          '<div class="panel-head"><h2>주문 상품</h2><span class="sub"><b>' + t.count + '</b>개</span></div>' +
+          '<div class="co-items">' + rows.map(function (r) {
+            return '<div class="order-item">' +
+              '<img src="' + imgSrc(r.product.image) + '" alt="">' +
+              '<div><div class="name">' + esc(r.product.name) + '</div><div class="opt">' + esc(r.variant.color) + ' / ' + esc(r.variant.size) + '</div>' +
+                '<div class="opt cart-ship">' + esc(shippingLabelOf(r.product)) + '</div></div>' +
+              '<div><div class="price">' + won(r.product.price * r.item.quantity) + '</div><div class="qty">수량 ' + r.item.quantity + '</div></div>' +
+            '</div>';
+          }).join('') + '</div>' +
+        '</div></div>' +
+        '<div class="co-section"><div class="panel">' +
+          '<div class="panel-head"><h2>주문자 정보</h2><span class="sub">' + esc(user.email) + '</span></div>' +
+          '<div class="field"><label>이름</label><input id="co-name" value="' + esc(user.name) + '" placeholder="이름"></div>' +
+          '<div class="field"><label>연락처</label><input id="co-phone" value="' + esc(user.phone) + '" placeholder="010-0000-0000"></div>' +
+        '</div></div>' +
+        '<div class="co-section"><div class="panel">' +
+          '<div class="panel-head"><h2>배송 정보</h2><label class="toggle"><input type="checkbox" id="same-as-user" checked data-action="same-as-user"> 주문자 정보와 동일</label></div>' +
+          '<div class="field"><label>받는 분</label><input id="co-recipient" value="' + esc(user.name) + '" placeholder="받는 분 이름"></div>' +
+          '<div class="field"><label>연락처</label><input id="co-recipient-phone" value="' + esc(user.phone) + '" placeholder="010-0000-0000"></div>' +
+          '<div class="field"><label>배송지 주소</label>' + addressGroupHTML('co', userAddressParts(user)) + '</div>' +
+          '<p class="ship-note">' + esc(shipSummaryText(t.ship)) + '</p>' +
+        '</div></div>' +
+        '<div class="co-section"><div class="panel">' +
+          '<div class="panel-head"><h2>결제 수단</h2></div>' +
+          '<div class="pay-list">' +
+            '<label class="pay-opt"><input type="radio" name="pay" value="card"' + (ui.payMethod === 'card' ? ' checked' : '') + ' data-action="pick-pay"><span>신용카드<small>국내 모든 카드</small></span></label>' +
+            '<label class="pay-opt"><input type="radio" name="pay" value="easypay"' + (ui.payMethod === 'easypay' ? ' checked' : '') + ' data-action="pick-pay"><span>간편결제<small>카카오페이 · 네이버페이</small></span></label>' +
+            '<label class="pay-opt"><input type="radio" name="pay" value="bank"' + (ui.payMethod === 'bank' ? ' checked' : '') + ' data-action="pick-pay"><span>무통장입금<small>주문 후 24시간 내 입금</small></span></label>' +
+          '</div>' +
+        '</div></div>' +
+      '</div>' +
+      '<aside class="co-summary">' +
+        '<h2>결제 정보</h2>' +
+        '<div class="sum-line"><span>상품금액</span><span>' + won(t.subtotal) + '</span></div>' +
+        (t.saving ? '<div class="sum-line"><span>정가 대비</span><span>−' + won(t.saving) + '</span></div>' : '') +
+        (t.discount ? '<div class="sum-line discount"><span>쿠폰 할인' + (t.coupon ? ' (' + esc(t.coupon.code) + ')' : '') + '</span><span>−' + won(t.discount) + '</span></div>' : '') +
+        '<div class="sum-line ship"><span>배송비</span><span>' + (t.shipping ? won(t.shipping) : '무료') + '</span></div>' +
+        (pointApplied ? '<div class="sum-line point"><span>포인트 사용</span><span>−' + won(pointApplied) + '</span></div>' : '') +
+        '<div class="sum-line total"><span>총 결제금액</span><b data-hook="co-total">' + won(payable) + '</b></div>' +
+        couponBoxHTML(rows) +
+        pointBoxHTML(t.total) +
+        '<label class="agree"><input type="checkbox" id="co-agree" data-action="toggle-agree"> 주문 내용을 확인했으며, 결제에 동의합니다.</label>' +
+        '<button class="btn block" style="margin-top:14px" data-action="place-order">' + won(payable) + ' 결제하기</button>' +
+        paymentNoticeHTML() +
+      '</aside>' +
+    '</div></div>';
+  }
+  /* 배송비 안내 문구 — 상품별 기준을 요약 */
+  function shipSummaryText(ship) {
+    if (!ship || !ship.groups.length) return '';
+    if (ship.allFree) return '모든 상품이 무료배송 조건을 충족했습니다.';
+    var parts = ship.unpaid.map(function (g) { return g.name + ' ' + won(g.threshold) + ' 이상'; });
+    return '배송비 ' + won(SHIPPING_FEE) + ' · 무료배송 조건: ' + parts.join(', ');
+  }
+
+  /* --------------------------------------------------------------- my page */
+  function mypageHTML() {
+    var user = currentUser();
+    if (!user) {
+      return '<div class="page"><div class="page-head"><div class="eyebrow">MY PAGE</div><h1>로그인이 필요합니다</h1></div>' +
+        '<button class="btn" data-action="open-auth">로그인 / 회원가입</button></div>';
+    }
+    var orders = db.orders.filter(function (o) { return o.user_id === user.id; })
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
+    // 데이터 관리(JSON 내보내기·시드 초기화)는 관리자 콘솔 전용.
+    // 마이페이지에는 일반 회원·관리자 모두 데이터 관리 탭을 두지 않는다.
+    if (ui.myTab === 'data') ui.myTab = 'profile';
+    var myCoupons = db.coupons.filter(function (c) { return couponForUser(c, user); });
+    var usableCoupons = myCoupons.filter(couponActive).length;
+    var side = '<aside class="side-nav"><h2>My Page</h2><nav>' +
+      '<button data-action="my-tab" data-tab="profile" class="' + (ui.myTab === 'profile' ? 'active' : '') + '">회원 정보</button>' +
+      '<button data-action="my-tab" data-tab="orders" class="' + (ui.myTab === 'orders' ? 'active' : '') + '">주문 내역<span class="n">' + orders.length + '</span></button>' +
+      '<button data-action="my-tab" data-tab="points" class="' + (ui.myTab === 'points' ? 'active' : '') + '">포인트<span class="n">' + userPoints(user).toLocaleString('ko-KR') + 'P</span></button>' +
+      '<button data-action="my-tab" data-tab="coupons" class="' + (ui.myTab === 'coupons' ? 'active' : '') + '">보유 쿠폰<span class="n">' + usableCoupons + '</span></button>' +
+      '</nav></aside>';
+    var main;
+    if (ui.myTab === 'coupons') main = couponsHTML(user);
+    else if (ui.myTab === 'orders') main = ordersHTML(orders);
+    else if (ui.myTab === 'points') main = pointsHTML(user);
+    else main = profileHTML(user, orders);
+    var adminBanner = isAdmin()
+      ? '<div class="admin-banner" data-admin-banner>' +
+          '<div><div class="eyebrow">ADMIN CONSOLE</div><b>관리자 계정으로 로그인되어 있습니다</b>' +
+          '<p>상품 등록·주문·쿠폰·데이터는 상단 <b>관리자</b> 메뉴에서 관리할 수 있습니다.</p></div>' +
+          '<div class="admin-banner-actions">' +
+            '<button class="btn ghost small" data-action="admin-new-product">+ 상품 등록</button>' +
+          '</div>' +
+        '</div>'
+      : '';
+    return '<div class="page">' +
+      '<div class="page-head mypage-head">' +
+        '<div><div class="eyebrow">MY PAGE</div><h1>' + esc(user.name) + '님</h1><p>주문과 회원 정보를 한곳에서 관리하세요.</p></div>' +
+        '<div class="mypage-actions">' +
+          '<button class="btn ghost small logout-btn" data-action="logout" aria-label="로그아웃">로그아웃</button>' +
+        '</div>' +
+      '</div>' +
+      adminBanner +
+      '<div class="page-grid">' + side + '<div>' + main + '</div></div>' +
+    '</div>';
+  }
+  function profileHTML(user, orders) {
+    var spent = orders.filter(function (o) { return o.status !== 'cancelled'; })
+      .reduce(function (s, o) { return s + o.total_amount; }, 0);
+    return '' +
+      '<div class="profile-hero">' +
+        '<div class="avatar">' + esc(user.name.slice(0, 1)) + '</div>' +
+        '<div>' +
+          '<h2>' + esc(user.name) + (user.role === 'admin' ? '<span class="role-chip admin">Admin</span>' : '<span class="role-chip">Member</span>') +
+            '<span class="grade-badge ' + GRADES[gradeOf(user)].cls + '" data-grade="' + gradeOf(user) + '">' + gradeLabel(user) + '</span></h2>' +
+          '<p>' + esc(user.email) + ' · 가입 ' + fmtDate(user.created_at) + '</p>' +
+        '</div>' +
+        '<div class="ph-stats">' +
+          '<div><div class="eyebrow">보유 포인트</div><div class="ph-num" data-hook="pf-points">' + userPoints(user).toLocaleString('ko-KR') + 'P</div></div>' +
+          '<div><div class="eyebrow">누적 결제</div><div class="ph-num">' + won(spent) + '</div></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="panel">' +
+        '<div class="panel-head"><h2>회원 정보 수정</h2><span class="sub">주문 시 기본 배송지로 사용됩니다</span></div>' +
+        (ui.profileError ? '<div class="form-error">' + esc(ui.profileError) + '</div>' : '') +
+        '<div class="form-grid">' +
+          '<div class="field"><label>이름</label><input id="pf-name" value="' + esc(user.name) + '"></div>' +
+          '<div class="field"><label>연락처</label><input id="pf-phone" value="' + esc(user.phone) + '"></div>' +
+          '<div class="field span2"><label>이메일</label><input id="pf-email" value="' + esc(user.email) + '"></div>' +
+          '<div class="field span2"><label>주소</label>' + addressGroupHTML('pf', userAddressParts(user)) + '</div>' +
+        '</div>' +
+        '<div class="form-actions" style="border:0;padding-top:4px"><button class="btn" data-action="save-profile">저장하기</button></div>' +
+      '</div>' +
+      '<div class="panel">' +
+        '<div class="panel-head"><h2>최근 주문</h2><button class="btn link" data-action="my-tab" data-tab="orders">전체 보기</button></div>' +
+        (orders.length ? orders.slice(0, 2).map(orderCardHTML).join('') : '<p style="font-size:12px;color:var(--muted)">아직 주문 내역이 없습니다.</p>') +
+      '</div>';
+  }
+  /* 마이페이지 — 보유 쿠폰(전체 공용 + 나에게 발급된 전용) */
+  function couponsHTML(user) {
+    var mine = db.coupons.filter(function (c) { return couponForUser(c, user); })
+      .sort(function (a, b) {
+        var ao = couponActive(a) ? 0 : 1, bo = couponActive(b) ? 0 : 1;
+        if (ao !== bo) return ao - bo;
+        return timeOf(a.created_at) - timeOf(b.created_at);
+      });
+    var usable = mine.filter(couponActive).length;
+    return '<div class="panel" data-my-coupons="1">' +
+      '<div class="panel-head"><h2>보유 쿠폰</h2><span class="sub">사용 가능 <b>' + usable + '</b>장 · 전체 ' + mine.length + '장</span></div>' +
+      (mine.length
+        ? '<div class="my-coupons">' + mine.map(function (c) {
+            var on = couponActive(c);
+            var expired = couponExpired(c);
+            return '<article class="my-coupon' + (on ? '' : ' off') + '" data-code="' + esc(c.code) + '">' +
+              '<div class="mc-top"><span class="mc-code">' + esc(c.code) + '</span><span class="mc-value">' + esc(couponValueLabel(c)) + '</span></div>' +
+              '<div class="mc-name">' + esc(c.name) + '</div>' +
+              '<div class="mc-meta">' + esc(couponHintOf(c, 0)) + (c.expires_at ? ' · ' + fmtDate(c.expires_at) + ' 까지' : ' · 무기한') + '</div>' +
+              '<div class="mc-tags">' +
+                (couponIsPublic(c) ? '<span class="mc-tag">전체 공용</span>' : '<span class="mc-tag own">나에게 발급</span>') +
+                (on ? '<span class="mc-tag ok">사용 가능</span>'
+                    : expired ? '<span class="mc-tag no">기간 만료</span>' : '<span class="mc-tag no">사용 중지</span>') +
+              '</div>' +
+              (on ? '<div class="mc-act"><button class="btn ghost small" data-action="use-coupon-mypage" data-code="' + esc(c.code) + '">장바구니에 적용</button></div>' : '') +
+            '</article>';
+          }).join('') + '</div>'
+        : '<div class="my-coupons-empty">아직 받은 쿠폰이 없습니다.<br>발급된 쿠폰은 이곳에 자동으로 모입니다.</div>') +
+      '<p class="ship-note">쿠폰은 장바구니·결제 화면에서도 선택할 수 있습니다. 나에게만 발급된 전용 쿠폰은 다른 계정에는 보이지 않습니다.</p>' +
+    '</div>';
+  }
+
+  /* v1.9.3 — 리뷰 반려로 회수된 포인트를 사유와 함께 모아 보여준다(마이페이지 포인트 탭) */
+  function reviewById(id) {
+    return (db.product_reviews || []).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function pointReclaimsHTML(user) {
+    var logs = pointLogsOf(user.id).filter(function (l) { return l.type === 'review_reclaim'; });
+    if (!logs.length) return '';
+    var total = logs.reduce(function (s, l) { return s + Math.abs(l.amount); }, 0);
+    return '<div class="point-reclaim" data-hook="point-reclaim">' +
+      '<div class="prc-head">포인트 회수 안내<span class="prc-total">−' + total.toLocaleString('ko-KR') + 'P</span></div>' +
+      '<p class="prc-lead">리뷰 검수에서 반려된 리뷰의 포토·영상 포인트가 회수되었습니다.</p>' +
+      '<ul class="prc-list">' + logs.map(function (l) {
+        var r = reviewById(l.review_id);
+        var p = r ? productById(r.product_id) : null;
+        var reason = (r && r.rejected_reason) || '';
+        return '<li data-reclaim-log="' + esc(l.id) + '">' +
+          '<div class="prc-top"><b>' + esc(p ? p.name : '리뷰') + '</b>' +
+            '<span class="prc-amt">−' + Math.abs(l.amount).toLocaleString('ko-KR') + 'P</span></div>' +
+          (reason ? '<div class="prc-reason">사유 · ' + esc(reason) + '</div>' : '') +
+          '<div class="prc-date">' + fmtDateTime(l.created_at) + '</div>' +
+        '</li>';
+      }).join('') + '</ul>' +
+    '</div>';
+  }
+
+  function pointsHTML(user) {
+    var bal = userPoints(user);
+    var policy = pointPolicyOf(user);
+    var logs = pointLogsOf(user.id);
+    var earned = logs.filter(function (l) { return l.amount > 0; }).reduce(function (s, l) { return s + l.amount; }, 0);
+    var used = logs.filter(function (l) { return l.amount < 0; }).reduce(function (s, l) { return s - l.amount; }, 0);
+    return '<div class="panel" data-my-points="1">' +
+      '<div class="panel-head"><h2>포인트</h2><span class="sub">1P = 1원 · 결제 화면에서 사용</span></div>' +
+      '<div class="point-hero">' +
+        '<div class="po-balance"><div class="eyebrow">보유 포인트</div><b data-hook="my-points">' + bal.toLocaleString('ko-KR') + 'P</b></div>' +
+        '<dl class="po-sums">' +
+          '<div><dt>누적 적립</dt><dd>+' + earned.toLocaleString('ko-KR') + 'P</dd></div>' +
+          '<div><dt>누적 사용</dt><dd>−' + used.toLocaleString('ko-KR') + 'P</dd></div>' +
+        '</dl>' +
+      '</div>' +
+      '<div class="point-policy-line">내 등급 <span class="grade-badge ' + GRADES[gradeOf(user)].cls + '">' + gradeLabel(user) + '</span>' +
+        ' · 구매확정 <b>' + pointRateLabel(policy.confirm_rate) + '</b> · 포토·영상 리뷰 <b>' + pointRateLabel(policy.photo_rate) + '</b> 추가' +
+      '</div>' +
+      pointReclaimsHTML(user) +
+      (logs.length
+        ? '<div class="table-wrap"><table class="data point-logs"><thead><tr><th>일시</th><th>구분</th><th>내용</th><th>포인트</th></tr></thead><tbody>' +
+            logs.map(function (l) {
+              var lr = l.type === 'review_reclaim' ? reviewById(l.review_id) : null;
+              return '<tr data-point-log="' + esc(l.id) + '"' + (l.type === 'review_reclaim' ? ' class="pl-reclaim"' : '') + '><td data-label="일시">' + fmtDate(l.created_at) + '</td>' +
+                '<td data-label="구분"><span class="pl-type ' + (l.amount > 0 ? 'plus' : 'minus') + '">' + esc(pointTypeLabel(l.type)) + '</span></td>' +
+                '<td data-label="내용">' + esc(l.description) +
+                  (lr && lr.rejected_reason ? '<div class="pl-reason" data-hook="pl-reason">반려 사유 · ' + esc(lr.rejected_reason) + '</div>' : '') + '</td>' +
+                '<td data-label="포인트" class="pl-amount ' + (l.amount > 0 ? 'plus' : 'minus') + '">' + (l.amount > 0 ? '+' : '−') + Math.abs(l.amount).toLocaleString('ko-KR') + 'P</td></tr>';
+            }).join('') +
+          '</tbody></table></div>'
+        : '<div class="my-coupons-empty">아직 포인트 내역이 없습니다.<br>구매확정과 포토 리뷰로 포인트가 적립됩니다.</div>') +
+      '<p class="ship-note">포인트는 구매확정 시 결제 금액의 등급별 적립률만큼 즉시 지급되고, 사진·동영상 리뷰를 등록하면 같은 금액의 추가 적립률이 주문 상품당 한 번 더 지급됩니다.</p>' +
+    '</div>';
+  }
+  /* 주문 상품별 구매확정·리뷰 상태 — 주문 카드·주문 상세 공통 */
+  /* v1.9.3 — 반려된 리뷰의 사유·회수 포인트를 구매자에게 그대로 보여준다 */
+  function reviewRejectNoteHTML(rv) {
+    if (!rv || !reviewIsHidden(rv)) return '';
+    var pts = Math.max(0, Math.round(Number(rv.reclaimed_points) || 0));
+    var reason = String(rv.rejected_reason || '').trim() || '상품과 무관한 사진·부적절한 내용';
+    return '<div class="oi-reject" data-hook="oi-reject" data-rid="' + esc(rv.id) + '">' +
+      '<div class="oir-head">리뷰 반려 안내</div>' +
+      '<div class="oir-row"><span>반려 사유</span><b data-hook="oi-reject-reason">' + esc(reason) + '</b></div>' +
+      (pts
+        ? '<div class="oir-row reclaim"><span>회수 포인트</span><b data-hook="oi-reclaim-points">−' + pts.toLocaleString('ko-KR') + 'P</b></div>' +
+          '<p class="oir-note">반려된 리뷰로 지급되었던 포토·영상 포인트가 회수되었습니다. 재작성 시 1회 다시 지급됩니다.</p>'
+        : '<p class="oir-note">회수된 포인트는 없습니다.</p>') +
+      (rv.rejected_at ? '<div class="oir-date">' + fmtDateTime(rv.rejected_at) + ' 반려</div>' : '') +
+    '</div>';
+  }
+  function orderItemActionHTML(o, oi) {
+    var rv = reviewOfOrderItem(oi.id);
+    var rewrite = reviewRewriteAvailable(oi);
+    var bits = [];
+    if (oi.confirmed_at) {
+      bits.push('<span class="oi-state done">구매확정' + (oi.confirm_points ? ' +' + oi.confirm_points.toLocaleString('ko-KR') + 'P' : '') + '</span>');
+    }
+    if (rv && reviewIsHidden(rv)) {
+      bits.push('<span class="oi-state rejected">리뷰 반려' +
+        (rewrite ? ' · 재작성 1회 가능' : ' · 재작성 불가') + '</span>');
+    } else if (rv) {
+      bits.push('<span class="oi-state reviewed">리뷰 완료' + (reviewMedia(rv).length ? ' · 사진' : '') + '</span>');
+    }
+    var acts = [];
+    if (canConfirmItem(o, oi)) {
+      acts.push('<button class="btn small" data-action="confirm-purchase" data-oi="' + esc(oi.id) + '">구매확정</button>');
+    }
+    /* v1.9.2 — 리뷰 쓰기/다시 쓰기는 배송완료 + 구매확정 + 교환·반품 진행 중이 아님 */
+    var me0 = currentUser();
+    var reviewEntry = me0 ? orderItemReviewableEntry(oi, me0) : null;
+    if (o.status !== 'cancelled' && reviewEntry && (!rv || rewrite)) {
+      acts.push('<button class="btn ghost small" data-action="open-review" data-pid="' + esc(orderItemProductId(oi) || '') + '" data-oi="' + esc(oi.id) + '"' +
+        (rewrite ? ' data-rewrite="1"' : '') + '>' + (rewrite ? '리뷰 다시 쓰기' : '리뷰 쓰기') + '</button>');
+    }
+    /* v1.9.1 — 내가 쓴 리뷰는 마이페이지 주문 상세에서도 수정 */
+    var me = currentUser();
+    if (rv && me && rv.user_id === me.id && !reviewIsHidden(rv)) {
+      acts.push('<button class="btn ghost small" data-action="edit-review" data-rid="' + esc(rv.id) + '" data-pid="' + esc(rv.product_id) + '">리뷰 수정</button>');
+    }
+    if (!bits.length && !acts.length) return '';
+    return '<div class="oi-actions" data-oi-actions="' + esc(oi.id) + '">' + bits.join('') +
+      (acts.length ? '<span class="oi-btns">' + acts.join('') + '</span>' : '') +
+      reviewRejectNoteHTML(rv) + '</div>';
+  }
+
+  function ordersHTML(orders) {    return '<div class="panel">' +
+      '<div class="panel-head"><h2>주문 내역</h2><span class="sub">최근 순</span></div>' +
+      (orders.length
+        ? orders.map(orderCardHTML).join('')
+        : '<div class="empty-state" style="padding:50px 0"><h3>주문 내역이 없습니다</h3><p>첫 주문을 시작해 보세요.</p><div style="margin-top:18px"><button class="btn ghost small" data-action="scroll-shop">상품 보러 가기</button></div></div>') +
+    '</div>';
+  }
+  /* 주문 카드/상세에 보이는 교환·반품 접수 배지 — 예: 반품 접수됨 (무료) · 수거중/승인 */
+  function claimStripHTML(c) {
+    if (!c) return '';
+    var kind = CLAIM_TYPES[c.claim_type] || '교환/반품';
+    var state = CLAIM_STATUS[c.status] || { label: c.status, cls: '' };
+    return '<div class="claim-strip" data-claim-strip="' + esc(c.id) + '">' +
+      '<span class="claim-chip ' + esc(c.claim_type) + '">' + esc(claimBadgeText(c)) + '</span>' +
+      '<span class="claim-state ' + esc(state.cls) + '">' + esc(state.label) + '</span>' +
+      '<span class="claim-when">' + claimCreatedLabel(c) + ' 접수 · ' + esc(claimReasonLabel(c.reason_category)) + '</span>' +
+      (c.exchange_option ? '<span class="claim-opt">희망 옵션 ' + esc(c.exchange_option) + '</span>' : '') +
+      (c.status === 'rejected' ? '<span class="claim-when">반려된 신청입니다. 자세한 내용은 고객센터로 문의해 주세요.</span>' : '') +
+      '</div>';
+  }
+  function claimActionHTML(o) {
+    if (!canClaim(o)) return '';
+    return '<button class="btn ghost small claim-open" data-action="open-claim" data-oid="' + o.id + '">교환/반품 신청</button>';
+  }
+
+  /* 주문·리뷰 목록의 상품명 — 판매중이면 상품 상세로 이동, 판매중지·삭제면 안내 토스트 */
+  function orderProductNameHTML(p, oi) {
+    var name = esc(oi ? oi.product_name : (p ? p.name : ''));
+    if (!p) return name;
+    var active = isActiveValue(p.is_active);
+    return '<button type="button" class="order-product-link' + (active ? '' : ' off') + '" data-action="order-product" data-pid="' + esc(p.id) + '" aria-label="' + esc(oi ? oi.product_name : p.name) + ' 상품 보기">' + name + '</button>';
+  }
+  function orderCardHTML(o) {
+    var items = orderItemsOf(o.id);
+    var st = STATUS[o.status] || { label: o.status, cls: '' };
+    var cancellable = o.status === 'paid' || o.status === 'preparing';
+    var claim = claimOfOrder(o.id);
+    return '<div class="order-card">' +
+      '<div class="order-top">' +
+        '<div class="meta"><b>' + esc(o.order_no) + '</b> · ' + fmtDateTime(o.created_at) + '</div>' +
+        '<span class="status ' + st.cls + '">' + st.label + '</span>' +
+      '</div>' +
+      items.map(function (oi) {
+        var v = variantById(oi.variant_id);
+        var p = v ? productById(v.product_id) : null;
+        return '<div class="order-item" data-order-item="' + esc(oi.id) + '">' +
+          '<img src="' + imgSrc(p ? p.image : 'coat.webp') + '" alt="">' +
+          '<div><div class="name">' + orderProductNameHTML(p, oi) + '</div><div class="opt">' +
+            '<i class="dot opt-dot' + (isLightHex(orderedColorHex(p, oi)) ? ' light' : '') + '" style="background:' + esc(orderedColorHex(p, oi)) + '" data-hex="' + esc(orderedColorHex(p, oi)) + '"></i>' +
+            esc(oi.color) + ' / ' + esc(oi.size) + '</div>' + orderItemActionHTML(o, oi) + '</div>' +
+          '<div><div class="price">' + won(oi.unit_price * oi.quantity) + '</div><div class="qty">수량 ' + oi.quantity + '</div></div>' +
+        '</div>';
+      }).join('') +
+      claimStripHTML(claim) +
+      '<div class="order-bottom">' +
+        '<div class="total">결제금액<b>' + won(o.total_amount) + '</b></div>' +
+        '<div class="actions">' +
+          claimActionHTML(o) +
+          (cancellable ? '<button class="btn ghost small" data-action="ask-cancel-order" data-oid="' + o.id + '">주문 취소</button>' : '') +
+          '<button class="btn small" data-action="order-detail" data-oid="' + o.id + '">주문 상세</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function orderDetailHTML(orderId) {
+    var o = orderById(orderId);
+    if (!o) return '';
+    var items = orderItemsOf(o.id);
+    var st = STATUS[o.status] || { label: o.status, cls: '' };
+    var idx = STATUS_FLOW.indexOf(o.status);
+    var track = STATUS_FLOW.map(function (s, i) {
+      return '<div class="step' + (idx >= i ? ' on' : '') + '">' + STATUS[s].label + '</div>';
+    }).join('');
+    var subtotal = items.reduce(function (s, oi) { return s + oi.unit_price * oi.quantity; }, 0);
+    var cancellable = o.status === 'paid' || o.status === 'preparing';
+    var claim = claimOfOrder(o.id);
+    var claimNote = claim
+      ? '<div class="claim-detail-box">' + claimStripHTML(claim) +
+          (claim.reason_detail ? '<div class="claim-detail-text">' + esc(claim.reason_detail) + '</div>' : '') +
+          '<div class="claim-detail-meta">배송비 ' + esc(claimFeeLabel(claim)) +
+            (claim.payment_key ? ' · 결제키 ' + esc(String(claim.payment_key).slice(0, 14)) + '…' : '') + '</div>' +
+        '</div>'
+      : (CLAIM_ORDER_STATUSES.indexOf(o.status) >= 0
+          ? '<div class="claim-help">교환·반품은 구매하신 상품에 결함이 있거나, 단순 변심·사이즈 변경 시 신청할 수 있습니다. 판매자 귀책은 무료, 단순 변심은 배송비가 부과됩니다.</div>'
+          : '');
+    return '<div class="modal" role="dialog" aria-modal="true" aria-label="주문 상세" style="width:min(640px,100%)">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ORDER DETAIL</div><h2>' + esc(o.order_no) + '</h2></div>' +
+      '<div style="padding:26px 30px 30px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
+          '<span class="status ' + st.cls + '">' + st.label + '</span>' +
+          '<span style="font-size:11px;color:var(--muted)">' + fmtDateTime(o.created_at) + '</span>' +
+        '</div>' +
+        (o.status !== 'cancelled' ? '<div class="status-track">' + track + '</div>' : '<div style="padding:12px 14px;background:#f6f4ef;font-size:11px;color:var(--muted);margin-bottom:20px">취소된 주문입니다. 재고는 자동으로 복구되었습니다.</div>') +
+        items.map(function (oi) {
+          var v = variantById(oi.variant_id);
+          var p = v ? productById(v.product_id) : null;
+          return '<div class="order-item" data-order-item="' + esc(oi.id) + '" style="padding:12px 0">' +
+            '<img src="' + imgSrc(p ? p.image : 'coat.webp') + '" alt="">' +
+            '<div><div class="name"><span class="oi-code" data-code="' + esc(productCodeOf(p)) + '">' + esc(productCodeOf(p)) + '</span>' + orderProductNameHTML(p, oi) + '</div><div class="opt">' +
+              '<i class="dot opt-dot' + (isLightHex(orderedColorHex(p, oi)) ? ' light' : '') + '" style="background:' + esc(orderedColorHex(p, oi)) + '" data-hex="' + esc(orderedColorHex(p, oi)) + '"></i>' +
+              esc(oi.color) + ' / ' + esc(oi.size) + ' · ' + won(oi.unit_price) + '</div>' + orderItemActionHTML(o, oi) + '</div>' +
+            '<div><div class="price">' + won(oi.unit_price * oi.quantity) + '</div><div class="qty">수량 ' + oi.quantity + '</div></div>' +
+          '</div>';
+        }).join('') +
+        '<div style="border-top:1px solid var(--line-soft);margin-top:14px;padding-top:16px">' +
+          '<div class="sum-line"><span>상품금액</span><span>' + won(subtotal) + '</span></div>' +
+          (o.discount_amount ? '<div class="sum-line discount"><span>쿠폰 할인' + (o.coupon_code ? ' (' + esc(o.coupon_code) + ')' : '') + '</span><span>−' + won(o.discount_amount) + '</span></div>' : '') +
+          '<div class="sum-line ship"><span>배송비</span><span>' + (o.shipping_fee ? won(o.shipping_fee) : '무료') + '</span></div>' +
+          (o.points_used ? '<div class="sum-line point"><span>포인트 사용</span><span>−' + won(o.points_used) + '</span></div>' : '') +
+          '<div class="sum-line total"><span>총 결제금액</span><b>' + won(o.total_amount) + '</b></div>' +
+        '</div>' +
+        '<div style="margin-top:22px;display:grid;gap:8px;font-size:11px;color:var(--ink-soft)">' +
+          '<div style="display:flex;gap:12px"><span style="width:76px;color:var(--muted)">받는 분</span><span>' + esc(o.recipient_name) + ' · ' + esc(o.recipient_phone) + '</span></div>' +
+          '<div style="display:flex;gap:12px"><span style="width:76px;color:var(--muted)">배송지</span><span>' + (o.postcode ? '[' + esc(o.postcode) + '] ' : '') + esc(o.shipping_address) + '</span></div>' +
+          '<div style="display:flex;gap:12px"><span style="width:76px;color:var(--muted)">결제수단</span><span>' + esc(PAYMENTS[o.payment_method] || o.payment_method) + '</span></div>' +
+        '</div>' +
+        claimNote +
+        smsLogsHTML(o) +
+        '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:24px">' +
+          claimActionHTML(o) +
+          (cancellable ? '<button class="btn ghost small" data-action="ask-cancel-order" data-oid="' + o.id + '">주문 취소</button>' : '') +
+          '<button class="btn small" data-action="close-modal">닫기</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* 주문 상세 — 주문 완료 SMS 발송 내역(수신번호·본문·시각·상태) */
+  function smsLogsHTML(order) {
+    var logs = smsLogsOf(order.id);
+    if (!logs.length) return '';
+    return '<div class="sms-detail" data-hook="order-sms">' +
+      '<div class="sms-detail-head"><b>주문 알림 SMS</b><span>' + logs.length + '건</span></div>' +
+      logs.map(function (l) {
+        return '<div class="sms-detail-row" data-sms="' + esc(l.id) + '">' +
+          '<div class="sms-meta"><b>' + esc(l.phone) + '</b>' +
+            '<span class="sms-pill ' + esc(l.status) + '">' + esc(smsStatusLabel(l.status)) + '</span>' +
+            '<span class="m">' + fmtDateTime(l.created_at) + ' · ' + esc(l.mode === 'api' ? '실서버 API' : '테스트 모드') + '</span></div>' +
+          '<p class="sms-text">' + esc(l.message) + '</p></div>';
+      }).join('') +
+    '</div>';
+  }
+
+  /* ------------------------------------------------------------ data panels */
+  /* v1.9.8 — 「데이터 관리」 서브탭
+     테이블 현황 / JSON 내보내기·복원 / 결제·알림 설정 / 초기화·도구 로 나누어
+     지금 보고 있는 섹션이 무엇인지 한눈에 알 수 있게 한다. */
+  var DATA_SUBTABS = [
+    { value: 'tables', label: '테이블 현황' },
+    { value: 'json', label: 'JSON 내보내기·복원' },
+    { value: 'settings', label: '결제·알림 설정' },
+    { value: 'tools', label: '초기화·도구' }
+  ];
+  function adminSubtabBarHTML(hook, action, tabs, active) {
+    return '<div class="admin-subtabs" data-hook="' + esc(hook) + '" role="tablist" aria-label="하위 탭">' +
+      tabs.map(function (t) {
+        var on = t.value === active;
+        return '<button type="button" role="tab" class="as-tab' + (on ? ' active' : '') + '"' +
+          ' data-action="' + esc(action) + '" data-value="' + esc(t.value) + '" aria-selected="' + (on ? 'true' : 'false') + '">' +
+          esc(t.label) + (t.count != null ? '<b>' + t.count + '</b>' : '') + '</button>';
+      }).join('') +
+    '</div>';
+  }
+  function dataTablesPanelHTML() {
+    var rows = storeTableSummary();
+    var total = storeTableTotal();
+    return '<div class="data-card" data-data-tables="1">' +
+      '<h3>테이블 현황 <small class="data-h3-sub">' + STORE_TABLES.length + '종 · ' + total.toLocaleString('en-US') + '건</small></h3>' +
+      '<p>로컬 저장소(localStorage)의 실제 테이블과 건수입니다. <b>JSON 다운로드가 내보내는 <code>tables</code> 객체와 같은 레지스트리</b>를 읽으므로 ' +
+        '테이블 수·건수가 항상 일치합니다.</p>' +
+      '<div class="counts table-counts" data-hook="table-counts" data-table-count="' + STORE_TABLES.length + '" data-row-count="' + total + '">' +
+        rows.map(function (r) {
+          return '<div class="count-item" data-table="' + esc(r.name) + '" data-count="' + r.count + '">' +
+            '<div class="k">' + esc(r.name) + '<em>' + esc(r.label) + '</em></div><div class="v">' + r.count + '</div></div>';
+        }).join('') + '</div>' +
+      '<p class="data-sync-note" data-hook="table-count-note">' +
+        'JSON 다운로드의 tables 객체 = <b>' + STORE_TABLES.length + '개 테이블</b> · <b>' + total.toLocaleString('en-US') + '건</b> (위 현황과 동일)</p>' +
+    '</div>';
+  }
+  function dataJsonPanelHTML() {
+    var total = storeTableTotal();
+    var preview = JSON.stringify(storeTableSnapshot(), null, 2);
+    return '<div class="data-grid">' +
+        '<div class="data-card" data-data-json="1">' +
+          '<h3>JSON 내보내기</h3>' +
+          '<p>현재 localStorage의 정규화 테이블 <b>' + STORE_TABLES.length + '종 · ' + total.toLocaleString('en-US') + '건</b>을 그대로 JSON으로 내려받습니다. ' +
+            'SQLite 이식 시 그대로 <code>INSERT</code> 할 수 있는 구조입니다.</p>' +
+          '<div class="row"><button class="btn small" data-action="export-json">JSON 다운로드</button>' +
+          '<button class="btn ghost small" data-action="copy-json">JSON 복사</button></div>' +
+        '</div>' +
+        '<div class="data-card">' +
+          '<h3>시드 복원</h3>' +
+          '<p>데모 시드 데이터로 되돌립니다. 직접 만든 계정·주문·상품은 모두 사라지며 되돌릴 수 없습니다.</p>' +
+          '<div class="row"><button class="btn ghost small danger-text" data-action="ask-reset">초기화</button></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="data-card" style="margin-top:16px">' +
+        '<h3>내보낼 tables 객체 (미리보기)</h3>' +
+        '<p>' + STORE_TABLES.map(function (t) { return t.name; }).join(' · ') + '</p>' +
+        '<pre class="json-preview" data-hook="json-preview">' + esc(preview) + '</pre>' +
+      '</div>';
+  }
+  function dataToolsPanelHTML() {
+    var integrity = ui.integrity
+      ? '<ul class="integrity-list">' + ui.integrity.map(function (r) {
+        return '<li><span class="' + (r.level === 'ok' ? 'ok' : r.level === 'bad' ? 'bad' : '') + '">' + (r.level === 'ok' ? '✓' : r.level === 'bad' ? '✕' : '!') + '</span><span>' + esc(r.text) + '</span></li>';
+      }).join('') + '</ul>'
+      : '<p style="font-size:11px;color:var(--muted)">검사를 실행하면 외래키·재고·주문 금액 정합성을 확인합니다.</p>';
+    return '<div class="data-grid">' +
+        '<div class="data-card">' +
+          '<h3>데이터 무결성 검사</h3>' +
+          '<p>기본키·외래키·재고·enum·주문 금액을 즉시 검증합니다.</p>' +
+          '<div class="row"><button class="btn ghost small" data-action="run-integrity">검사 실행</button></div>' +
+          '<div style="margin-top:14px">' + integrity + '</div>' +
+        '</div>' +
+        '<div class="data-card">' +
+          '<h3>시드로 초기화</h3>' +
+          '<p>모든 테이블을 데모 시드로 되돌립니다(되돌릴 수 없음). JSON으로 먼저 내려받아 두는 것을 권장합니다.</p>' +
+          '<div class="row"><button class="btn ghost small danger-text" data-action="ask-reset">시드 초기화</button></div>' +
+        '</div>' +
+      '</div>' +
+      '<p style="font-size:10px;color:var(--muted);margin-top:14px">SQLite 스키마: <code>fashion-shop/data/schema.sql</code> · 시드: <code>data/schema-seed.json</code> · DB: <code>data/mono-atelier.db</code></p>';
+  }
+  function dataSettingsPanelHTML() {
+    return paymentSettingsHTML() + notifySettingsHTML();
+  }
+  function dataHTML(inAdmin) {
+    var active = DATA_SUBTABS.filter(function (t) { return t.value === ui.dataTab; })[0] ? ui.dataTab : 'tables';
+    var body = active === 'json' ? dataJsonPanelHTML()
+      : active === 'settings' ? dataSettingsPanelHTML()
+      : active === 'tools' ? dataToolsPanelHTML()
+      : dataTablesPanelHTML();
+    return '<div class="admin-data" data-admin-data="1" data-data-tab="' + esc(active) + '">' +
+      adminSubtabBarHTML('data-subtabs', 'data-subtab', DATA_SUBTABS.map(function (t) {
+        return { value: t.value, label: t.label };
+      }), active) +
+      '<div class="data-tab-body" data-hook="data-tab-body">' + body + '</div>' +
+    '</div>';
+  }
+  /* 관리자 콘솔 — 결제 설정을 화면에서 직접 관리 (localStorage 우선 적용) */
+  function paymentConfigSource() {
+    try { return localStorage.getItem(LS_PAYMENT_CONFIG) ? 'saved' : 'default'; } catch (e) { return 'default'; }
+  }
+  function maskKey(key) {
+    if (!key) return '(없음)';
+    if (key.length <= 14) return key;
+    return key.slice(0, 10) + '···' + key.slice(-4);
+  }
+  function paymentSettingsHTML() {
+    var live = tossAvailable();
+    var source = paymentConfigSource();
+    var rows = [
+      ['현재 결제 모드', live ? paymentModeLabel() : '데모 모의 결제 (이 환경에서는 SDK 사용 불가)'],
+      ['클라이언트 키', maskKey(PAYMENT_CONFIG.clientKey) + ' · ' + (PAYMENT_CONFIG.clientKeyMode === 'live' ? 'live' : 'test')],
+      ['승인 서버', PAYMENT_CONFIG.confirmApiUrl || '미연결 — 정적 데모(서버 승인 없이 테스트 승인)'],
+      ['설정 출처', source === 'saved' ? '이 브라우저에 저장된 설정(localStorage) — 기본값보다 우선' : '기본값(src/app.js 의 PAYMENT_CONFIG)']
+    ];
+    return '<div class="data-card payment-settings" data-payment-settings="1">' +
+      '<h3>결제 설정 (토스페이먼츠)</h3>' +
+      '<p>서버 파일을 고치지 않고 여기서 <b>테스트/실결제 모드·클라이언트 키·승인 API 주소</b>를 바꿀 수 있습니다. ' +
+        '저장하면 이 브라우저(localStorage)에만 보관되고 결제창에 즉시 적용됩니다. ' +
+        '<b>시크릿 키(live_gsk_…)</b>는 절대 넣지 마세요 — 서버 환경변수로만 사용합니다.</p>' +
+      '<div class="form-grid">' +
+        '<div class="field"><label>결제 모드</label><select id="ps-mode">' +
+          '<option value="test"' + (PAYMENT_CONFIG.clientKeyMode !== 'live' ? ' selected' : '') + '>테스트 (test)</option>' +
+          '<option value="live"' + (PAYMENT_CONFIG.clientKeyMode === 'live' ? ' selected' : '') + '>실결제 (live)</option>' +
+        '</select></div>' +
+        '<div class="field"><label>클라이언트 키 <small>공개 키(test_gck_… / live_gck_…)</small></label>' +
+          '<input id="ps-key" value="' + esc(PAYMENT_CONFIG.clientKey) + '" autocomplete="off" spellcheck="false" placeholder="test_gck_..."></div>' +
+        '<div class="field span2"><label>승인 API URL <small>선택 — 비우면 서버 승인 없이 테스트 승인</small></label>' +
+          '<input id="ps-confirm" value="' + esc(PAYMENT_CONFIG.confirmApiUrl) + '" autocomplete="off" spellcheck="false" placeholder="/api/payments/confirm"></div>' +
+      '</div>' +
+      '<div class="row" style="margin-top:14px">' +
+        '<button class="btn small" data-action="save-payment-settings">결제 설정 저장</button>' +
+        '<button class="btn ghost small" data-action="reset-payment-settings">기본값으로 초기화</button>' +
+      '</div>' +
+      '<ul class="integrity-list" style="margin-top:14px">' + rows.map(function (r) {
+        return '<li><span class="ok">·</span><span><b>' + esc(r[0]) + '</b> — ' + esc(r[1]) + '</span></li>';
+      }).join('') + '</ul>' +
+      '<p style="font-size:10.5px;color:var(--muted);line-height:1.9;margin-top:10px">' +
+      '· 실결제 전환: 개발자센터 &gt; API 키 &gt; 결제창형 연동 키의 <code>live_gck_…</code> 를 넣고 모드를 <b>실결제(live)</b>로 저장합니다.<br>' +
+      '· 승인 서버: <code>/api/payments/confirm</code> 처럼 넣으면 시크릿 키를 가진 서버가 토스 승인 API를 호출합니다(예제 <code>data/payment_confirm_example.py</code>).<br>' +
+      '· 저장값은 새로고침 후에도 유지되며, 「기본값으로 초기화」를 누르면 코드의 기본 설정으로 돌아갑니다.' +
+      '</p></div>';
+  }
+
+  /* ------------------------------------------------------------------ admin */
+  /* v1.9.11 — 관리자 탭을 바꿈 때 각 탭의 검색어·날짜·상태 필터를 깨끗하게 되돌린다 */
+  function resetAdminFilters() {
+    ui.adminQuery = '';              // 상품 관리 검색어
+    ui.adminProductFilter = 'all';
+    ui.adminProductFrom = '';
+    ui.adminProductTo = '';
+    ui.adminOrderQuery = '';         // 주문 관리
+    ui.adminOrderFilter = 'all';
+    ui.adminOrderFrom = '';
+    ui.adminOrderTo = '';
+    ui.adminClaimQuery = '';         // 반품/교환
+    ui.adminClaimFilter = 'all';
+    ui.adminClaimFrom = '';
+    ui.adminClaimTo = '';
+    ui.adminRevFrom = '';            // 매출 관리
+    ui.adminRevTo = '';
+    ui.adminRevPreset = 'all';
+    ui.adminReviewQuery = '';        // 리뷰 관리
+    ui.adminReviewFilter = 'all';
+    ui.adminQnaQuery = '';           // Q&A 관리
+    ui.adminQnaFilter = 'all';
+    ui.logQuery = '';                // 발송 로그
+    ui.logChannel = 'all';
+    ui.logStatus = 'all';
+    ui.faqSel = {};                  // FAQ 선택 상태
+    ui.adminSel = { order: {}, claim: {}, review: {} };   // v1.9.16 — 탭을 옴기면 멀티 선택도 비운다
+    ui.adminSelSig = {};
+    ui.memberPtsError = '';
+    ui.couponFormError = '';
+  }
+  function adminHTML() {
+    if (!isAdmin()) {
+      return '<div class="page"><div class="page-head"><div class="eyebrow">ADMIN</div><h1>관리자 전용 페이지</h1><p>관리자 계정으로 로그인해 주세요.</p></div>' +
+        '<button class="btn" data-action="open-auth">관리자 로그인</button></div>';
+    }
+    var orders = db.orders.slice().sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
+    var active = db.products.filter(function (p) { return p.is_active; }).length;
+    var pending = orders.filter(function (o) { return o.status === 'paid' || o.status === 'preparing'; }).length;
+    var openClaims = db.order_claims.filter(function (c) { return c.status === 'requested' || c.status === 'approved'; }).length;
+    /* v1.9.11 — 답변하지 않은 상품 Q&A 건수(「Q&A 관리」 탭 배지) */
+    var openQnas = (db.product_qnas || []).filter(function (q) { return qnaStatusOf(q) !== 'answered'; }).length;
+    /* v1.9.6 — 상단 KPI 카드는 바로 해당 탭·필터로 이동하는 버튼이다(누적 매출 카드는 제거). */
+    var kpis = [
+      { k: '판매 중 상품', v: active, unit: '/ ' + db.products.length, tab: 'products', filter: 'active',
+        hint: '상품 관리 · 판매중' },
+      { k: '전체 주문', v: orders.length, unit: '건', tab: 'orders', filter: 'all', hint: '주문 관리 · 전체' },
+      { k: '처리 대기', v: pending, unit: '건', tab: 'orders', filter: 'pending', hint: '주문 관리 · 처리 대기' },
+      { k: '반품/교환 처리 중', v: openClaims, unit: '건', tab: 'claims', filter: 'open', hint: '반품/교환 · 처리 중' }
+    ];
+    return '<div class="page">' +
+      '<div class="admin-head">' +
+        '<div><div class="eyebrow">ADMIN CONSOLE</div><h1 style="font-family:var(--serif);font-size:34px;font-weight:400;margin-top:6px">스토어 관리</h1></div>' +
+        '<div class="admin-head-actions"><button class="btn ghost small" data-action="export-json">JSON 내보내기</button><button class="btn small" data-action="admin-new-product">+ 상품 등록</button></div>' +
+      '</div>' +
+      '<div class="stat-row" data-hook="admin-kpi">' +
+        kpis.map(function (c) {
+          return '<button type="button" class="stat stat-link" data-action="admin-kpi" data-tab="' + c.tab +
+            '" data-filter="' + c.filter + '" aria-label="' + esc(c.k + ' ' + c.v + ' — ' + c.hint + ' 열기') + '">' +
+            '<span class="k">' + esc(c.k) + '</span>' +
+            '<span class="v">' + c.v + '<small>' + esc(c.unit) + '</small></span>' +
+            '<span class="stat-go" aria-hidden="true">' + esc(c.hint) + ' →</span></button>';
+        }).join('') +
+      '</div>' +
+      '<div class="admin-tabs">' +
+        '<button data-action="admin-tab" data-tab="products" class="' + (ui.adminTab === 'products' ? 'active' : '') + '">상품 관리</button>' +
+        '<button data-action="admin-tab" data-tab="orders" class="' + (ui.adminTab === 'orders' ? 'active' : '') + '">주문 관리</button>' +
+        '<button data-action="admin-tab" data-tab="revenue" class="' + (ui.adminTab === 'revenue' ? 'active' : '') + '">매출 관리</button>' +
+        '<button data-action="admin-tab" data-tab="claims" class="' + (ui.adminTab === 'claims' ? 'active' : '') + '">반품/교환' +
+          (openClaims ? '<span class="tab-badge">' + openClaims + '</span>' : '') + '</button>' +
+        '<button data-action="admin-tab" data-tab="coupons" class="' + (ui.adminTab === 'coupons' ? 'active' : '') + '">쿠폰 관리</button>' +
+        '<button data-action="admin-tab" data-tab="points" class="' + (ui.adminTab === 'points' ? 'active' : '') + '">포인트 관리</button>' +
+        '<button data-action="admin-tab" data-tab="members" class="' + (ui.adminTab === 'members' ? 'active' : '') + '">회원 관리</button>' +
+        '<button data-action="admin-tab" data-tab="reviews" class="' + (ui.adminTab === 'reviews' ? 'active' : '') + '">리뷰 관리</button>' +
+        '<button data-action="admin-tab" data-tab="qnas" class="' + (ui.adminTab === 'qnas' ? 'active' : '') + '">Q&A 관리' +
+          (openQnas ? '<span class="tab-badge">' + openQnas + '</span>' : '') + '</button>' +
+        '<button data-action="admin-tab" data-tab="categories" class="' + (ui.adminTab === 'categories' ? 'active' : '') + '">코드 관리</button>' +
+        '<button data-action="admin-tab" data-tab="site" class="' + (ui.adminTab === 'site' ? 'active' : '') + '">메인/사이트</button>' +
+        '<button data-action="admin-tab" data-tab="faqs" class="' + (ui.adminTab === 'faqs' ? 'active' : '') + '">FAQ 관리</button>' +
+        '<button data-action="admin-tab" data-tab="logs" class="' + (ui.adminTab === 'logs' ? 'active' : '') + '">발송 로그</button>' +
+        '<button data-action="admin-tab" data-tab="data" class="' + (ui.adminTab === 'data' ? 'active' : '') + '">데이터 관리</button>' +
+      '</div>' +
+      (ui.adminTab === 'products' ? adminProductsHTML()
+        : ui.adminTab === 'orders' ? adminOrdersHTML(orders)
+        : ui.adminTab === 'revenue' ? adminRevenueTabHTML()
+        : ui.adminTab === 'claims' ? adminClaimsHTML()
+        : ui.adminTab === 'coupons' ? adminCouponsHTML()
+        : ui.adminTab === 'points' ? adminPointsHTML()
+        : ui.adminTab === 'members' ? adminMembersHTML()
+        : ui.adminTab === 'reviews' ? adminReviewsHTML()
+        : ui.adminTab === 'qnas' ? adminQnasHTML()
+        : ui.adminTab === 'categories' ? adminCodeHTML()
+        : ui.adminTab === 'site' ? adminSiteHTML()
+        : ui.adminTab === 'faqs' ? adminFaqsHTML()
+        : ui.adminTab === 'logs' ? adminLogsHTML()
+        : dataHTML(true)) +
+    '</div>';
+  }
+  /* v1.9.7 — KPI 카드를 누르면 해당 탭·필터로 바뀐 뒤, 실제 목록(그리드 표) 영역으로
+     스크롤·포커스를 옮겨 바로 처리할 수 있게 한다. 헤더에 가리지 않도록
+     scroll-margin-top(.admin-list-anchor)을 두고 이동 직후 잠깐 테두리로 강조한다. */
+  function adminListEl(tab) {
+    if (tab === 'orders') return $('[data-hook=admin-orders-body]');
+    if (tab === 'reviews') return $('[data-hook=admin-reviews-body]');
+    if (tab === 'qnas') return $('[data-hook=admin-qnas-body]');
+    if (tab === 'claims') return $('[data-hook=admin-claims-body]');
+    if (tab === 'revenue') return $('[data-admin-revenue]');
+    return $('[data-admin-products]');
+  }
+  function focusAdminList(tab) {
+    var el = adminListEl(tab);
+    if (!el) return;
+    try { el.scrollIntoView({ block: 'start', behavior: 'auto' }); }
+    catch (e) { try { el.scrollIntoView(); } catch (e2) {} }
+    try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) {} }
+    el.classList.add('admin-list-focus');
+    if (el._focusTimer) clearTimeout(el._focusTimer);
+    el._focusTimer = setTimeout(function () { el.classList.remove('admin-list-focus'); }, 1600);
+  }
+  /* 관리자 탭 상태별 필터 칩 — 전체/각 상태 + 건수 배지 */
+  function adminFilterChipsHTML(action, items, active) {
+    return '<div class="admin-filter" data-hook="' + action + '" role="group" aria-label="상태 필터">' +
+      items.map(function (it) {
+        var on = it.value === active;
+        return '<button type="button" class="af-chip' + (on ? ' active' : '') + (it.count ? '' : ' zero') + '"' +
+          ' data-action="' + action + '" data-value="' + esc(it.value) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+          esc(it.label) + '<b>' + it.count + '</b></button>';
+      }).join('') +
+    '</div>';
+  }
+  /* ============================================ v1.9.15 관리자 목록 공통 페이징
+     · 페이지당 10건 · 「‹ 이전 1 2 … 다음 ›」 + 「1 / N 페이지 · 총 K건」
+     · 순번(번호)은 목록 순서 그대로 1번부터: 2페이지는 11, 12, …
+     · 검색어·상태·기간이 바뀌면(sig 가 달라지면) 그 목록은 1페이지로 돌아가고,
+       삭제·수정으로 마지막 페이지가 비면 남은 마지막 페이지로 자동 보정된다. */
+  var ADMIN_PAGE_SIZE = 10;
+  function adminPagerInfo(list, key, sig) {
+    ui.adminPages = ui.adminPages || {};
+    var total = (list || []).length;
+    var pages = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
+    var st = ui.adminPages[key];
+    if (!st || typeof st !== 'object') st = { page: 1, sig: String(sig == null ? '' : sig) };
+    else if (String(st.sig) !== String(sig == null ? '' : sig)) { st.page = 1; st.sig = String(sig == null ? '' : sig); }
+    var page = Math.min(pages, Math.max(1, parseInt(st.page, 10) || 1));
+    st.page = page;
+    ui.adminPages[key] = st;
+    return { key: key, total: total, pages: pages, page: page,
+      rows: (list || []).slice((page - 1) * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE) };
+  }
+  function adminSeqNo(info, index) { return (info.page - 1) * ADMIN_PAGE_SIZE + index + 1; }
+  function adminSeqCellHTML(info, index) {
+    return '<td data-label="번호" class="seq-cell"><span class="seq-no" data-seq="' + adminSeqNo(info, index) + '">' + adminSeqNo(info, index) + '</span></td>';
+  }
+  function adminPagerHTML(info) {
+    if (!info.total) return '';
+    var nums = [];
+    for (var i = 1; i <= info.pages; i++) {
+      nums.push('<button type="button" class="ap-num' + (i === info.page ? ' active' : '') + '"' +
+        ' data-action="admin-page" data-key="' + esc(info.key) + '" data-page="' + i + '"' +
+        ' aria-label="' + i + '페이지"' + (i === info.page ? ' aria-current="page"' : '') + '>' + i + '</button>');
+    }
+    var prev = Math.max(1, info.page - 1), next = Math.min(info.pages, info.page + 1);
+    return '<nav class="admin-pager" data-hook="admin-pager-' + esc(info.key) + '" data-pager-key="' + esc(info.key) + '" aria-label="목록 페이지">' +
+      '<button type="button" class="ap-step" data-action="admin-page" data-key="' + esc(info.key) + '" data-page="' + prev + '"' +
+        (info.page <= 1 ? ' disabled' : '') + ' aria-label="이전 페이지">‹ 이전</button>' +
+      '<span class="ap-nums">' + nums.join('') + '</span>' +
+      '<button type="button" class="ap-step" data-action="admin-page" data-key="' + esc(info.key) + '" data-page="' + next + '"' +
+        (info.page >= info.pages ? ' disabled' : '') + ' aria-label="다음 페이지">다음 ›</button>' +
+      '<span class="ap-info" data-hook="admin-pager-info-' + esc(info.key) + '">' +
+        info.page + ' / ' + info.pages + ' 페이지 · 총 ' + info.total + '건</span>' +
+    '</nav>';
+  }
+  /* ============================================ v1.9.16 관리자 목록 멀티 선택
+     주문 관리 · 반품/교환 · 리뷰 관리 그리드에서 여러 건을 골라 한 번에 처리한다.
+     · 「전체 선택」 = 지금 페이지에 보이는 행만(다른 페이지로 넘겨도 선택은 유지)
+     · 검색어·기간·상태 필터가 바뀌면(서명이 달라지면) 그 목록의 선택은 자동으로 풀린다
+     · 일괄 처리 뒤에는 선택을 비워 다음 작업을 바로 시작할 수 있게 한다
+     kind: 'order' | 'claim' | 'review' */
+  function adminSelState(kind) {
+    if (!ui.adminSel || typeof ui.adminSel !== 'object') ui.adminSel = {};
+    if (!ui.adminSel[kind] || typeof ui.adminSel[kind] !== 'object') ui.adminSel[kind] = {};
+    return ui.adminSel[kind];
+  }
+  function adminSelSync(kind, sig) {
+    if (!ui.adminSelSig || typeof ui.adminSelSig !== 'object') ui.adminSelSig = {};
+    var next = String(sig == null ? '' : sig);
+    var prev = String(ui.adminSelSig[kind] == null ? '' : ui.adminSelSig[kind]);
+    if (prev !== next) { ui.adminSel[kind] = {}; ui.adminSelSig[kind] = next; }
+    return adminSelState(kind);
+  }
+  function adminSelHas(kind, id) { return !!adminSelState(kind)[String(id)]; }
+  function adminSelSet(kind, id, on) {
+    var st = adminSelState(kind);
+    var key = String(id == null ? '' : id);
+    if (!key) return st;
+    if (on) st[key] = 1; else delete st[key];
+    return st;
+  }
+  function adminSelClear(kind) { ui.adminSel = ui.adminSel || {}; ui.adminSel[kind] = {}; }
+  function adminSelCount(kind) { return Object.keys(adminSelState(kind)).length; }
+  function adminSelIdList(kind) { return Object.keys(adminSelState(kind)); }
+  /* 행 체크박스 — 선택할 수 없는 행(이미 반려된 리뷰 등)은 비활성 */
+  function adminSelCellHTML(kind, id, label, disabled, why) {
+    return '<td data-label="선택" class="sel-check-cell">' +
+      '<input type="checkbox" data-action="' + kind + '-select" data-sel-id="' + esc(id) + '"' +
+      (disabled ? ' disabled aria-disabled="true"' : '') +
+      (adminSelHas(kind, id) && !disabled ? ' checked' : '') +
+      ' title="' + esc(disabled ? (why || '선택할 수 없습니다.') : '선택') + '"' +
+      ' aria-label="' + esc(label || '선택') + '"></td>';
+  }
+  function adminSelHeadHTML(kind, pageRows, eligibleIds) {
+    var ids = eligibleIds || pageRows;
+    var allOn = ids.length > 0 && ids.every(function (id) { return adminSelHas(kind, id); });
+    return '<th class="sel-check-cell"><input type="checkbox" data-action="' + kind + '-select-all"' +
+      (allOn ? ' checked' : '') + (ids.length ? '' : ' disabled') +
+      ' aria-label="현재 페이지 전체 선택"></th>';
+  }
+  /* 선택 건수 · 버튼 활성 · 머리글 전체 선택 상태만 그 자리에서 갱신(스크롤·입력 유지) */
+  function refreshBulkSel(kind) {
+    var n = adminSelCount(kind);
+    var cnt = $('[data-hook="' + kind + '-sel-count"]');
+    if (cnt) cnt.innerHTML = '선택 <b>' + n + '</b>건';
+    ['apply', 'clear'].forEach(function (suffix) {
+      var btn = $('[data-action="' + kind + '-bulk-' + suffix + '"]');
+      if (btn) btn.disabled = !n;
+    });
+    var all = $('[data-action="' + kind + '-select-all"]');
+    if (all) {
+      var boxes = $$('[data-bulk-rows="' + kind + '"] tbody input[data-action="' + kind + '-select"]:not([disabled])');
+      var on = boxes.filter(function (b) { return b.checked; }).length;
+      all.checked = boxes.length > 0 && on === boxes.length;
+      all.indeterminate = on > 0 && on < boxes.length;
+    }
+  }
+
+  /* 일괄 처리 바 — 선택 건수 + 목표 상태 + 「일괄 상태 변경」 + 「선택 해제」
+     opts.options 가 없으면 상태 선택 없이 동작 버튼만(리뷰 일괄 회수) */
+  function adminBulkBarHTML(kind, opts) {
+    var o = opts || {};
+    var n = adminSelCount(kind);
+    var options = (o.options || []).map(function (x) {
+      return '<option value="' + esc(x.value) + '">' + esc(x.label) + '</option>';
+    }).join('');
+    var pick = options
+      ? '<label class="bulk-pick"><span class="bulk-lbl">' + esc(o.label || '변경할 상태') + '</span>' +
+          '<select data-hook="' + kind + '-bulk-status" aria-label="' + esc(o.label || '변경할 상태') + '">' +
+            '<option value="">' + esc(o.placeholder || '상태 선택') + '</option>' + options + '</select></label>'
+      : '';
+    return '<div class="bulk-bar" data-hook="' + kind + '-bulk" data-bulk-kind="' + kind + '">' +
+      '<span class="bulk-count" data-hook="' + kind + '-sel-count">선택 <b>' + n + '</b>건</span>' +
+      pick +
+      '<button type="button" class="btn small" data-action="' + kind + '-bulk-apply"' + (n ? '' : ' disabled') + '>' +
+        esc(o.action || '일괄 상태 변경') + '</button>' +
+      '<button type="button" class="btn ghost small" data-action="' + kind + '-bulk-clear"' + (n ? '' : ' disabled') + '>선택 해제</button>' +
+      (o.hint ? '<span class="bulk-hint">' + o.hint + '</span>' : '') +
+    '</div>';
+  }
+  /* ------------------------------------------------------- 관리자 상품 목록
+     · 최신 등록순(created_at DESC)으로 정렬해 방금 등록한 상품이 첫 번째
+     · 상품명/브랜드/카테고리/뱃지 실시간 검색 */
+  function adminProductMatches(p, q) {
+    if (!q) return true;
+    var hay = [p.name, p.brand, catLabel(p.category), p.badge || '', productCodeOf(p)].join(' ').toLowerCase();
+    return q.split(/\s+/).filter(Boolean).every(function (w) { return hay.indexOf(w) >= 0; });
+  }
+  function adminProductList() {
+    var q = String(ui.adminQuery || '').trim().toLowerCase();
+    var filter = ui.adminProductFilter || 'all';
+    var from = ui.adminProductFrom, to = ui.adminProductTo;
+    return db.products.slice()
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); })
+      .filter(function (p) {
+        if (filter === 'active' && !p.is_active) return false;
+        if (filter === 'hidden' && p.is_active) return false;
+        if (!dateInRange(p.created_at, from, to)) return false;   // v1.9.8 — 등록일 기간
+        return adminProductMatches(p, q);
+      });
+  }
+  /* v1.9.6 — 상품 관리 상단 판매 상태 필터 칩(전체·판매중·숨김 + 건수) */
+  function adminProductChips() {
+    var all = db.products || [];
+    var active = all.filter(function (p) { return !!p.is_active; }).length;
+    return [
+      { value: 'all', label: '전체', count: all.length },
+      { value: 'active', label: '판매중', count: active },
+      { value: 'hidden', label: '숨김', count: all.length - active }
+    ];
+  }
+  function adminProductTableHTML(list) {
+    var info = adminPagerInfo(list, 'products',
+      [ui.adminProductFilter, ui.adminQuery, ui.adminProductFrom, ui.adminProductTo].join('|'));
+    return '<table class="data admin-products-table admin-grid" data-page-size="' + ADMIN_PAGE_SIZE + '">' +
+      '<thead><tr><th>번호</th><th>상품</th><th>카테고리</th><th>가격</th><th>재고</th><th>등록일</th><th>상태</th><th>관리</th></tr></thead><tbody>' +
+      (info.total ? info.rows.map(function (p, i) {
+        var stock = stockOf(p.id);
+        var status = !p.is_active ? '<span class="stock-pill">숨김</span>' : stock <= 0 ? '<span class="stock-pill zero">품절</span>' : '<span class="stock-pill">판매중</span>';
+        var photoCount = productImages(p).length;
+        return '<tr data-pid="' + esc(p.id) + '">' +
+          adminSeqCellHTML(info, i) +
+          '<td data-label="상품"><div class="prod-cell"><img src="' + imgSrc(p.image) + '" alt=""><div><div class="n">' + esc(p.name) +
+            (p.badge ? '<span class="mini-badge" data-badge="' + esc(p.badge) + '">' + esc(p.badge) + '</span>' : '') +
+            '<span class="code-badge" data-code="' + esc(productCodeOf(p)) + '">' + esc(productCodeOf(p)) + '</span>' +
+            '</div><div class="m">' + esc(p.brand) + ' · ' + variantsOf(p.id).length + '개 옵션' +
+            ' · <span class="photo-count" data-photos="' + photoCount + '">사진 ' + photoCount + '장</span></div></div></div></td>' +
+          '<td data-label="카테고리">' + catLabel(p.category) + '</td>' +
+          '<td data-label="가격">' + won(p.price) + '</td>' +
+          '<td data-label="재고">' + (stock <= 0 ? '<span class="stock-pill zero">0</span>' : stock + '개') + '</td>' +
+          '<td data-label="등록일" class="admin-date-cell" data-created="' + esc(String(p.created_at || '').slice(0, 10)) + '">' + fmtDate(p.created_at) + '</td>' +
+          '<td data-label="상태">' + status + '</td>' +
+          '<td data-label="관리"><div class="row-actions">' +
+            '<button class="txt-btn" data-action="admin-edit-product" data-pid="' + p.id + '">수정</button>' +
+            '<button class="txt-btn" data-action="admin-soldout" data-pid="' + p.id + '">품절</button>' +
+            '<button class="txt-btn" data-action="admin-toggle-active" data-pid="' + p.id + '">' + (p.is_active ? '숨김' : '판매재개') + '</button>' +
+          '</div></td>' +
+        '</tr>';
+      }).join('') : '<tr><td colspan="8" class="empty-cell">' +
+        (((ui.adminProductFilter || 'all') !== 'all' && !String(ui.adminQuery || '').trim() && !ui.adminProductFrom && !ui.adminProductTo)
+          ? ((ui.adminProductFilter === 'active') ? '판매중인 상품이 없습니다.' : '숨김 상품이 없습니다.')
+          : (ui.adminProductFrom || ui.adminProductTo) && !String(ui.adminQuery || '').trim()
+            ? '등록일 조건에 맞는 상품이 없습니다.'
+            : '검색 결과가 없습니다.') + '</td></tr>') +
+      '</tbody></table>' + adminPagerHTML(info);
+  }
+  /* ------------------------------------------------- 관리자: 메인/사이트 관리
+     히어로 배너(사진·문구·효과) / 푸터 브랜드 소개·사업자 정보 / HELP 항목 편집 */
+  function siteHeroImageLabel(v) {
+    if (isDataImage(v)) return '업로드한 사진';
+    return v;
+  }
+  /* ---------------------------------------- v1.9.13 사이트 전용 미디어 라이브러리
+     상품 사진(ALL_IMAGES)과 분리된 히어로/스토리 전용 목록을 썸네일 그리드로 보여준다.
+     사진을 누르면 = 그 사진을 적용하고 바로 저장 / ✕ = 목록에서 삭제 / 업로드·URL 로 추가 */
+  function siteMediaThumbsHTML(kind) {
+    var st = siteSettings();
+    var list = siteMediaListOf(kind, st);
+    var cur = kind === 'hero' ? st.hero_image : st.story_image;
+    return list.map(function (src) {
+      var on = src === cur;
+      return '<div class="sm-thumb' + (on ? ' active' : '') + '" data-sm-thumb="' + esc(src) + '" data-on="' + (on ? '1' : '0') + '">' +
+        '<button type="button" class="sm-pick" data-action="site-media-pick" data-kind="' + kind + '" data-src="' + esc(src) + '"' +
+          ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(siteMediaLabel(src)) + ' 사진 적용">' +
+          '<img src="' + imgSrc(src) + '" alt="" loading="lazy">' +
+          (on ? '<span class="sm-on">적용 중</span>' : '') +
+        '</button>' +
+        '<button type="button" class="sm-del" data-action="site-media-delete" data-kind="' + kind + '" data-src="' + esc(src) + '"' +
+          ' aria-label="' + esc(siteMediaLabel(src)) + ' 사진 삭제">✕</button>' +
+        '<span class="sm-name">' + esc(siteMediaLabel(src)) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+  function siteMediaEditorHTML(kind, s) {
+    var st = s || siteSettings();
+    var cur = kind === 'hero' ? st.hero_image : st.story_image;
+    var list = siteMediaListOf(kind, st);
+    return '<div class="site-media" data-site-media="' + kind + '">' +
+      '<div class="sm-grid" data-hook="' + kind + '-media-grid">' + siteMediaThumbsHTML(kind) + '</div>' +
+      '<div class="sm-tools">' +
+        '<input id="site-' + kind + '-url" class="sm-url" type="text" maxlength="300" placeholder="이미지 URL 추가 (https://…)" ' +
+          'aria-label="' + (kind === 'hero' ? '히어로' : '스토리') + ' 사진 URL" autocomplete="off">' +
+        '<button type="button" class="btn ghost small" data-action="site-media-add-url" data-kind="' + kind + '">URL 추가</button>' +
+        '<label class="btn ghost small upload-btn site-upload"><span class="up-ico" aria-hidden="true">📷</span><span class="up-txt">사진 업로드</span>' +
+          '<input type="file" id="site-' + kind + '-upload" accept="image/*" aria-label="' + (kind === 'hero' ? '히어로' : '스토리') + ' 사진 업로드"></label>' +
+        '<span class="sm-count">' + list.length + ' / ' + SITE_MEDIA_MAX + '장</span>' +
+      '</div>' +
+      '<select id="site-' + kind + '-image" class="sm-select" data-hook="' + kind + '-image-pick" aria-hidden="true" tabindex="-1">' +
+        list.map(function (v) {
+          return '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(siteMediaLabel(v)) + '</option>';
+        }).join('') +
+      '</select>' +
+      '<p class="sm-hint">사진을 누르면 <b>바로 적용·저장</b>됩니다. 상품 사진(보유 이미지)과 분리된 사이트 전용 목록입니다.</p>' +
+    '</div>';
+  }
+  function paintSiteMedia(kind) {
+    var host = $('[data-hook=' + kind + '-media-grid]');
+    if (host) host.innerHTML = siteMediaThumbsHTML(kind);
+    var sel = $('#site-' + kind + '-image');
+    var st = siteSettings();
+    var cur = kind === 'hero' ? st.hero_image : st.story_image;
+    if (sel) {
+      sel.innerHTML = siteMediaListOf(kind).map(function (v) {
+        return '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(siteMediaLabel(v)) + '</option>';
+      }).join('');
+      sel.value = cur;
+    }
+    var prev = $('[data-hook=' + kind + '-preview]');
+    if (prev) prev.src = imgSrc(cur);
+    var cnt = $('[data-site-media=' + kind + '] .sm-count');
+    if (cnt) cnt.textContent = siteMediaListOf(kind).length + ' / ' + SITE_MEDIA_MAX + '장';
+  }
+  function siteMediaKeyOf(kind) { return kind === 'hero' ? 'hero_images' : 'story_images'; }
+  function addSiteMedia(kind, src) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 사진을 추가할 수 있습니다.' };
+    var v = String(src || '').trim();
+    if (!v) return { ok: false, message: '사진 URL을 입력해 주세요.' };
+    if (!(isDataImage(v) || /^https?:\/\//i.test(v) || /^[\w.-]+\.(webp|jpg|jpeg|png)$/i.test(v))) {
+      return { ok: false, message: '이미지 주소(https://…)나 파일명(예: hero.webp)으로 입력해 주세요.' };
+    }
+    var list = siteMediaListOf(kind);
+    if (list.indexOf(v) >= 0) return { ok: true, added: false, list: list };
+    if (list.length >= SITE_MEDIA_MAX) return { ok: false, message: '사진은 ' + SITE_MEDIA_MAX + '장까지 보관할 수 있습니다.' };
+    var st = siteSettings();
+    st[siteMediaKeyOf(kind)] = list.concat([v]);
+    db.site_settings = st;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, added: true, list: siteMediaListOf(kind) };
+  }
+  function removeSiteMedia(kind, src) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 사진을 삭제할 수 있습니다.' };
+    var st = siteSettings();
+    var cur = kind === 'hero' ? st.hero_image : st.story_image;
+    if (String(src) === String(cur)) {
+      return { ok: false, message: '지금 적용 중인 사진은 삭제할 수 없습니다. 다른 사진을 먼저 적용해 주세요.' };
+    }
+    var list = siteMediaListOf(kind).filter(function (v) { return v !== String(src); });
+    if (!list.length) return { ok: false, message: '사진은 1장 이상 필요합니다.' };
+    st[siteMediaKeyOf(kind)] = list;
+    db.site_settings = st;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, list: siteMediaListOf(kind) };
+  }
+  /* 썸네일 클릭 = 바로 적용 + 저장 */
+  function selectSiteMedia(kind, src) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 사진을 바꿀 수 있습니다.' };
+    var v = String(src || '').trim();
+    var list = siteMediaListOf(kind);
+    if (list.indexOf(v) < 0) return { ok: false, message: '목록에 없는 사진입니다.' };
+    var st = siteSettings();
+    if (kind === 'hero') st.hero_image = v; else st.story_image = v;
+    st[siteMediaKeyOf(kind)] = list;
+    st.updated_at = nowISO();
+    db.site_settings = st;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, src: v };
+  }
+  function siteHeroPanelHTML(s) {
+    return '<div class="panel" data-site-hero="1">' +
+      '<div class="panel-head"><h2>메인 히어로 배너</h2><span class="sub">저장하면 스토어 첫 화면에 바로 반영됩니다</span></div>' +
+      '<div class="site-hero-grid">' +
+        '<div class="site-hero-preview"><img data-hook="hero-preview" src="' + imgSrc(s.hero_image) + '" alt="히어로 배너 미리보기">' +
+          '<span class="shp-badge" data-hook="hero-effect-badge">' + esc(HERO_EFFECTS[s.hero_effect]) + ' · 오버레이 ' + s.hero_overlay + '%</span></div>' +
+        '<div class="site-hero-form">' +
+          '<div class="field"><label>배너 사진 <small>상품 사진과 분리된 사이트 전용 사진</small></label>' +
+            siteMediaEditorHTML('hero', s) +
+          '</div>' +
+          '<div class="field"><label>뱃지 문구</label><input id="site-hero-eyebrow" maxlength="60" value="' + esc(s.hero_eyebrow) + '" placeholder="예: FALL / WINTER 2026 — THE QUIET COLLECTION"></div>' +
+          '<div class="field"><label>메인 타이틀 <small>줄바꿈은 그대로 표시됩니다</small></label><textarea id="site-hero-title" rows="2" maxlength="120">' + esc(s.hero_title) + '</textarea></div>' +
+          '<div class="field"><label>서브 문구</label><textarea id="site-hero-subtitle" rows="2" maxlength="160">' + esc(s.hero_subtitle) + '</textarea></div>' +
+          '<div class="field-row">' +
+            '<div class="field"><label>버튼 1 문구</label><input id="site-hero-cta" maxlength="20" value="' + esc(s.hero_cta_label) + '"></div>' +
+            '<div class="field"><label>버튼 2 문구</label><input id="site-hero-cta2" maxlength="20" value="' + esc(s.hero_cta2_label) + '"></div>' +
+          '</div>' +
+          '<div class="field-row">' +
+            '<div class="field"><label>효과</label><select id="site-hero-effect">' +
+              Object.keys(HERO_EFFECTS).map(function (k) {
+                return '<option value="' + k + '"' + (s.hero_effect === k ? ' selected' : '') + '>' + esc(HERO_EFFECTS[k]) + '</option>';
+              }).join('') + '</select></div>' +
+            '<div class="field"><label>오버레이 농도 <small>사진 위 어둡게</small></label>' +
+              '<input id="site-hero-overlay" type="range" min="0" max="90" step="2" value="' + s.hero_overlay + '" aria-label="오버레이 농도">' +
+              '<div class="range-val" data-hook="overlay-val">' + s.hero_overlay + '%</div></div>' +
+          '</div>' +
+          '<div class="site-actions"><span class="site-hint" data-hook="site-hero-hint">배너를 바꾸면 아래 스토어 홈에 바로 적용됩니다.</span>' +
+            '<button class="btn small" data-action="save-site">히어로 저장</button></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  /* v1.9.14 — 사이트 타이틀(상단 로고·브라우저 탭 제목)과 푸터 카피라이트 관리 */
+  function siteTitlePreviewHTML(s) {
+    var st = s || siteSettings();
+    return '<div class="title-preview" data-hook="title-preview">' +
+      '<div class="tp-row tp-header"><span class="tp-label">상단 로고</span>' +
+        '<span class="tp-brand" data-hook="tp-brand">' + esc(st.site_title || TITLE_TEXT_DEFAULTS.site_title) + '</span></div>' +
+      '<div class="tp-row"><span class="tp-label">브라우저 탭</span>' +
+        '<span class="tp-tab" data-hook="tp-tab">' + esc(st.page_title || TITLE_TEXT_DEFAULTS.page_title) + '</span></div>' +
+      '<div class="tp-row tp-foot"><span class="tp-label">푸터 하단</span>' +
+        '<span class="tp-copy" data-hook="tp-copy">' + esc(st.footer_copyright || TITLE_TEXT_DEFAULTS.footer_copyright) + '</span></div>' +
+    '</div>';
+  }
+  function siteTitlePanelHTML(s) {
+    var st = s || siteSettings();
+    return '<div class="panel" data-site-title="1">' +
+      '<div class="panel-head"><h2>타이틀 · 푸터</h2>' +
+        '<span class="sub">상단 로고·탭 제목·푸터 문구를 바꿉니다</span></div>' +
+      '<div class="field"><label>상단 로고 텍스트 <small>헤더 왼쪽 로고 (기본 MONO ATELIER)</small></label>' +
+        '<input id="site-title" maxlength="30" value="' + esc(st.site_title) + '" placeholder="MONO ATELIER" autocomplete="off"></div>' +
+      '<div class="field"><label>브라우저 탭 제목 <small>페이지 &lt;title&gt; · 비우면 「로고 — 모노 아틀리에」</small></label>' +
+        '<input id="site-page-title" maxlength="70" value="' + esc(st.page_title) + '" placeholder="MONO ATELIER — 모노 아틀리에" autocomplete="off"></div>' +
+      '<div class="field"><label>푸터 카피라이트 <small>맨 아래 저작권 문구 (기본 © 2026 MONO ATELIER. ALL RIGHTS RESERVED.)</small></label>' +
+        '<input id="site-footer-copyright" maxlength="120" value="' + esc(st.footer_copyright) + '" placeholder="© 2026 MONO ATELIER. ALL RIGHTS RESERVED." autocomplete="off"></div>' +
+      '<p class="banner-preview-label">미리보기</p>' +
+      siteTitlePreviewHTML(st) +
+      '<div class="site-actions"><span class="site-hint">저장하면 헤더·브라우저 탭·푸터에 바로 반영됩니다. 비우면 기본값으로 돌아갑니다.</span>' +
+        '<span class="banner-actions"><button class="btn ghost small" data-action="reset-site-title">기본값 복원</button>' +
+        '<button class="btn small" data-action="save-site">타이틀 저장</button></span></div>' +
+    '</div>';
+  }
+  function updateTitlePreview() {
+    var host = $('[data-hook=title-preview]');
+    if (!host) return;
+    var v = function (id, fb) { var el = $('#' + id); return el && String(el.value || '').trim() ? el.value : fb; };
+    var brandEl = $('[data-hook=tp-brand]');
+    var tabEl = $('[data-hook=tp-tab]');
+    var copyEl = $('[data-hook=tp-copy]');
+    if (brandEl) brandEl.textContent = v('site-title', TITLE_TEXT_DEFAULTS.site_title);
+    if (tabEl) tabEl.textContent = v('site-page-title', TITLE_TEXT_DEFAULTS.page_title);
+    if (copyEl) copyEl.textContent = v('site-footer-copyright', TITLE_TEXT_DEFAULTS.footer_copyright);
+  }
+  function siteFooterPanelHTML(s) {
+    return '<div class="panel" data-site-footer="1">' +
+      '<div class="panel-head"><h2>하단 브랜드 소개 · 사업자 정보</h2><span class="sub">푸터에 그대로 표시됩니다</span></div>' +
+      '<div class="field"><label>브랜드 소개 문구 <small>줄바꿈 그대로</small></label>' +
+        '<textarea id="site-brand-blurb" rows="3" maxlength="220">' + esc(s.brand_blurb) + '</textarea></div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>상호</label><input id="site-company-name" maxlength="40" value="' + esc(s.company_name) + '"></div>' +
+        '<div class="field"><label>대표자</label><input id="site-company-ceo" maxlength="20" value="' + esc(s.company_ceo) + '"></div>' +
+      '</div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>사업자등록번호</label><input id="site-company-reg" maxlength="20" value="' + esc(s.company_reg_no) + '"></div>' +
+        '<div class="field"><label>통신판매업 신고번호</label><input id="site-company-mail" maxlength="30" value="' + esc(s.company_mail_order_no) + '"></div>' +
+      '</div>' +
+      '<div class="field"><label>주소</label><input id="site-company-address" maxlength="80" value="' + esc(s.company_address) + '"></div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>고객센터 전화</label><input id="site-company-phone" maxlength="20" value="' + esc(s.company_phone) + '"></div>' +
+        '<div class="field"><label>고객센터 이메일</label><input id="site-company-email" maxlength="60" value="' + esc(s.company_email) + '"></div>' +
+      '</div>' +
+      '<div class="site-actions"><span class="site-hint">개인정보가 아닌 사업자 표기용 예시값을 사용하세요.</span>' +
+        '<button class="btn small" data-action="save-site">푸터 저장</button></div>' +
+    '</div>';
+  }
+  function helpRowHTML(t, i) {
+    return '<div class="help-row" data-help-id="' + esc(t.id || '') + '">' +
+      '<div class="help-row-head">' +
+        '<span class="help-no">' + (i + 1) + '</span>' +
+        '<input class="help-title" data-help-title maxlength="30" value="' + esc(t.title || '') + '" aria-label="HELP 항목 제목" placeholder="예: 배송 안내">' +
+        '<button class="icon-x" type="button" data-action="remove-help-topic" aria-label="HELP 항목 삭제">✕</button>' +
+      '</div>' +
+      '<textarea class="help-body-input" data-help-body rows="3" maxlength="800" aria-label="HELP 항목 본문" placeholder="안내 내용을 입력하세요 (줄바꿈 그대로 표시)">' + esc(t.body || '') + '</textarea>' +
+    '</div>';
+  }
+  /* v1.9.10 — 홈 4칸과 같은 구성: 배송 안내 · 교환·반품 안내 · (FAQ 게시판) · 고객센터
+     · 앞뒤 3칸은 여기서 제목·본문을 고친다. 3번째 칸은 FAQ 게시판으로 연결되므로 편집 대상이 아니다. */
+  function helpFaqCardHTML() {
+    return '<div class="help-faq-card" data-help-faq-cell="1">' +
+      '<div class="hfc-text"><b>FAQ</b><span>홈 3번째 칸은 FAQ 게시판 모달로 연결됩니다 · 질문·답변은 「FAQ 관리」 탭에서 고칩니다</span></div>' +
+      '<button type="button" class="btn ghost small" data-action="admin-tab" data-tab="faqs">FAQ 관리 열기</button>' +
+    '</div>';
+  }
+  function siteHelpPanelHTML() {
+    var topics = helpTopics();
+    var rows = topics.map(helpRowHTML);
+    rows.splice(Math.min(2, rows.length), 0, helpFaqCardHTML());
+    return '<div class="panel" data-site-help="1">' +
+      '<div class="panel-head"><h2>홈 안내 카드(4박스)</h2>' +
+        '<span class="sub">스토어 홈 회사소개 위 4칸 = 배송 안내 · 교환·반품 안내 · FAQ · 고객센터</span></div>' +
+      '<div class="help-rows" data-hook="help-rows">' + rows.join('') + '</div>' +
+      '<div class="site-actions"><button class="btn ghost small" data-action="add-help-topic">+ 항목 추가</button>' +
+        '<button class="btn small" data-action="save-help">안내 카드 저장</button></div>' +
+    '</div>';
+  }
+  /* v1.9.15 — 「메인/사이트」 서브탭을 실제 쇼핑몰 화면의 위→아래 구성순으로 정렬한다.
+     타이틀/푸터(헤더 로고·페이지 타이틀·카피라이트) → 상단 띠 → 히어로 배너 → 상품 섹션
+     → 브랜드 스토리 → 안내 4칸 → 브랜드/사업자. 첫 서브탭(타이틀/푸터)이 기본 선택이고,
+     '전체'는 맨 끝에서 모든 패널을 한 화면에 보여준다. */
+  var SITE_SUBTABS = [
+    { value: 'title', label: '타이틀/푸터' },
+    { value: 'banner', label: '상단 띠' },
+    { value: 'hero', label: '히어로 배너' },
+    { value: 'shop', label: '상품 섹션' },
+    { value: 'story', label: '브랜드 스토리' },
+    { value: 'help', label: '안내 4칸' },
+    { value: 'info', label: '브랜드/사업자' },
+    { value: 'all', label: '전체' }
+  ];
+  /* v1.9.10 — 상품 섹션(「이번 시즌, 새로 도착한 옷」) 헤더 문구 관리 */
+  function shopHeadPreviewHTML(s) {
+    var st = s || siteSettings();
+    return '<div class="eyebrow">' + esc(st.shop_eyebrow || SHOP_TEXT_DEFAULTS.shop_eyebrow) + '</div>' +
+      '<h2>' + esc(st.shop_title || SHOP_TEXT_DEFAULTS.shop_title) + '</h2>' +
+      '<p class="desc">' + esc(st.shop_desc || SHOP_TEXT_DEFAULTS.shop_desc) + '</p>';
+  }
+  function siteShopPanelHTML() {
+    var s = siteSettings();
+    return '<div class="panel" data-site-shop="1">' +
+      '<div class="panel-head"><h2>상품 섹션</h2>' +
+        '<span class="sub">홈 상품 목록 위 「이번 시즌, 새로 도착한 옷」 헤더 문구입니다</span></div>' +
+      '<div class="field"><label>뱃지·영문 문구 <small>예: SHOP — NEW ARRIVALS</small></label>' +
+        '<input id="site-shop-eyebrow" maxlength="60" value="' + esc(s.shop_eyebrow) + '" placeholder="SHOP — NEW ARRIVALS"></div>' +
+      '<div class="field"><label>제목</label>' +
+        '<input id="site-shop-title" maxlength="60" value="' + esc(s.shop_title) + '" placeholder="이번 시즌, 새로 도착한 옷"></div>' +
+      '<div class="field"><label>설명</label>' +
+        '<textarea id="site-shop-desc" rows="2" maxlength="160" placeholder="단정한 실루엣과 좋은 소재.">' + esc(s.shop_desc) + '</textarea></div>' +
+      '<p class="banner-preview-label">미리보기</p>' +
+      '<div class="shop-head-preview" data-hook="shop-preview">' + shopHeadPreviewHTML(s) + '</div>' +
+      '<div class="site-actions"><span class="site-hint">저장하면 스토어 홈 상단에 바로 반영됩니다. 비우면 기본 문구로 돌아갑니다.</span>' +
+        '<span class="banner-actions"><button class="btn ghost small" data-action="reset-shop-head">기본값 복원</button>' +
+        '<button class="btn small" data-action="save-site">상품 섹션 저장</button></span></div>' +
+    '</div>';
+  }
+  function updateShopPreview() {
+    var host = $('[data-hook=shop-preview]');
+    if (!host) return;
+    var v = function (id, fb) { var el = $('#' + id); return el && String(el.value || '').trim() ? el.value : fb; };
+    host.innerHTML = shopHeadPreviewHTML({
+      shop_eyebrow: v('site-shop-eyebrow', SHOP_TEXT_DEFAULTS.shop_eyebrow),
+      shop_title: v('site-shop-title', SHOP_TEXT_DEFAULTS.shop_title),
+      shop_desc: v('site-shop-desc', SHOP_TEXT_DEFAULTS.shop_desc)
+    });
+  }
+  function adminSiteHTML() {
+    var s = siteSettings();
+    var active = SITE_SUBTABS.filter(function (t) { return t.value === ui.siteTab; })[0] ? ui.siteTab : 'title';
+    var show = function (v) { return active === 'all' || active === v; };
+    /* v1.9.15 — 패널도 서브탭과 같은 페이지 구성순(위→아래)으로 쌓는다 */
+    var parts = [];
+    if (show('title')) parts.push(siteTitlePanelHTML(s));
+    if (show('banner')) parts.push(siteBannerPanelHTML(s));
+    if (show('hero')) parts.push(siteHeroPanelHTML(s));
+    if (show('shop')) parts.push(siteShopPanelHTML());
+    if (show('story')) parts.push(storyPanelHTML(s));
+    if (show('help')) parts.push(siteHelpPanelHTML());
+    if (show('info')) parts.push(siteFooterPanelHTML(s));
+    return '<div class="admin-site" data-admin-site="1" data-site-tab="' + esc(active) + '">' +
+      adminSubtabBarHTML('site-subtabs', 'site-subtab', SITE_SUBTABS, active) +
+      '<div class="site-tab-body">' + parts.join('') + '</div>' +
+    '</div>';
+  }
+  /* v1.9.3 — 상단 안내 띠(검은 띠) 문구 관리. v1.9.10 — 노출 ON/OFF 스위치 추가 */
+  function siteBannerPanelHTML(s) {
+    var bOn = isOn(s.top_banner_enabled);
+    return '<div class="panel" data-site-banner="1">' +
+      '<div class="panel-head"><h2>상단 안내 띠</h2><span class="sub">스토어 맨 위 검은 띠의 문구입니다</span></div>' +
+      '<div class="story-switch" data-banner-switch="1" data-banner-enabled="' + (bOn ? '1' : '0') + '">' +
+        '<div class="ss-text"><b>상단 안내 띠 노출</b>' +
+          '<span class="m">끄면 스토어 맨 위 무료배송 안내 띠가 숨겨집니다(문구는 그대로 보관)</span></div>' +
+        '<label class="switch" for="site-banner-enabled">' +
+          '<input type="checkbox" id="site-banner-enabled" data-hook="banner-enabled" role="switch" aria-checked="' + (bOn ? 'true' : 'false') + '"' + (bOn ? ' checked' : '') + '>' +
+          '<span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>' +
+          '<span class="switch-state" data-hook="banner-enabled-state">' + (bOn ? 'ON' : 'OFF') + '</span>' +
+        '</label>' +
+        '<span class="ss-saved">저장 값: <b data-hook="banner-enabled-saved">' + (bOn ? 'ON' : 'OFF') + '</b></span>' +
+      '</div>' +
+      '<div class="field"><label>띠 문구 <small>‘—’ 뒤 문구는 굵게 강조되어 나옵니다</small></label>' +
+        '<input id="site-banner-text" maxlength="80" value="' + esc(s.top_banner_text || '') + '" placeholder="예: FALL / WINTER 2026 — 10만 원 이상 무료배송"></div>' +
+      '<div class="field"><label>보조 문구 <small>비우면 보조 문구는 숨김</small></label>' +
+        '<input id="site-banner-sub" maxlength="60" value="' + esc(s.top_banner_sub || '') + '" placeholder="예: 평일 오후 2시 이전 당일 출고"></div>' +
+      '<p class="banner-preview-label">미리보기</p>' +
+      '<div class="announce banner-preview" data-hook="banner-preview">' + (topBannerInnerHTML(s) || '<span class="bp-empty">문구를 입력하면 띠가 표시됩니다</span>') + '</div>' +
+      '<div class="site-actions"><span class="site-hint">둘 다 비우면 띠 자체가 사라집니다.</span>' +
+        '<span class="banner-actions"><button class="btn ghost small" data-action="reset-banner">기본값 복원</button>' +
+        '<button class="btn small" data-action="save-site">띠 저장</button></span></div>' +
+    '</div>';
+  }
+  /* 브랜드 스토리 — 히어로와 같은 방식(사진·문구·태그)으로 관리 */
+  function storyPanelHTML(s) {
+    var on = brandStoryEnabled(s);
+    return '<div class="panel" data-site-story="1">' +
+      '<div class="panel-head"><h2>브랜드 스토리</h2><span class="sub">저장하면 홈의 스토리 영역에 바로 반영됩니다</span></div>' +
+      /* v1.9.9 — 홈 브랜드 스토리 노출 ON/OFF */
+      '<div class="story-switch" data-story-switch="1" data-story-enabled="' + (on ? '1' : '0') + '">' +
+        '<div class="ss-text"><b>메인페이지 브랜드 스토리 노출</b>' +
+          '<span class="m">끄면 스토어 홈에서 브랜드 스토리 영역(과 히어로의 「브랜드 스토리」 버튼)이 숨겨집니다</span></div>' +
+        '<label class="switch" for="site-story-enabled">' +
+          '<input type="checkbox" id="site-story-enabled" data-hook="story-enabled" role="switch" aria-checked="' + (on ? 'true' : 'false') + '"' + (on ? ' checked' : '') + '>' +
+          '<span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>' +
+          '<span class="switch-state" data-hook="story-enabled-state">' + (on ? 'ON' : 'OFF') + '</span>' +
+        '</label>' +
+        '<span class="ss-saved">저장 값: <b data-hook="story-enabled-saved">' + (on ? 'ON' : 'OFF') + '</b></span>' +
+      '</div>' +
+      '<div class="site-story-grid">' +
+        '<div class="site-hero-preview"><img data-hook="story-preview" src="' + imgSrc(s.story_image || 'coat.webp') + '" alt="브랜드 스토리 미리보기">' +
+          '<span class="shp-badge">' + esc((s.story_eyebrow || 'STORY').slice(0, 40)) + '</span></div>' +
+        '<div class="site-hero-form">' +
+          '<div class="field"><label>스토리 사진 <small>상품 사진과 분리된 사이트 전용 사진</small></label>' +
+            siteMediaEditorHTML('story', s) +
+          '</div>' +
+          '<div class="field"><label>뱃지 문구</label><input id="site-story-eyebrow" maxlength="60" value="' + esc(s.story_eyebrow) + '" placeholder="예: ATELIER NOTE 01"></div>' +
+          '<div class="field"><label>제목 <small>줄바꿈은 그대로 표시</small></label><textarea id="site-story-title" rows="2" maxlength="120">' + esc(s.story_title) + '</textarea></div>' +
+          '<div class="field"><label>부제</label><input id="site-story-subtitle" maxlength="100" value="' + esc(s.story_subtitle) + '"></div>' +
+          '<div class="field"><label>본문 <small>빈 줄로 문단을 나눕니다</small></label><textarea id="site-story-body" rows="5" maxlength="900">' + esc(s.story_body) + '</textarea></div>' +
+          '<div class="field"><label>핵심 가치·태그 <small>쉼표로 구분 (최대 8개)</small></label><input id="site-story-tags" maxlength="160" value="' + esc(storyTagsOf(s).join(', ')) + '" placeholder="좋은 소재, 단정한 실루엣, 오래 입는 옷"></div>' +
+          '<div class="site-actions"><span class="site-hint">홈 히어로 아래 「ATELIER NOTE」 영역입니다.</span>' +
+            '<button class="btn small" data-action="save-site">스토리 저장</button></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  /* v1.9.8 — FAQ 관리: 카드형 일괄 편집 → 머리글 유지 그리드 표
+     · 행을 누르면 그 FAQ 1건의 상세/수정 모달이 열린다(1건씩 조회·수정·저장)
+     · 각 행 체크박스 + 상단/하단 「선택 삭제」로 여러 건을 한 번에 삭제 */
+  function faqAdminList() {
+    return (db.faqs || []).slice().sort(function (a, b) { return (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0); });
+  }
+  function faqSelectedIds() {
+    var sel = ui.faqSel || {};
+    return faqAdminList().filter(function (f) { return !!sel[f.id]; }).map(function (f) { return f.id; });
+  }
+  function faqGridRowHTML(f, i) {
+    var checked = !!(ui.faqSel || {})[f.id];
+    var hidden = f.is_active === false || f.is_active === 0;
+    return '<tr class="faq-row click-row" data-faq-id="' + esc(f.id) + '" data-faq-state="' + (hidden ? 'hidden' : 'on') + '"' +
+        ' data-action="edit-faq" data-rowid="' + esc(f.id) + '" tabindex="0">' +
+      '<td data-label="선택" class="faq-check-cell"><input type="checkbox" data-action="faq-select" data-fid="' + esc(f.id) + '"' +
+        (checked ? ' checked' : '') + ' aria-label="' + esc(String(f.question || '').slice(0, 20)) + ' 선택"></td>' +
+      '<td data-label="순서"><span class="faq-no">' + (i + 1) + '</span></td>' +
+      '<td data-label="카테고리"><span class="faq-cat">' + esc(f.category || '기타') + '</span>' +
+        (hidden ? '<div class="m" style="font-size:9.5px;color:var(--muted)">숨김</div>' : '') + '</td>' +
+      '<td data-label="질문"><b class="faq-q">' + esc(f.question || '') + '</b>' +
+        '<div class="m faq-a-preview">' + esc(String(f.answer || '').replace(/\s+/g, ' ').slice(0, 54)) + (String(f.answer || '').length > 54 ? '…' : '') + '</div></td>' +
+      '<td data-label="관리"><div class="row-actions">' +
+        '<button class="txt-btn" type="button" data-action="faq-move" data-fid="' + esc(f.id) + '" data-dir="-1" aria-label="위로 이동"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button class="txt-btn" type="button" data-action="faq-move" data-fid="' + esc(f.id) + '" data-dir="1" aria-label="아래로 이동"' + (i === faqAdminList().length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '<button class="txt-btn" type="button" data-action="edit-faq" data-rowid="' + esc(f.id) + '">수정</button>' +
+        '<button class="txt-btn danger" type="button" data-action="remove-faq" data-fid="' + esc(f.id) + '">삭제</button>' +
+      '</div></td>' +
+    '</tr>';
+  }
+  function faqToolbarHTML(position) {
+    var list = faqAdminList();
+    var sel = faqSelectedIds();
+    return '<div class="faq-toolbar" data-hook="faq-toolbar-' + position + '">' +
+      '<span class="faq-count" data-hook="faq-count-' + position + '">전체 <b>' + list.length + '</b>건</span>' +
+      '<span class="faq-sel-count" data-hook="faq-sel-count-' + position + '">선택 <b>' + sel.length + '</b>건</span>' +
+      '<button type="button" class="btn ghost small danger-text" data-action="faq-delete-selected"' +
+        (sel.length ? '' : ' disabled') + ' data-hook="faq-delete-selected-' + position + '">선택 삭제' + (sel.length ? ' (' + sel.length + ')' : '') + '</button>' +
+      (position === 'top' ? '<button type="button" class="btn small" data-action="add-faq">+ 질문 추가</button>' : '') +
+    '</div>';
+  }
+  function refreshFaqToolbars() {
+    ['top', 'bottom'].forEach(function (pos) {
+      var host = $('[data-hook=faq-toolbar-' + pos + ']');
+      if (!host) return;
+      var holder = document.createElement('div');
+      holder.innerHTML = faqToolbarHTML(pos);
+      host.parentNode.replaceChild(holder.firstElementChild, host);
+    });
+  }
+  /* FAQ 1건 상세/수정 모달 — 새 항목(id 없음)도 같은 모달을 쓴다 */
+  function faqDetailHTML() {
+    var m = ui.modal || {};
+    var list = faqAdminList();
+    var id = String(m.fid || '');
+    var f = id ? list.filter(function (x) { return String(x.id) === id; })[0] : null;
+    if (id && !f) return '';
+    var d = m.draft || {};
+    var cat = d.category != null ? d.category : (f ? f.category : (faqCategories().indexOf('기타') >= 0 ? '기타' : (faqCategories()[0] || '기타')));
+    var q = d.question != null ? d.question : (f ? f.question : '');
+    var a = d.answer != null ? d.answer : (f ? f.answer : '');
+    var ord = d.sort_order != null ? d.sort_order : (f ? (Number(f.sort_order) || list.length + 1) : list.length + 1);
+    var on = d.is_active != null ? !!d.is_active : (f ? !(f.is_active === false || f.is_active === 0) : true);
+    return '<div class="modal faq-detail-modal" role="dialog" aria-modal="true" aria-label="FAQ 상세" data-faq-detail="' + esc(id) + '"' +
+        (id ? '' : ' data-faq-new="1"') + ' style="width:min(600px,100%)">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ADMIN — FAQ</div><h2>' + (id ? 'FAQ 수정' : '새 FAQ') + '</h2></div>' +
+      '<div class="sheet-body">' +
+        (m.error ? '<div class="form-error" data-hook="faq-detail-error">' + esc(m.error) + '</div>' : '') +
+        '<div class="form-grid">' +
+          '<div class="field"><label>카테고리</label><select data-faq-category aria-label="FAQ 카테고리">' + faqCatOptionsHTML(cat) + '</select></div>' +
+          '<div class="field"><label>노출 순서</label><input type="number" min="1" step="1" data-faq-order value="' + esc(ord) + '" aria-label="노출 순서"></div>' +
+        '</div>' +
+        '<div class="field"><label>질문</label><input data-faq-question maxlength="120" value="' + esc(q) + '" placeholder="예: 배송은 얼마나 걸리나요?" aria-label="FAQ 질문"></div>' +
+        '<div class="field"><label>답변 <small>줄바꿈 그대로</small></label><textarea data-faq-answer rows="5" maxlength="800" placeholder="안내 내용을 입력하세요" aria-label="FAQ 답변">' + esc(a) + '</textarea></div>' +
+        '<div class="field"><label>게시 상태</label><select data-faq-active aria-label="FAQ 게시 상태">' +
+          '<option value="1"' + (on ? ' selected' : '') + '>게시</option><option value="0"' + (on ? '' : ' selected') + '>숨김</option></select></div>' +
+        '<div class="sheet-actions">' +
+          '<button class="btn ghost small" data-action="close-modal">취소</button>' +
+          '<button class="btn small" data-action="save-faq-detail" data-fid="' + esc(id) + '">저장</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  function readFaqDetailForm() {
+    var sel = document.querySelector('[data-faq-detail]');
+    if (!sel) return {};
+    var v = function (q) { var el = sel.querySelector(q); return el ? el.value : ''; };
+    return {
+      category: v('[data-faq-category]'),
+      question: v('[data-faq-question]'),
+      answer: v('[data-faq-answer]'),
+      sort_order: v('[data-faq-order]'),
+      is_active: v('[data-faq-active]') !== '0'
+    };
+  }
+  /* FAQ 1건 저장 — 새 항목은 끝에 추가하고, 노출 순서를 지정하면 그 위치로 옮긴다 */
+  function saveFaqItem(input) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var list = faqAdminList();
+    var q = String(input.question || '').trim();
+    var a = String(input.answer || '').trim();
+    if (!q) return { ok: false, field: 'question', message: '질문을 입력한 뒤 저장해 주세요.' };
+    if (!a) return { ok: false, field: 'answer', message: '답변을 입력한 뒤 저장해 주세요.' };
+    var id = String(input.id || '').trim();
+    var idx = -1;
+    if (id) idx = list.map(function (f) { return String(f.id); }).indexOf(id);
+    var cat = faqCategories().indexOf(String(input.category || '').trim()) >= 0
+      ? String(input.category).trim() : (String(input.category || '').trim() || '기타');
+    var item;
+    if (idx >= 0) {
+      item = list[idx];
+      item.category = cat;
+      item.question = q.slice(0, 120);
+      item.answer = a.slice(0, 800);
+      item.is_active = input.is_active === false ? false : true;
+      item.updated_at = nowISO();
+      list.splice(idx, 1);
+    } else {
+      item = {
+        id: newId('faq'), category: cat, question: q.slice(0, 120), answer: a.slice(0, 800),
+        is_active: input.is_active === false ? false : true, created_at: nowISO()
+      };
+    }
+    var want = parseInt(input.sort_order, 10);
+    var at = isFinite(want) && want > 0 ? Math.max(0, Math.min(list.length, want - 1)) : list.length;
+    list.splice(at, 0, item);
+    list.forEach(function (f, i) { f.sort_order = i + 1; });
+    db.faqs = list;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    if ($('[data-hook=faq-list]')) renderFaqModal();
+    return { ok: true, faq: item };
+  }
+  function moveFaqItem(id, dir) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var list = faqAdminList();
+    var i = list.map(function (f) { return String(f.id); }).indexOf(String(id));
+    if (i < 0) return { ok: false, message: 'FAQ를 찾을 수 없습니다.' };
+    var j = i + (dir === 'up' || dir === '-1' ? -1 : 1);
+    if (j < 0 || j >= list.length) return { ok: true, moved: false };
+    var t = list[i]; list[i] = list[j]; list[j] = t;
+    list.forEach(function (f, n) { f.sort_order = n + 1; });
+    db.faqs = list;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    if ($('[data-hook=faq-list]')) renderFaqModal();
+    return { ok: true, moved: true };
+  }
+  function deleteFaqItems(ids) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 삭제할 수 있습니다.' };
+    var kill = {};
+    (ids || []).forEach(function (id) { kill[String(id)] = 1; });
+    var list = faqAdminList().filter(function (f) { return !kill[String(f.id)]; });
+    if (!list.length) return { ok: false, message: 'FAQ는 1건 이상 남겨 주세요.' };
+    list.forEach(function (f, i) { f.sort_order = i + 1; });
+    db.faqs = list;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    (ids || []).forEach(function (id) { delete ui.faqSel[String(id)]; });
+    if ($('[data-hook=faq-list]')) renderFaqModal();
+    return { ok: true, removed: (ids || []).length, faqs: list };
+  }
+  /* v1.9.5 — FAQ 카테고리 관리(코드 목록) 패널 — FAQ 게시판 패널 위에 붙는다 */
+  function faqCatRowHTML(name, i) {
+    var used = faqCatUsage(name);
+    return '<div class="faq-cat-row" data-faq-cat-row="1" data-cat-name="' + esc(name) + '">' +
+      '<span class="faq-no">' + (i + 1) + '</span>' +
+      '<input class="faq-cat-name" data-faq-cat-name maxlength="12" value="' + esc(name) + '" placeholder="카테고리 이름" aria-label="FAQ 카테고리 이름 ' + (i + 1) + '">' +
+      '<span class="faq-cat-use">' + (used ? used + '건 사용' : '미사용') + '</span>' +
+      '<div class="faq-cat-tools">' +
+        '<button class="txt-btn" type="button" data-action="faq-cat-move" data-dir="-1" aria-label="카테고리 위로 이동">↑</button>' +
+        '<button class="txt-btn" type="button" data-action="faq-cat-move" data-dir="1" aria-label="카테고리 아래로 이동">↓</button>' +
+        '<button class="icon-x" type="button" data-action="remove-faq-cat" aria-label="카테고리 삭제">✕</button>' +
+      '</div>' +
+    '</div>';
+  }
+  function faqCatPanelHTML() {
+    var list = faqCategoryNames();
+    return '<div class="panel faq-cat-panel" data-faq-cat-panel="1">' +
+      '<div class="panel-head"><h2>FAQ 카테고리 관리</h2><span class="sub">게시판 필터·카드 선택에 그대로 반영</span></div>' +
+      '<p class="panel-desc">카테고리 이름을 추가·수정하거나 ↑↓로 순서를 바꾸고 「카테고리 저장」을 누르면, ' +
+        '푸터 FAQ 게시판의 필터 칩과 각 FAQ 카드의 선택 목록에 바로 반영됩니다. FAQ가 연결된 카테고리는 삭제되지 않습니다.</p>' +
+      '<div class="faq-cat-rows" data-hook="faq-cat-rows">' + list.map(faqCatRowHTML).join('') + '</div>' +
+      '<div class="site-actions"><button class="btn ghost small" data-action="add-faq-cat">+ 카테고리 추가</button>' +
+        '<button class="btn small" data-action="save-faq-cats">카테고리 저장</button></div>' +
+    '</div>';
+  }
+  function siteFaqPanelHTML() {
+    var list = faqAdminList();
+    var info = adminPagerInfo(list, 'faqs', '');
+    return '<div class="panel faq-admin-panel" data-site-faq="1">' +
+      '<div class="panel-head"><h2>FAQ 게시판</h2><span class="sub">푸터 HELP의 「FAQ 게시판」에 바로 반영 · 행을 누르면 1건씩 조회·수정</span></div>' +
+      '<p class="panel-desc">그리드 표에서 행을 누르면 그 FAQ <b>1건</b>의 상세/수정 모달이 열립니다(저장하면 게시판에 즉시 반영). ' +
+        '각 행의 체크박스를 고르고 <b>선택 삭제</b>를 누르면 여러 건을 한 번에 지울 수 있고, ↑↓는 누르는 즉시 노출 순서가 저장됩니다.</p>' +
+      faqToolbarHTML('top') +
+      '<div class="table-wrap table-scroll"><table class="data faq-grid admin-grid" data-hook="faq-admin-rows" data-faq-count="' + list.length + '">' +
+        '<thead><tr><th class="faq-check-cell"><input type="checkbox" data-action="faq-select-all" aria-label="FAQ 전체 선택"' +
+          (list.length && faqSelectedIds().length === list.length ? ' checked' : '') + '></th>' +
+          '<th>순서</th><th>카테고리</th><th>질문</th><th>관리</th></tr></thead>' +
+        '<tbody>' + (info.total ? info.rows.map(function (f, i) {
+          return faqGridRowHTML(f, (info.page - 1) * ADMIN_PAGE_SIZE + i);
+        }).join('')
+          : '<tr><td colspan="5" class="empty-cell">등록된 FAQ가 없습니다. 「+ 질문 추가」로 첫 항목을 만드세요.</td></tr>') +
+        '</tbody></table></div>' +
+      adminPagerHTML(info) +
+      faqToolbarHTML('bottom') +
+    '</div>';
+  }
+  /* v1.9.3 — FAQ 관리는 「메인/사이트」에서 분리한 별도 관리자 탭 */
+  function adminFaqsHTML() {
+    return '<div class="admin-faqs" data-admin-faqs="1">' + faqCatPanelHTML() + siteFaqPanelHTML() + '</div>';
+  }
+  /* 포인트/회원 — 등급별 적립률 설정 + 회원 보유 포인트·최근 내역 */
+  /* 관리자 리뷰 검수 — 상품명·작성자·별점·본문·첨부·지급 포인트와 「반려 · 포인트 회수」 */
+  function adminReviewMediaHTML(r) {
+    var media = reviewMedia(r);
+    if (!media.length) return '<span class="m">첨부 없음</span>';
+    return '<div class="admin-rv-media">' + media.map(function (m, i) {
+      return '<button type="button" class="admin-rv-thumb' + (m.type === 'video' ? ' video' : '') + '"' +
+        ' data-action="open-review-media" data-rid="' + esc(r.id) + '" data-midx="' + i + '" data-type="' + esc(m.type) + '"' +
+        ' aria-label="' + esc(m.type === 'video' ? '리뷰 동영상 보기' : '리뷰 사진 보기') + '">' +
+        (m.type === 'video'
+          ? '<video src="' + esc(reviewMediaSrc(m)) + '" muted playsinline preload="metadata"></video><span class="play" aria-hidden="true">▶</span>'
+          : '<img src="' + esc(reviewMediaSrc(m)) + '" alt="' + esc(m.name || '리뷰 사진') + '" loading="lazy">') +
+      '</button>';
+    }).join('') + '</div>';
+  }
+  /* v1.9.9 — 리뷰 관리 그리드 행(한 줄에 한 건). 행을 누르면 리뷰 상세 모달에서 검수한다. */
+  function adminReviewRowHTML(r, info, i) {
+    var p = productById(r.product_id);
+    var u = currentUserById(r.user_id);
+    var hidden = reviewIsHidden(r);
+    var granted = reviewGrantedPoints(r);
+    return '<tr class="click-row review-row" data-review-row="' + esc(r.id) + '" data-review-state="' + (hidden ? 'rejected' : 'published') + '"' +
+      ' data-action="open-review-detail" data-rid="' + esc(r.id) + '" tabindex="0">' +
+      adminSelCellHTML('review', r.id, (r.user_name || '리뷰') + ' 리뷰 선택', hidden, '이미 반려된 리뷰는 회수할 수 없습니다.') +
+      adminSeqCellHTML(info, i) +
+      '<td data-label="리뷰"><div class="admin-rv-cell">' +
+        '<div class="admin-rv-top"><b class="admin-rv-product">' + orderProductNameHTML(p, { product_name: p ? p.name : '(삭제된 상품)' }) + '</b>' +
+          '<span class="pmr-stars" aria-label="별점 ' + (Number(r.rating) || 0) + '점">' + starText(r.rating) + '</span></div>' +
+        '<div class="admin-rv-meta">' + esc(r.user_name || (u ? maskUserName(u.name) : '고객')) + (u ? ' · ' + esc(u.email) : '') + ' · ' + fmtDate(r.created_at) + '</div>' +
+        '<p class="admin-rv-text">' + esc(String(r.content || '').slice(0, 90)) + (String(r.content || '').length > 90 ? '…' : '') + '</p>' +
+        adminReviewMediaHTML(r) +
+      '</div></td>' +
+      '<td data-label="지급 포인트"><b class="admin-rv-points">' + (granted ? '+' + granted.toLocaleString('ko-KR') + 'P' : '0P') + '</b>' +
+        (hidden && r.reclaimed_points ? '<div class="m rv-reclaimed">회수 ' + Math.round(r.reclaimed_points).toLocaleString('ko-KR') + 'P</div>' : '') +
+        (hidden ? '' : '<div class="m">' + (reviewRemainingPoints(r) ? '수령 유지' : '지급 없음') + '</div>') + '</td>' +
+      '<td data-label="검수"><div class="rv-mod">' +
+        (hidden
+          ? '<span class="review-status rejected" data-hook="rv-status">반려됨</span>'
+          : '<span class="review-status published" data-hook="rv-status">게시중</span>') +
+      '</div></td>' +
+      '<td data-label="관리"><button type="button" class="btn ghost small" data-action="open-review-detail" data-rid="' + esc(r.id) + '">상세 · 검수</button></td>' +
+    '</tr>';
+  }
+  /* v1.9.9 — 반려로 회수된 포인트 목록(관련 포인트 회수 목록) */
+  function reclaimReviews() {
+    return (db.product_reviews || []).slice()
+      .filter(function (r) { return Math.max(0, Math.round(Number(r.reclaimed_points) || 0)) > 0; })
+      .sort(function (a, b) {
+        return timeOf(b.rejected_at || b.updated_at || b.created_at) - timeOf(a.rejected_at || a.updated_at || a.created_at);
+      });
+  }
+  function adminReclaimHTML() {
+    var list = reclaimReviews();
+    var total = list.reduce(function (s, r) { return s + Math.max(0, Math.round(Number(r.reclaimed_points) || 0)); }, 0);
+    var info = adminPagerInfo(list, 'reclaims', '');
+    return '<div class="data-card review-reclaim" data-reclaim-list="1" style="margin-top:16px">' +
+      '<h3>포인트 회수 내역 <small class="data-h3-sub">' + list.length + '건 · ' + total.toLocaleString('ko-KR') + 'P</small></h3>' +
+      '<p>리뷰 반려로 회수한 포토·영상 리뷰 포인트입니다. 회수는 리뷰당 1회이며, 반려를 취소(승인)하면 복원됩니다.</p>' +
+      '<div class="table-wrap table-scroll"><table class="data reclaim-table admin-grid">' +
+        '<thead><tr><th>번호</th><th>반려일</th><th>회원</th><th>상품</th><th>회수 포인트</th><th>반려 사유</th></tr></thead><tbody>' +
+        (info.total ? info.rows.map(function (r, i) {
+          var u = currentUserById(r.user_id);
+          var p = productById(r.product_id);
+          return '<tr class="click-row" data-reclaim-row="' + esc(r.id) + '" data-action="open-review-detail" data-rid="' + esc(r.id) + '" tabindex="0">' +
+            adminSeqCellHTML(info, i) +
+            '<td data-label="반려일" style="white-space:nowrap">' + fmtDateTime(r.rejected_at || r.updated_at || r.created_at) + '</td>' +
+            '<td data-label="회원">' + esc(u ? u.name : r.user_name || '고객') + '<div class="m">' + esc(u ? u.email : '') + '</div></td>' +
+            '<td data-label="상품">' + esc(p ? p.name : '(삭제된 상품)') + '</td>' +
+            '<td data-label="회수 포인트"><b class="rv-reclaimed-amt">−' + Math.round(r.reclaimed_points).toLocaleString('ko-KR') + 'P</b></td>' +
+            '<td data-label="반려 사유">' + esc(r.rejected_reason || '') + '</td></tr>';
+        }).join('') : '<tr><td colspan="6" class="empty-cell">회수된 포인트가 없습니다.</td></tr>') +
+        '</tbody></table></div>' + adminPagerHTML(info) +
+    '</div>';
+  }
+  /* v1.9.10 — 리뷰 관리 검색: 작성자 이름·이메일 · 상품명·제품번호 · 리뷰 내용 + 검수 상태 필터(all/published/rejected) */
+  function reviewSearchHay(r) {
+    var u = currentUserById(r.user_id);
+    var p = productById(r.product_id);
+    return [r.user_name, u ? u.name : '', u ? u.email : '', r.content || '',
+      p ? p.name : '', p ? productCodeOf(p) : '', p ? p.brand : '', r.rejected_reason || ''].join(' ');
+  }
+  function adminReviewScope() {
+    var q = ui.adminReviewQuery;
+    return allReviews().filter(function (r) { return textHitsHay(reviewSearchHay(r), q); });
+  }
+  function adminReviewList() {
+    var scope = adminReviewScope();
+    var st = ui.adminReviewFilter || 'all';
+    if (st === 'published') return scope.filter(function (r) { return !reviewIsHidden(r); });
+    if (st === 'rejected') return scope.filter(function (r) { return reviewIsHidden(r); });
+    return scope;
+  }
+  function adminReviewChips(scope) {
+    return [
+      { value: 'all', label: '전체', count: scope.length },
+      { value: 'published', label: '게시중', count: scope.filter(function (r) { return !reviewIsHidden(r); }).length },
+      { value: 'rejected', label: '반려', count: scope.filter(function (r) { return reviewIsHidden(r); }).length }
+    ];
+  }
+  function reviewFilterBarHTML() {
+    var scope = adminReviewScope();
+    return '<div class="range-filters review-filters" data-hook="review-filters">' +
+      '<div class="rf-search">' +
+        '<input type="search" id="review-search" data-hook="review-search" value="' + esc(ui.adminReviewQuery) +
+          '" placeholder="작성자·이메일·상품명·제품번호·리뷰 내용 검색" aria-label="리뷰 검색" autocomplete="off">' +
+        '<button class="btn ghost small" data-action="review-reset">초기화</button>' +
+      '</div>' +
+      adminFilterChipsHTML('review-state', adminReviewChips(scope), ui.adminReviewFilter || 'all') +
+    '</div>';
+  }
+  function adminReviewsBodyHTML() {
+    var list = adminReviewList();
+    var scope = adminReviewScope();
+    var live = list.filter(function (r) { return !reviewIsHidden(r); }).length;
+    var rejected = list.length - live;
+    var reclaimed = list.reduce(function (s, r) { return s + Math.max(0, Math.round(Number(r.reclaimed_points) || 0)); }, 0);
+    var filtering = !!(String(ui.adminReviewQuery || '').trim() || (ui.adminReviewFilter || 'all') !== 'all');
+    var reviewSig = [ui.adminReviewFilter || 'all', ui.adminReviewQuery].join('|');
+    var info = adminPagerInfo(list, 'reviews', reviewSig);
+    adminSelSync('review', reviewSig);     // v1.9.16 — 필터가 바뀌면 선택 해제
+    var eligibleIds = info.rows.filter(function (r) { return !reviewIsHidden(r); }).map(function (r) { return r.id; });
+    return '<div class="data-card review-admin" data-review-admin="1">' +
+      '<h3>리뷰 관리 <small class="data-h3-sub" data-hook="review-count">' + list.length + '건' +
+        (filtering ? ' / 전체 ' + scope.length + '건' : '') + '</small></h3>' +
+      '<p>구매한 상품의 리뷰만 등록됩니다. 상품과 무관한 사진·부적절한 내용은 <b>반려</b>하면 스토어에서 숨겨지고, ' +
+        '그 리뷰로 지급된 <b>포토·영상 리뷰 포인트가 회수</b>됩니다(리뷰당 1회, 중복 회수 없음).</p>' +
+      '<div class="coupon-stat" data-hook="review-stat">게시중 <b>' + live + '</b>건 · 반려 <b>' + rejected + '</b>건 · 회수 포인트 <b>' + reclaimed.toLocaleString('ko-KR') + 'P</b></div>' +
+      (info.total ? adminBulkBarHTML('review', {
+        action: '일괄 회수',
+        hint: '선택한 리뷰를 한 사유로 반려하고 포인트를 회수합니다. 이미 반려된 리뷰는 선택할 수 없습니다.'
+      }) : '') +
+      '<div class="table-wrap table-scroll" data-hook="review-admin-rows"><table class="data review-admin-table admin-grid" data-bulk-rows="review">' +
+        '<thead><tr>' + adminSelHeadHTML('review', info.rows.map(function (r) { return r.id; }), eligibleIds) +
+        '<th>번호</th><th>리뷰</th><th>지급 포인트</th><th>검수</th><th>관리</th></tr></thead>' +
+        '<tbody>' + (info.total ? info.rows.map(function (r, i) { return adminReviewRowHTML(r, info, i); }).join('')
+          : '<tr><td colspan="6" class="empty-cell">' + (filtering
+            ? '검색·필터 조건에 맞는 리뷰가 없습니다.' : '등록된 리뷰가 없습니다.') + '</td></tr>') + '</tbody>' +
+      '</table></div>' + adminPagerHTML(info) +
+      '<p class="rv-grid-hint">행을 누르면 리뷰 상세에서 내용·사진·동영상을 보고 <b>승인/반려 · 포인트 회수</b>를 처리합니다.</p>' +
+    '</div>' +
+    adminReclaimHTML();
+  }
+  function adminReviewsHTML() {
+    return '<div class="admin-reviews" data-admin-reviews="1">' +
+      reviewFilterBarHTML() +
+      '<div class="admin-list-anchor" data-hook="admin-reviews-body" tabindex="-1">' + adminReviewsBodyHTML() + '</div>' +
+    '</div>';
+  }
+  /* 검색어·상태를 바꾸면 목록만 다시 그린다(검색창 포커스·입력값 유지) */
+  function refreshAdminReviews() {
+    var host = $('[data-hook=admin-reviews-body]');
+    if (host) host.innerHTML = adminReviewsBodyHTML();
+    var chips = $('[data-hook=review-state]');
+    if (chips) chips.outerHTML = adminFilterChipsHTML('review-state', adminReviewChips(adminReviewScope()), ui.adminReviewFilter || 'all');
+  }
+  /* =========================================================== v1.9.11 Q&A 관리
+     상품별 문의를 한 탭에서 모아 검색·상태 필터로 보고, 행을 누르면 상세 모달에서 답변을 등록·수정·삭제한다. */
+  function qnaSearchHay(q) {
+    var u = currentUserById(q.user_id);
+    var p = productById(q.product_id);
+    return [q.title, q.content, q.answer, q.user_name, u ? u.name : '', u ? u.email : '',
+      p ? p.name : '', p ? productCodeOf(p) : '', qnaTypeLabel(q.qna_type)].join(' ');
+  }
+  function adminQnaScope() {
+    var q = ui.adminQnaQuery;
+    return (db.product_qnas || []).slice()
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); })
+      .filter(function (x) { return textHitsHay(qnaSearchHay(x), q); });
+  }
+  function adminQnaList() {
+    var scope = adminQnaScope();
+    var st = ui.adminQnaFilter || 'all';
+    if (st === 'pending') return scope.filter(function (q) { return qnaStatusOf(q) !== 'answered'; });
+    if (st === 'answered') return scope.filter(function (q) { return qnaStatusOf(q) === 'answered'; });
+    return scope;
+  }
+  function adminQnaChips(scope) {
+    var answered = scope.filter(function (q) { return qnaStatusOf(q) === 'answered'; }).length;
+    return [
+      { value: 'all', label: '전체', count: scope.length },
+      { value: 'pending', label: '미답변', count: scope.length - answered },
+      { value: 'answered', label: '답변완료', count: answered }
+    ];
+  }
+  function qnaFilterBarHTML() {
+    var scope = adminQnaScope();
+    return '<div class="range-filters review-filters" data-hook="qna-filters">' +
+      '<div class="rf-search">' +
+        '<input type="search" id="qna-search" data-hook="qna-search" value="' + esc(ui.adminQnaQuery) +
+          '" placeholder="작성자·이메일·상품명·제품번호·제목·내용 검색" aria-label="Q&A 검색" autocomplete="off">' +
+        '<button class="btn ghost small" data-action="qna-reset">초기화</button>' +
+      '</div>' +
+      adminFilterChipsHTML('qna-state', adminQnaChips(scope), ui.adminQnaFilter || 'all') +
+    '</div>';
+  }
+  function adminQnaRowHTML(q, info, i) {
+    var p = productById(q.product_id);
+    var u = currentUserById(q.user_id);
+    var st = qnaStatusOf(q);
+    return '<tr class="click-row qna-row" data-qna-row="' + esc(q.id) + '" data-action="open-admin-qna" data-qid="' + esc(q.id) + '" data-qna-state="' + st + '" tabindex="0">' +
+      adminSeqCellHTML(info, i) +
+      '<td data-label="상품"><span class="admin-rv-product">' + esc(p ? p.name : '(삭제된 상품)') + '</span>' +
+        '<div class="m">' + esc(p ? productCodeOf(p) : '') + '</div></td>' +
+      '<td data-label="작성자">' + esc(u ? u.name : q.user_name || '고객') +
+        '<div class="m">' + esc(u ? u.email : '') + '</div></td>' +
+      '<td data-label="문의"><span class="qna-type-chip">' + esc(qnaTypeLabel(q.qna_type)) + '</span>' +
+        '<b class="qna-row-title">' + (q.is_secret ? '🔒 ' : '') + esc(q.title) + '</b></td>' +
+      '<td data-label="상태"><span class="qna-status ' + st + '" data-hook="qna-row-status">' + (st === 'answered' ? '답변완료' : '미답변') + '</span></td>' +
+      '<td data-label="작성일" style="white-space:nowrap">' + fmtDate(q.created_at) + '</td>' +
+      '<td data-label="관리"><button type="button" class="btn ghost small" data-action="open-admin-qna" data-qid="' + esc(q.id) + '">' +
+        (st === 'answered' ? '답변 보기' : '답변하기') + '</button></td>' +
+    '</tr>';
+  }
+  function adminQnaBodyHTML() {
+    var list = adminQnaList();
+    var scope = adminQnaScope();
+    var pending = list.filter(function (q) { return qnaStatusOf(q) !== 'answered'; }).length;
+    var filtering = !!(String(ui.adminQnaQuery || '').trim() || (ui.adminQnaFilter || 'all') !== 'all');
+    var info = adminPagerInfo(list, 'qnas', [ui.adminQnaFilter || 'all', ui.adminQnaQuery].join('|'));
+    return '<div class="data-card" data-qna-admin="1">' +
+      '<h3>Q&amp;A 관리 <small class="data-h3-sub" data-hook="qna-count">' + list.length + '건' +
+        (filtering ? ' / 전체 ' + scope.length + '건' : '') + '</small></h3>' +
+      '<p>상품 상세에 들어온 문의를 모아 봅니다. 행을 누르면 <b>상세 모달</b>에서 답변을 등록·수정·삭제할 수 있고, ' +
+        '답변을 저장하면 상품 상세의 Q&amp;A 에 <b>답변완료</b>로 바로 표시됩니다.</p>' +
+      '<div class="coupon-stat" data-hook="qna-stat">미답변 <b>' + pending + '</b>건 · 답변완료 <b>' + (list.length - pending) + '</b>건</div>' +
+      '<div class="table-wrap table-scroll" data-hook="qna-admin-rows"><table class="data qna-admin-table admin-grid">' +
+        '<thead><tr><th>번호</th><th>상품</th><th>작성자</th><th>문의</th><th>상태</th><th>작성일</th><th>관리</th></tr></thead>' +
+        '<tbody>' + (info.total ? info.rows.map(function (q, i) { return adminQnaRowHTML(q, info, i); }).join('')
+          : '<tr><td colspan="7" class="empty-cell">' + (filtering
+            ? '검색·필터 조건에 맞는 문의가 없습니다.' : '등록된 상품 문의가 없습니다.') + '</td></tr>') + '</tbody>' +
+      '</table></div>' + adminPagerHTML(info) +
+      '<p class="rv-grid-hint">비밀글(🔒)은 작성자 본인과 관리자만 본문을 볼 수 있습니다.</p>' +
+    '</div>';
+  }
+  function adminQnasHTML() {
+    return '<div class="admin-qnas" data-admin-qnas="1">' +
+      qnaFilterBarHTML() +
+      '<div class="admin-list-anchor" data-hook="admin-qnas-body" tabindex="-1">' + adminQnaBodyHTML() + '</div>' +
+    '</div>';
+  }
+  function refreshAdminQnas() {
+    var host = $('[data-hook=admin-qnas-body]');
+    if (host) host.innerHTML = adminQnaBodyHTML();
+    var chips = $('[data-hook=qna-state]');
+    if (chips) chips.outerHTML = adminFilterChipsHTML('qna-state', adminQnaChips(adminQnaScope()), ui.adminQnaFilter || 'all');
+  }
+  /* Q&A 상세 모달 — 문의 전문(비밀글 포함) + 답변 등록/수정 + 삭제 */
+  function adminQnaDetailHTML() {
+    var qid = (ui.modal || {}).qid;
+    var q = qnaById(qid);
+    if (!q) {
+      return '<div class="modal admin-qna-sheet" role="dialog" aria-modal="true"><button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+        '<div class="modal-head"><div class="eyebrow">ADMIN — Q&amp;A</div><h2>문의를 찾을 수 없습니다</h2></div>' +
+        '<div class="sheet-body"><div class="sheet-actions"><button class="btn small" data-action="close-modal">닫기</button></div></div></div>';
+    }
+    var p = productById(q.product_id);
+    var u = currentUserById(q.user_id);
+    var st = qnaStatusOf(q);
+    /* v1.9.12 — 제품명을 누르면 그 상품의 관리자 미리보기(사진·옵션·가격)가 열린다 */
+    var productCell = p
+      ? '<button type="button" class="qna-product-link" data-action="open-qna-product" data-pid="' + esc(p.id) + '"' +
+        ' data-qid="' + esc(q.id) + '" title="' + esc(p.name + ' 상품 정보 보기') + '">' +
+        '<span class="qna-product-name">' + esc(p.name) + '</span>' +
+        '<span class="qna-product-code">' + esc(productCodeOf(p)) + '</span>' +
+        '<span class="qna-product-go" aria-hidden="true">보기 ›</span></button>'
+      : '<span class="qna-product-gone">(삭제된 상품)</span>';
+    var rows = [
+      ['상품', productCell, true],
+      ['작성자', (u ? u.name : q.user_name || '고객') + (u ? ' (' + u.email + ' · ' + gradeLabel(u) + ')' : '')],
+      ['문의 유형', qnaTypeLabel(q.qna_type)],
+      ['작성일', fmtDateTime(q.created_at) + (q.updated_at ? ' · 수정 ' + fmtDateTime(q.updated_at) : '')],
+      ['공개 여부', q.is_secret ? '비밀글 (작성자·관리자만 열람)' : '공개글'],
+      ['답변 상태', st === 'answered' ? '답변완료' : '미답변'],
+      ['답변 일시', q.answered_at ? fmtDateTime(q.answered_at) : '-']
+    ];
+    return '<div class="modal admin-qna-sheet" role="dialog" aria-modal="true" aria-label="Q&amp;A 상세" data-qna-detail="' + esc(q.id) + '" style="width:min(680px,100%)">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ADMIN — PRODUCT Q&amp;A</div><h2>' + esc(q.title) + '</h2>' +
+        '<p class="sheet-lead"><span class="qna-status ' + st + '" data-hook="qna-detail-status">' + (st === 'answered' ? '답변완료' : '미답변') + '</span>' +
+          (q.is_secret ? ' <span class="qna-type-chip">🔒 비밀글</span>' : '') + '</p></div>' +
+      '<div class="sheet-body">' +
+        '<dl class="sheet-meta">' + rows.map(function (x) {
+          return '<div class="sm-row"><dt>' + esc(x[0]) + '</dt><dd>' + (x[2] ? x[1] : esc(x[1])) + '</dd></div>';
+        }).join('') + '</dl>' +
+        '<h4 class="sheet-sub">문의 내용</h4>' +
+        '<p class="rv-detail-text" data-hook="qna-detail-content">' + esc(q.content) + '</p>' +
+        '<h4 class="sheet-sub">관리자 답변</h4>' +
+        '<label class="rv-detail-reason-label" for="qna-answer">답변 <small>비우고 저장하면 미답변으로 돌아갑니다</small></label>' +
+        '<textarea id="qna-answer" class="qna-answer-input" data-hook="qna-answer-input" rows="4" maxlength="' + QNA_ANSWER_MAX + '" placeholder="답변을 입력해 주세요.">' + esc(q.answer || '') + '</textarea>' +
+        '<div class="rv-detail-actions qna-detail-actions">' +
+          '<div class="row">' +
+            '<button class="btn small" data-action="save-qna-answer" data-qid="' + esc(q.id) + '">답변 저장</button>' +
+            '<button class="btn ghost small danger-text" data-action="delete-qna" data-qid="' + esc(q.id) + '">문의 삭제</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sheet-actions"><button class="btn ghost small" data-action="close-modal">닫기</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+  /* v1.9.12 — Q&A 상세의 제품명을 누르면 열리는 관리자 상품 미리보기
+     · 사진·옵션(색상×사이즈 잔여 재고)·가격·판매 상태를 바로 확인
+     · 히스토리 한 겹(layer:'admin-qna-product') — 뒤로가기·닫기 = Q&A 상세로 복귀 */
+  function adminQnaProductHTML() {
+    var m = ui.modal || {};
+    var p = productById(m.pid);
+    var q = m.qid ? qnaById(m.qid) : null;
+    var head = function (title, lead) {
+      return '<div class="modal admin-product-sheet" role="dialog" aria-modal="true" aria-label="상품 정보" data-qna-product="' + esc(p ? p.id : '') + '" style="width:min(640px,100%)">' +
+        '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+        '<div class="modal-head"><div class="eyebrow">ADMIN — PRODUCT</div><h2>' + esc(title) + '</h2>' +
+        (lead ? '<p class="sheet-lead">' + lead + '</p>' : '') + '</div>';
+    };
+    if (!p) {
+      return head('상품을 찾을 수 없습니다', '') +
+        '<div class="sheet-body"><div class="sheet-actions">' +
+          '<button class="btn small" data-action="close-modal">Q&amp;A로 돌아가기</button>' +
+        '</div></div></div>';
+    }
+    var images = productImages(p);
+    var variants = variantsOf(p.id);
+    var colors = colorsOf(p.id);
+    var sizes = [];
+    variants.forEach(function (v) { if (sizes.indexOf(v.size) < 0) sizes.push(v.size); });
+    var stockOfVariant = function (color, size) {
+      var hit = variants.filter(function (v) { return v.color === color && v.size === size; })[0];
+      return hit ? Math.max(0, Number(hit.stock) || 0) : -1;
+    };
+    var totalStock = stockOf(p.id);
+    var priceCell = '<b class="ap-price">' + won(p.price) + '</b>' +
+      (p.original_price && Number(p.original_price) > Number(p.price)
+        ? ' <s class="ap-was">' + won(p.original_price) + '</s>' : '');
+    var rows = [
+      ['상품번호', productCodeOf(p)],
+      ['카테고리', catLabel(p.category)],
+      ['판매가', priceCell, true],
+      ['재고', totalStock.toLocaleString('ko-KR') + '개' + (totalStock <= 0 ? ' · 품절' : '')],
+      ['판매 상태', p.is_active === false ? '판매 중지(숨김)' : '판매 중'],
+      ['등록일', fmtDate(p.created_at)]
+    ];
+    return head(p.name,
+        '<span class="ap-code">' + esc(productCodeOf(p)) + '</span>' +
+        (p.badge ? ' <span class="badge">' + esc(p.badge) + '</span>' : '') +
+        (q ? ' <span class="ap-qna-ref">문의: ' + esc(String(q.title).slice(0, 40)) + '</span>' : '')) +
+      '<div class="sheet-body">' +
+        (images.length ? '<div class="ap-gallery" data-hook="qna-product-gallery">' + images.slice(0, 3).map(function (src, i) {
+          return '<img src="' + esc(imgSrc(src)) + '" alt="' + esc(imageAltOf(p, i)) + '" loading="lazy">';
+        }).join('') + '</div>' : '') +
+        '<dl class="sheet-meta">' + rows.map(function (x) {
+          return '<div class="sm-row"><dt>' + esc(x[0]) + '</dt><dd>' + (x[2] ? x[1] : esc(x[1])) + '</dd></div>';
+        }).join('') + '</dl>' +
+        '<h4 class="sheet-sub">옵션 · 재고</h4>' +
+        '<div class="table-wrap table-scroll"><table class="data ap-variants admin-grid" data-hook="qna-product-variants">' +
+          '<thead><tr><th>색상</th>' + sizes.map(function (s) { return '<th>' + esc(s) + '</th>'; }).join('') + '<th>합계</th></tr></thead>' +
+          '<tbody>' + colors.map(function (c) {
+            var rowSum = 0;
+            return '<tr><th scope="row"><span class="ap-swatch" style="background:' + esc(c.hex) + '" aria-hidden="true"></span>' + esc(c.color) + '</th>' +
+              sizes.map(function (s) {
+                var n = stockOfVariant(c.color, s);
+                if (n > 0) rowSum += n;
+                return '<td class="' + (n === 0 ? 'sold-out' : (n < 0 ? 'na' : '')) + '">' + (n < 0 ? '-' : (n === 0 ? '품절' : n + '개')) + '</td>';
+              }).join('') +
+              '<td><b>' + rowSum + '개</b></td></tr>';
+          }).join('') + '</tbody>' +
+        '</table></div>' +
+        '<div class="sheet-actions"><button class="btn small" data-action="close-modal">← Q&amp;A로 돌아가기</button></div>' +
+      '</div></div>';
+  }
+  /* =========================================================== v1.9.9 회원 관리
+     · 「회원 관리」 별도 탭: 번호/이름/이메일/연락처/등급/보유 포인트/주문/가입일 그리드
+     · 행을 누르면 회원 상세 모달에서 주문·리뷰 요약을 보고 포인트(지급/차감)·등급을 조정한다 */
+  function memberList() {
+    return db.users.slice().sort(function (a, b) { return timeOf(a.created_at) - timeOf(b.created_at); });
+  }
+  function memberOrders(uid) {
+    return db.orders.filter(function (o) { return o.user_id === uid; })
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
+  }
+  function memberReviews(uid) {
+    return (db.product_reviews || []).filter(function (r) { return r.user_id === uid; })
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
+  }
+  function memberRowHTML(u, no) {
+    var orders = memberOrders(u.id);
+    var spent = orders.filter(function (o) { return o.status !== 'cancelled'; })
+      .reduce(function (s, o) { return s + (Number(o.total_amount) || 0); }, 0);
+    return '<tr class="click-row member-row" data-member-row="' + esc(u.id) + '" data-action="open-member" data-uid="' + esc(u.id) + '" tabindex="0">' +
+      '<td data-label="번호"><span class="member-no">' + no + '</span></td>' +
+      '<td data-label="이름"><b>' + esc(u.name) + '</b>' + (u.role === 'admin' ? '<span class="role-tag">관리자</span>' : '') +
+        '<span class="m member-email-inline">' + esc(u.email) + '</span></td>' +
+      '<td data-label="이메일">' + esc(u.email) + '</td>' +
+      '<td data-label="연락처">' + esc(u.phone || '-') + '</td>' +
+      '<td data-label="등급"><span class="grade-badge ' + GRADES[gradeOf(u)].cls + '">' + gradeLabel(u) + '</span></td>' +
+      '<td data-label="보유 포인트"><b class="member-pts">' + userPoints(u).toLocaleString('ko-KR') + 'P</b></td>' +
+      '<td data-label="주문">' + orders.length + '건<div class="m">' + won(spent) + '</div></td>' +
+      '<td data-label="가입일" class="admin-date-cell" data-joined="' + esc(String(u.created_at || '').slice(0, 10)) + '">' + fmtDate(u.created_at) + '</td>' +
+      '<td data-label="관리"><button type="button" class="btn ghost small" data-action="open-member" data-uid="' + esc(u.id) + '">상세</button></td>' +
+    '</tr>';
+  }
+  /* ============================================ v1.9.13 멤버십 등급 자동 산정
+     · 최근 N개월(기본 6) 실구매 금액(취소 제외 주문 합계) 으로 등급 기준을 정한다
+     · 「대상자 조회」로 현재 등급 ≠ 산정 등급 회원을 모아 「일괄 자동 적용」한다 */
+  function monthsAgoTime(months) {
+    var d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setMonth(d.getMonth() - months);
+    return d.getTime();
+  }
+  function memberRecentSpend(u, months) {
+    var m = months || gradeRules().months;
+    var since = monthsAgoTime(m);
+    return memberOrders(u.id).filter(function (o) {
+      return o.status !== 'cancelled' && timeOf(o.created_at) >= since;
+    }).reduce(function (s, o) { return s + (Number(o.total_amount) || 0); }, 0);
+  }
+  function gradeForSpend(amount) {
+    var t = gradeRules().thresholds;
+    var g = 'NORMAL';
+    GRADE_ORDER.forEach(function (k) { if ((Number(amount) || 0) >= (Number(t[k]) || 0)) g = k; });
+    return g;
+  }
+  /* 대상자 = 관리자 계정을 뺀 회원 중 현재 등급과 산정 등급이 다른 사람 */
+  function membershipTargets() {
+    var r = gradeRules();
+    return memberList().filter(function (u) { return u.role !== 'admin'; }).map(function (u) {
+      var spend = memberRecentSpend(u, r.months);
+      var cur = gradeOf(u), next = gradeForSpend(spend);
+      return { uid: u.id, name: u.name, email: u.email, spend: spend, cur: cur, next: next };
+    }).filter(function (t) { return t.cur !== t.next; })
+      .sort(function (a, b) { return b.spend - a.spend; });
+  }
+  function saveGradeRulesFromForm() {
+    if (!isAdmin()) return { ok: false, message: '관리자만 저장할 수 있습니다.' };
+    var months = parseInt(($('#mgr-months') || {}).value, 10);
+    if (!isFinite(months) || months < 1 || months > 60) {
+      return { ok: false, message: '기준 기간은 1~60개월 사이로 입력해 주세요.' };
+    }
+    var thresholds = {};
+    for (var i = 0; i < GRADE_ORDER.length; i++) {
+      var g = GRADE_ORDER[i];
+      var n = parseInt(($('#mgr-' + g.toLowerCase()) || {}).value, 10);
+      if (!isFinite(n) || n < 0) return { ok: false, message: GRADES[g].label + ' 등급 기준 금액을 0 이상으로 입력해 주세요.' };
+      thresholds[g] = n;
+    }
+    for (var j = 1; j < GRADE_ORDER.length; j++) {
+      if (thresholds[GRADE_ORDER[j]] <= thresholds[GRADE_ORDER[j - 1]]) {
+        return { ok: false, message: '등급 기준 금액은 ' + GRADES[GRADE_ORDER[j - 1]].label + ' < ' + GRADES[GRADE_ORDER[j]].label + ' 순으로 커져야 합니다.' };
+      }
+    }
+    if (thresholds.NORMAL !== 0) return { ok: false, message: '일반 등급 기준은 0원으로 두세요.' };
+    var next = siteSettings();
+    next.member_grade_rules = { months: months, thresholds: thresholds };
+    next.updated_at = nowISO();
+    db.site_settings = next;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, rules: gradeRules() };
+  }
+  function applyMembershipTargets() {
+    if (!isAdmin()) return { ok: false, message: '관리자만 적용할 수 있습니다.' };
+    var list = ui.memberTargets || membershipTargets();
+    var changed = 0;
+    list.forEach(function (t) {
+      var u = currentUserById(t.uid);
+      if (!u) return;
+      var next = gradeForSpend(memberRecentSpend(u));
+      if (gradeOf(u) === next) return;
+      u.grade = next;
+      changed++;
+    });
+    if (changed && !save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, changed: changed };
+  }
+  function membershipPanelHTML() {
+    var r = gradeRules();
+    var targets = ui.memberTargets;
+    var list = Array.isArray(targets) ? targets : null;
+    var up = list ? list.filter(function (t) { return GRADE_ORDER.indexOf(t.next) > GRADE_ORDER.indexOf(t.cur); }).length : 0;
+    var down = list ? list.length - up : 0;
+    return '<div class="data-card membership-rules" data-membership-rules="1">' +
+      '<h3>멤버십 등급 기준 <small class="data-h3-sub">최근 ' + r.months + '개월 구매금액 기준</small></h3>' +
+      '<p>최근 <b>N개월</b> 실구매 금액(취소 제외 주문 합계)으로 등급을 정합니다. ' +
+        '「대상자 조회」로 지금 등급과 산정 등급이 다른 회원을 확인한 뒤 <b>「일괄 자동 적용」</b>으로 한 번에 바꿉니다.</p>' +
+      '<div class="mgr-form" data-hook="mgr-form">' +
+        '<label class="mgr-field"><span>기준 기간</span>' +
+          '<span class="mgr-input"><input id="mgr-months" type="number" min="1" max="60" step="1" value="' + r.months + '" aria-label="멤버십 기준 기간(개월)"><small>개월</small></span></label>' +
+        GRADE_ORDER.map(function (g) {
+          return '<label class="mgr-field"><span class="grade-badge ' + GRADES[g].cls + '">' + GRADES[g].label + '</span>' +
+            '<span class="mgr-input"><input id="mgr-' + g.toLowerCase() + '" type="number" min="0" step="10000" value="' + (Number(r.thresholds[g]) || 0) + '" aria-label="' + GRADES[g].label + ' 등급 기준 금액"><small>원 이상</small></span></label>';
+        }).join('') +
+        '<button class="btn small mgr-save" data-action="save-grade-rules">기준 저장</button>' +
+      '</div>' +
+      '<div class="mgr-actions">' +
+        '<button class="btn ghost small" data-action="membership-scan">대상자 조회</button>' +
+        '<button class="btn small" data-action="membership-apply"' + (list && list.length ? '' : ' disabled') + '>일괄 자동 적용' +
+          (list && list.length ? ' (' + list.length + '명)' : '') + '</button>' +
+        (list ? '<span class="mgr-count">대상 <b>' + list.length + '</b>명 · 상향 ' + up + ' · 하향 ' + down + '</span>' : '<span class="mgr-count">「대상자 조회」를 누르면 변경 예정 등급이 나옵니다</span>') +
+      '</div>' +
+      (list
+        ? (list.length
+          ? '<div class="table-wrap table-scroll" data-hook="membership-targets"><table class="data membership-grid admin-grid">' +
+              '<thead><tr><th>회원</th><th>최근 ' + r.months + '개월 구매액</th><th>등급 (현재 → 예정)</th></tr></thead><tbody>' +
+              list.map(function (t) {
+                var dir = GRADE_ORDER.indexOf(t.next) > GRADE_ORDER.indexOf(t.cur) ? 'up' : 'down';
+                return '<tr data-target="' + esc(t.uid) + '" data-dir="' + dir + '">' +
+                  '<td data-label="회원"><b>' + esc(t.name) + '</b><div class="m">' + esc(t.email) + '</div></td>' +
+                  '<td data-label="구매액"><b>' + won(t.spend) + '</b></td>' +
+                  '<td data-label="등급 변경"><span class="grade-badge ' + GRADES[t.cur].cls + '">' + GRADES[t.cur].label + '</span>' +
+                    '<span class="mgr-arrow" aria-hidden="true">→</span>' +
+                    '<span class="grade-badge ' + GRADES[t.next].cls + '">' + GRADES[t.next].label + '</span>' +
+                    '<em class="mgr-dir ' + dir + '">' + (dir === 'up' ? '↑ 상향' : '↓ 하향') + '</em></td>' +
+                '</tr>';
+              }).join('') + '</tbody></table></div>'
+          : '<p class="mgr-empty" data-hook="membership-targets">변경할 회원이 없습니다. 모든 회원이 기준에 맞습니다.</p>')
+        : '') +
+    '</div>';
+  }
+  function adminMembersHTML() {
+    var list = memberList();
+    var totalPoints = list.reduce(function (s, u) { return s + userPoints(u); }, 0);
+    var info = adminPagerInfo(list, 'members', '');
+    return '<div class="admin-members" data-admin-members="1">' +
+      membershipPanelHTML() +
+      '<div class="data-card" data-member-grid="1">' +
+        '<h3>회원 관리 <small class="data-h3-sub">' + list.length + '명 · 보유 포인트 합계 ' + totalPoints.toLocaleString('ko-KR') + 'P</small></h3>' +
+        '<p>행을 누르면 회원 상세에서 주문·리뷰 요약을 보고 <b>포인트 지급/차감</b>과 <b>회원 등급</b>을 바로 조정할 수 있습니다.</p>' +
+        '<div class="table-wrap table-scroll" data-hook="member-table"><table class="data member-grid admin-grid">' +
+          '<thead><tr><th>번호</th><th>이름</th><th>이메일</th><th>연락처</th><th>등급</th><th>보유 포인트</th><th>주문</th><th>가입일</th><th>관리</th></tr></thead>' +
+          '<tbody>' + (info.total ? info.rows.map(function (u, i) { return memberRowHTML(u, adminSeqNo(info, i)); }).join('')
+            : '<tr><td colspan="9" class="empty-cell">회원이 없습니다.</td></tr>') + '</tbody>' +
+        '</table></div>' + adminPagerHTML(info) +
+      '</div>' +
+    '</div>';
+  }
+  /* 회원 상세 모달 — 주문·리뷰·평균 별점 요약(한 줄) + 포인트/등급 조정
+     v1.9.10 — 주문·리뷰 박수를 누르면 해당 탭으로 이동해 그 회원 건만 조회한다
+     (최근 주문·리뷰 목록은 빼고 요약 박수 + 포인트/등급만 남김) */
+  function adminMemberHTML() {
+    var m = ui.modal || {};
+    var u = currentUserById(m.uid);
+    if (!u) return '';
+    var orders = memberOrders(u.id);
+    var liveSpent = orders.filter(function (o) { return o.status !== 'cancelled'; })
+      .reduce(function (s, o) { return s + (Number(o.total_amount) || 0); }, 0);
+    var reviews = memberReviews(u.id);
+    var liveRevs = reviews.filter(function (r) { return !reviewIsHidden(r); });
+    var avg = liveRevs.length ? (liveRevs.reduce(function (s, r) { return s + (Number(r.rating) || 0); }, 0) / liveRevs.length) : 0;
+    var logs = pointLogsOf(u.id).slice(0, 6);
+    var rows = [
+      ['회원번호', u.id + (u.role === 'admin' ? '  · 관리자 계정' : '')],
+      ['이름', u.name],
+      ['이메일', u.email],
+      ['연락처', u.phone || '-'],
+      ['주소', (u.postcode ? '[' + u.postcode + '] ' : '') + (u.address || '-')],
+      ['가입일', fmtDateTime(u.created_at)],
+      ['회원 등급', gradeLabel(u) + ' (' + gradeOf(u) + ')']
+    ];
+    return '<div class="modal admin-member-sheet" role="dialog" aria-modal="true" aria-label="회원 상세" data-member-detail="' + esc(u.id) + '" style="width:min(680px,100%)">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ADMIN — MEMBER</div><h2>' + esc(u.name) + '</h2>' +
+        '<p class="sheet-lead"><span class="grade-badge ' + GRADES[gradeOf(u)].cls + '">' + gradeLabel(u) + '</span>' +
+          ' <b class="member-balance" data-member-balance="' + userPoints(u) + '">' + userPoints(u).toLocaleString('ko-KR') + 'P</b></p></div>' +
+      '<div class="sheet-body">' +
+        '<dl class="sheet-meta">' + rows.map(function (r) {
+          return '<div class="sm-row"><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>';
+        }).join('') + '</dl>' +
+        '<div class="member-stats" data-member-stats="1">' +
+          '<button type="button" class="ms-item ms-link" data-action="member-orders" data-uid="' + esc(u.id) + '"'
+            + ' aria-label="' + esc(u.name) + ' 님의 주문 보기">'
+            + '<span>주문</span><b>' + orders.length + '건</b><small>결제 ' + won(liveSpent) + '</small>'
+            + '<em class="ms-go" aria-hidden="true">주문 조회 →</em></button>' +
+          '<button type="button" class="ms-item ms-link" data-action="member-reviews" data-uid="' + esc(u.id) + '"'
+            + ' aria-label="' + esc(u.name) + ' 님의 리뷰 보기">'
+            + '<span>리뷰</span><b>' + reviews.length + '건</b><small>게시 ' + liveRevs.length + ' · 반려 ' + (reviews.length - liveRevs.length) + '</small>'
+            + '<em class="ms-go" aria-hidden="true">리뷰 조회 →</em></button>' +
+          '<div class="ms-item"><span>평균 별점</span><b>' + (avg ? avg.toFixed(1) : '-') + '</b><small>게시 리뷰 기준</small></div>' +
+        '</div>' +
+        '<h4 class="sheet-sub">포인트 조정</h4>' +
+        '<div class="member-adj" data-member-adjust="1">' +
+          '<div class="member-adj-row">' +
+            '<label class="madj-field"><span>포인트</span>' +
+              '<input id="mp-amount" type="number" step="1" min="-1000000" max="1000000" placeholder="+1000 / -1000" aria-label="조정할 포인트(차감은 음수)"></label>' +
+            '<label class="madj-field reason"><span>사유</span>' +
+              '<input id="mp-reason" type="text" maxlength="60" placeholder="예: 이벤트 지급 · 오적립 차감" aria-label="포인트 조정 사유"></label>' +
+            '<button class="btn small" data-action="adjust-member-points" data-uid="' + esc(u.id) + '">포인트 반영</button>' +
+          '</div>' +
+          (ui.memberPtsError ? '<p class="madj-error" data-member-error="1">' + esc(ui.memberPtsError) + '</p>' : '') +
+          '<p class="madj-hint">지급은 양수, 차감은 음수로 입력합니다. 반영하면 <b>point_logs</b> 에 `관리자 조정 · 사유` 로 기록되고 보유 포인트가 즉시 바뀝니다(보유 포인트보다 많이 차감 불가).</p>' +
+        '</div>' +
+        '<h4 class="sheet-sub">등급 조정</h4>' +
+        '<div class="member-grade-row">' +
+          '<select id="mp-grade" class="mini-select" aria-label="회원 등급">' + GRADE_ORDER.map(function (g) {
+            return '<option value="' + g + '"' + (gradeOf(u) === g ? ' selected' : '') + '>' + GRADES[g].label + ' (' + g + ')</option>';
+          }).join('') + '</select>' +
+          '<button class="btn small" data-action="save-member-grade" data-uid="' + esc(u.id) + '">등급 저장</button>' +
+          '<span class="m">저장하면 새 구매확정·리뷰 적립률부터 이 등급이 적용됩니다.</span>' +
+        '</div>' +
+        '<h4 class="sheet-sub">최근 포인트 내역</h4>' +
+        (logs.length ? '<ul class="member-log-list" data-member-logs="1">' + logs.map(function (l) {
+          return '<li><span class="m">' + fmtDateTime(l.created_at) + '</span>' +
+            '<b class="' + (l.amount > 0 ? 'plus' : 'minus') + '">' + (l.amount > 0 ? '+' : '−') + Math.abs(l.amount).toLocaleString('ko-KR') + 'P</b>' +
+            '<span class="ml-desc">' + esc(l.description || pointTypeLabel(l.type)) + '</span></li>';
+        }).join('') + '</ul>' : '<p class="m">포인트 내역이 없습니다.</p>') +
+        '<div class="sheet-actions"><button class="btn ghost small" data-action="close-modal">닫기</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+  /* 회원 포인트 조정 — point_logs 기록 + 보유 포인트 반영 */
+  function adjustMemberPoints(uid, amount, reason) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 포인트를 조정할 수 있습니다.' };
+    var u = currentUserById(uid);
+    if (!u) return { ok: false, message: '회원을 찾을 수 없습니다.' };
+    var amt = Math.round(Number(amount) || 0);
+    if (!amt) return { ok: false, message: '지급·차감할 포인트를 입력해 주세요. (차감은 -1000 처럼 음수)' };
+    if (Math.abs(amt) > 1000000) return { ok: false, message: '한 번에 1,000,000P까지 조정할 수 있습니다.' };
+    if (amt < 0 && userPoints(u) + amt < 0) {
+      return { ok: false, message: '보유 포인트(' + userPoints(u).toLocaleString('ko-KR') + 'P)보다 많이 차감할 수 없습니다.' };
+    }
+    var why = String(reason || '').trim().slice(0, 60);
+    if (!why) return { ok: false, message: '포인트 조정 사유를 입력해 주세요.' };
+    addPointLog(u, 'adjust', amt, {
+      base_amount: 0, rate: 0,
+      description: '관리자 조정 · ' + why
+    });
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, amount: amt, balance: userPoints(u), userId: u.id };
+  }
+  function saveMemberGrade(uid, grade) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 회원 등급을 바꿀 수 있습니다.' };
+    var u = currentUserById(uid);
+    if (!u) return { ok: false, message: '회원을 찾을 수 없습니다.' };
+    var g = String(grade || '').toUpperCase();
+    if (!GRADES[g]) return { ok: false, message: '등급을 다시 선택해 주세요.' };
+    u.grade = g;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, grade: g, userId: u.id };
+  }
+  /* =========================================================== v1.9.9 리뷰 상세 검수
+     행을 누르면 열리는 모달 — 내용·첨부·지급 포인트를 보고 승인/반려(포인트 회수)를 처리 */
+  function reviewById(id) {
+    return (db.product_reviews || []).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function adminReviewDetailHTML() {
+    var rid = (ui.modal || {}).rid;
+    var r = reviewById(rid);
+    if (!r) {
+      return '<div class="modal admin-review-sheet" role="dialog" aria-modal="true"><button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+        '<div class="modal-head"><div class="eyebrow">ADMIN — REVIEW</div><h2>리뷰를 찾을 수 없습니다</h2></div>' +
+        '<div class="sheet-body"><div class="sheet-actions"><button class="btn small" data-action="close-modal">닫기</button></div></div></div>';
+    }
+    var p = productById(r.product_id);
+    var u = currentUserById(r.user_id);
+    var oi = db.order_items.filter(function (x) { return x.id === r.order_item_id; })[0];
+    var o = oi ? orderById(oi.order_id) : null;
+    var hidden = reviewIsHidden(r);
+    var media = reviewMedia(r);
+    var granted = reviewGrantedPoints(r);
+    var remain = reviewRemainingPoints(r);
+    var rows = [
+      ['작성자', (u ? u.name : r.user_name || '고객') + (u ? ' (' + u.email + ' · ' + gradeLabel(u) + ')' : '')],
+      ['상품', (p ? p.name + '  (' + productCodeOf(p) + ')' : '(삭제된 상품)')],
+      ['주문', o ? o.order_no + ' · ' + (oi ? oi.color + ' / ' + oi.size : '') : '-'],
+      ['평점', starText(r.rating) + '  ' + (Number(r.rating) || 0) + '점'],
+      ['작성일', fmtDateTime(r.created_at) + (r.updated_at ? ' · 수정 ' + fmtDateTime(r.updated_at) : '') + (r.attempt > 1 ? ' · 재작성 ' + r.attempt + '차' : '')],
+      ['지급 포인트', (granted ? granted.toLocaleString('ko-KR') + 'P' : '0P') + (remain ? ' (보유 유지 ' + remain.toLocaleString('ko-KR') + 'P)' : ' (회수됨)')],
+      ['검수 상태', hidden ? '반려됨' : '게시중']
+    ];
+    if (hidden) {
+      rows.push(['반려 사유', r.rejected_reason || '-']);
+      rows.push(['회수 포인트', Math.round(Number(r.reclaimed_points) || 0).toLocaleString('ko-KR') + 'P']);
+      if (r.rejected_at) rows.push(['반려 일시', fmtDateTime(r.rejected_at)]);
+    }
+    return '<div class="modal admin-review-sheet" role="dialog" aria-modal="true" aria-label="리뷰 상세" data-review-detail="' + esc(r.id) + '" style="width:min(680px,100%)">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ADMIN — REVIEW CHECK</div><h2>' + esc(p ? p.name : '리뷰 상세') + '</h2>' +
+        '<p class="sheet-lead"><span class="review-status ' + (hidden ? 'rejected' : 'published') + '" data-hook="rv-detail-status">' + (hidden ? '반려됨' : '게시중') + '</span>' +
+          ' <span class="pmr-stars">' + starText(r.rating) + '</span></p></div>' +
+      '<div class="sheet-body">' +
+        '<dl class="sheet-meta">' + rows.map(function (x) {
+          return '<div class="sm-row"><dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd></div>';
+        }).join('') + '</dl>' +
+        '<h4 class="sheet-sub">리뷰 내용</h4>' +
+        '<p class="rv-detail-text" data-hook="rv-detail-content">' + esc(r.content || '') + '</p>' +
+        '<h4 class="sheet-sub">첨부 <small>사진 ' + media.filter(function (m) { return m.type !== 'video'; }).length +
+          ' · 동영상 ' + media.filter(function (m) { return m.type === 'video'; }).length + '</small></h4>' +
+        (media.length ? '<div class="rv-detail-media">' + adminReviewMediaHTML(r) + '</div>' : '<p class="m">첨부 없음</p>') +
+        '<h4 class="sheet-sub">검수</h4>' +
+        (hidden
+          ? '<div class="rv-detail-actions"><p class="m">반려된 리뷰입니다. 사유를 확인하고 필요하면 게시로 되돌릴 수 있습니다. 되돌리면 회수한 포인트가 1회 복원됩니다.</p>' +
+            '<button class="btn small" data-action="approve-review" data-rid="' + esc(r.id) + '">승인(게시) · 포인트 복원</button></div>'
+          : '<div class="rv-detail-actions">' +
+            '<label class="rv-detail-reason-label" for="rv-reject-detail-reason">반려 사유 <small>비우면 기본 사유로 기록됩니다</small></label>' +
+            '<input id="rv-reject-detail-reason" class="rv-reject-reason" data-hook="rv-reject-reason" maxlength="80" placeholder="예: 상품과 무관한 사진">' +
+            '<div class="row"><button class="btn small danger-text" data-action="reject-review" data-rid="' + esc(r.id) + '">반려 · 포인트 회수</button>' +
+            '<button class="btn ghost small" data-action="approve-review" data-rid="' + esc(r.id) + '">승인 유지</button></div></div>') +
+        '<div class="sheet-actions"><button class="btn ghost small" data-action="close-modal">닫기</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+  /* 반려 취소(승인) — 다시 게시하고 회수했던 포인트를 1회 복원한다 */
+  function approveReview(id) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 리뷰를 승인할 수 있습니다.' };
+    var r = reviewById(id);
+    if (!r) return { ok: false, message: '리뷰를 찾을 수 없습니다.' };
+    if (!reviewIsHidden(r)) return { ok: true, message: '이미 게시중인 리뷰입니다.', restored: 0 };
+    var oi = db.order_items.filter(function (x) { return x.id === r.order_item_id; })[0];
+    var author = currentUserById(r.user_id);
+    var restore = Math.max(0, Math.round(Number(r.reclaimed_points) || 0));
+    if (restore > 0 && author && oi && !(Number(oi.photo_bonus) > 0)) {
+      addPointLog(author, 'review', restore, {
+        base_amount: 0, rate: 0, order_id: oi.order_id, order_item_id: oi.id, review_id: r.id,
+        description: '리뷰 반려 취소 포인트 복원 · ' + ((productById(r.product_id) || {}).name || '리뷰')
+      });
+      oi.photo_bonus = restore;
+      oi.photo_bonus_at = nowISO();
+    }
+    r.status = 'published';
+    r.rejected_reason = null;
+    r.rejected_at = null;
+    r.reclaimed_points = 0;
+    r.updated_at = nowISO();
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, restored: restore, review: r };
+  }
+  /* ============================================= v1.9.16 리뷰 일괄 회수
+     · 선택한 리뷰를 "공통 사유" 하나로 반려하고 포토·영상 포인트를 회수한다
+     · 이미 반려된 리뷰는 건너뛰고(중복 회수 없음), 회수액은 회원 보유 포인트 한도 안에서만 차감된다
+     · 반려·재작성 규칙은 단건 반려(rejectReview)를 그대로 타므로 1차 반려 1회 재작성·2차 차단이 유지된다 */
+  function reviewReclaimAmount(r) {
+    if (!r) return 0;
+    var oi = db.order_items.filter(function (x) { return x.id === r.order_item_id; })[0];
+    var bonus = Math.max(0, Math.round(Number(oi && oi.photo_bonus) || 0));
+    var author = currentUserById(r.user_id);
+    if (!(bonus > 0) || !author) return 0;
+    return Math.min(bonus, userPoints(author));
+  }
+  function bulkReclaimReviews(ids, reason) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 리뷰를 회수할 수 있습니다.' };
+    var text = String(reason || '').trim();
+    if (!text) return { ok: false, message: '반려 사유를 입력해 주세요.' };
+    var done = 0, skipped = 0, skippedRejected = 0, skippedMissing = 0, reclaimed = 0;
+    (ids || []).forEach(function (id) {
+      var r = reviewById(id);
+      if (!r) { skipped += 1; skippedMissing += 1; return; }
+      if (reviewIsHidden(r)) { skipped += 1; skippedRejected += 1; return; }
+      var res = rejectReview(id, text);
+      if (!res.ok) { skipped += 1; skippedMissing += 1; return; }
+      done += 1;
+      reclaimed += Math.max(0, Math.round(Number(res.reclaimed) || 0));
+    });
+    return { ok: true, done: done, skipped: skipped, skippedRejected: skippedRejected,
+      skippedMissing: skippedMissing, reclaimed: reclaimed };
+  }
+  /* 일괄 회수 확인 모달 — 선택한 리뷰 목록 + 공통 사유(비우면 차단) */
+  function bulkReclaimHTML() {
+    var m = ui.modal || {};
+    var rows = (m.rids || []).map(reviewById).filter(Boolean);
+    var max = rows.reduce(function (s, r) { return s + reviewReclaimAmount(r); }, 0);
+    return '<div class="modal bulk-reclaim-modal" role="dialog" aria-modal="true" aria-label="리뷰 일괄 회수" style="width:min(560px,100%)">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ADMIN — REVIEW RECLAIM</div><h2>리뷰 일괄 회수</h2></div>' +
+      '<div class="br-body">' +
+        '<p class="br-lead">선택한 리뷰 <b>' + rows.length + '건</b>을 <b>같은 사유</b>로 반려하고, 그 리뷰로 지급된 ' +
+          '포토·영상 포인트를 회수합니다. 회수액은 회원 보유 포인트 한도 안에서 차감되며 최대 <b>' + max.toLocaleString('ko-KR') + 'P</b> 입니다.</p>' +
+        '<ul class="br-list" data-hook="bulk-reclaim-list">' + rows.map(function (r) {
+          var p = productById(r.product_id);
+          return '<li data-bulk-review="' + esc(r.id) + '">' +
+            '<span class="br-name">' + esc(p ? p.name : '(삭제된 상품)') + '</span>' +
+            '<span class="br-who">' + esc(r.user_name || '고객') + '</span>' +
+            '<span class="br-pt">−' + reviewReclaimAmount(r).toLocaleString('ko-KR') + 'P</span></li>';
+        }).join('') + '</ul>' +
+        '<label class="br-reason" for="br-reason"><span>공통 반려 사유 <b>*</b></span>' +
+          '<input id="br-reason" data-hook="bulk-reclaim-reason" maxlength="200" autocomplete="off"' +
+            ' placeholder="예: 상품과 무관한 사진 · 부적절한 내용" value="" aria-required="true"></label>' +
+        '<p class="br-error" data-hook="bulk-reclaim-error" hidden>반려 사유를 입력해 주세요.</p>' +
+        '<p class="br-note">1차 반려는 리뷰 <b>1회 재작성</b>이 허용되고, 2차 반려는 <b>최종 차단</b>됩니다. ' +
+          '이미 반려된 리뷰는 제외됩니다.</p>' +
+        '<div class="sheet-actions">' +
+          '<button type="button" class="btn ghost small" data-action="close-modal">취소</button>' +
+          '<button type="button" class="btn small danger-text" data-action="run-bulk-reclaim">일괄 회수</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function adminPointsHTML() {
+    var map = pointPolicyMap();
+    var logList = (db.point_logs || []).slice()
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
+    var logInfo = adminPagerInfo(logList, 'pointlogs', '');
+    return '<div class="data-card point-policy" data-point-policy="1">' +
+        '<h3>등급별 포인트 지급 기준</h3>' +
+        '<p>구매확정 시 <b>상품 실결제 금액</b>의 적립률, 사진·동영상 리뷰 등록 시 <b>같은 금액</b>의 추가 적립률입니다(주문 상품당 1회).</p>' +
+        '<div class="table-wrap table-scroll"><table class="data point-policy-table admin-grid"><thead><tr><th>등급</th><th>구매확정 적립률 (%)</th><th>포토·영상 리뷰 추가 적립률 (%)</th><th>예시 (10만원 상품)</th></tr></thead><tbody>' +
+          GRADE_ORDER.map(function (g) {
+            var p = map[g];
+            return '<tr data-grade="' + g + '"><td data-label="등급"><span class="grade-badge ' + GRADES[g].cls + '">' + GRADES[g].label + '</span></td>' +
+              '<td data-label="구매확정"><input id="pp-' + g + '-confirm" type="number" min="0.1" max="10" step="0.1" value="' + p.confirm_rate + '" aria-label="' + GRADES[g].label + ' 구매확정 적립률"></td>' +
+              '<td data-label="포토·영상 리뷰"><input id="pp-' + g + '-photo" type="number" min="0.1" max="10" step="0.1" value="' + p.photo_rate + '" aria-label="' + GRADES[g].label + ' 포토리뷰 적립률"></td>' +
+              '<td data-label="예시" class="policy-example">+' + Math.floor(100000 * p.confirm_rate / 100).toLocaleString('ko-KR') + 'P / +' + Math.floor(100000 * p.photo_rate / 100).toLocaleString('ko-KR') + 'P</td></tr>';
+          }).join('') +
+        '</tbody></table></div>' +
+        '<div class="row" style="margin-top:14px"><button class="btn small" data-action="save-point-policies">적립률 저장</button>' +
+          '<span class="site-hint">저장 즉시 새 구매확정·리뷰부터 적용됩니다.</span></div>' +
+      '</div>' +
+      /* v1.9.9 — 회원 포인트 목록은 「회원 관리」 탭으로, 리뷰 검수는 「리뷰 관리」 탭으로 분리 */
+      /* v1.9.8 — 포인트 이력 표(전체 회원) : 그리드 표로 모바일에서도 머리글 유지 */
+      '<div class="data-card" style="margin-top:16px" data-point-logs="1">' +
+        '<h3>포인트 이력 <small class="data-h3-sub">' + (db.point_logs || []).length + '건</small></h3>' +
+        '<p>적립·사용·회수 내역 전체입니다(최신순). 회원 보유 포인트는 이 내역의 합계와 같습니다.</p>' +
+        '<div class="table-wrap table-scroll"><table class="data point-logs admin-grid"><thead><tr><th>번호</th><th>일시</th><th>회원</th><th>유형</th><th>포인트</th><th>사유</th></tr></thead><tbody>' +
+          (logInfo.total ? logInfo.rows.map(function (l, i) {
+              var lu = currentUserById(l.user_id);
+              return '<tr data-point-log="' + esc(l.id) + '">' +
+                adminSeqCellHTML(logInfo, i) +
+                '<td data-label="일시" style="white-space:nowrap;font-size:11px;color:var(--muted)">' + fmtDateTime(l.created_at) + '</td>' +
+                '<td data-label="회원">' + esc(lu ? lu.name : '(탈퇴 회원)') + '<div class="m" style="font-size:10px;color:var(--muted)">' + esc(lu ? lu.email : l.user_id) + '</div></td>' +
+                '<td data-label="유형">' + esc(pointTypeLabel(l.type)) + '</td>' +
+                '<td data-label="포인트"><b>' + (l.amount > 0 ? '+' : '−') + Math.abs(l.amount).toLocaleString('ko-KR') + 'P</b></td>' +
+                '<td data-label="사유">' + esc(l.description || '') + '</td></tr>';
+            }).join('')
+            : '<tr><td colspan="6" class="empty-cell">포인트 내역이 없습니다.</td></tr>') +
+        '</tbody></table></div>' + adminPagerHTML(logInfo) +
+      '</div>';
+  }
+  function readSiteForm() {
+    var out = {};
+    var v = function (id) { var el = $('#' + id); return el ? el.value : null; };
+    if ($('#site-banner-text')) {
+      out.top_banner_text = v('site-banner-text');
+      out.top_banner_sub = v('site-banner-sub');
+      var be = $('#site-banner-enabled');
+      if (be) out.top_banner_enabled = !!be.checked;   // v1.9.10 — 상단 띠 노출 ON/OFF
+    }
+    if ($('#site-hero-title')) {
+      out.hero_image = ($('#site-hero-image') || {}).value || '';
+      out.hero_eyebrow = v('site-hero-eyebrow');
+      out.hero_title = v('site-hero-title');
+      out.hero_subtitle = v('site-hero-subtitle');
+      out.hero_cta_label = v('site-hero-cta');
+      out.hero_cta2_label = v('site-hero-cta2');
+      out.hero_effect = v('site-hero-effect');
+      out.hero_overlay = v('site-hero-overlay');
+    }
+    if ($('#site-story-title')) {
+      out.story_image = ($('#site-story-image') || {}).value || '';
+      out.story_eyebrow = v('site-story-eyebrow');
+      out.story_title = v('site-story-title');
+      out.story_subtitle = v('site-story-subtitle');
+      out.story_body = v('site-story-body');
+      out.story_tags = v('site-story-tags');
+      var se = $('#site-story-enabled');
+      if (se) out.brand_story_enabled = !!se.checked;   // v1.9.9 — 홈 스토리 노출 ON/OFF
+    }
+    if ($('#site-brand-blurb')) {
+      out.brand_blurb = v('site-brand-blurb');
+      out.company_name = v('site-company-name');
+      out.company_ceo = v('site-company-ceo');
+      out.company_reg_no = v('site-company-reg');
+      out.company_mail_order_no = v('site-company-mail');
+      out.company_address = v('site-company-address');
+      out.company_phone = v('site-company-phone');
+      out.company_email = v('site-company-email');
+    }
+    /* v1.9.10 — 상품 섹션 헤더 문구 */
+    if ($('#site-shop-title')) {
+      out.shop_eyebrow = v('site-shop-eyebrow');
+      out.shop_title = v('site-shop-title');
+      out.shop_desc = v('site-shop-desc');
+    }
+    /* v1.9.14 — 사이트 타이틀·푸터 카피라이트 */
+    if ($('#site-title')) {
+      out.site_title = v('site-title');
+      out.page_title = v('site-page-title');
+      out.footer_copyright = v('site-footer-copyright');
+    }
+    return out;
+  }
+  function readHelpRows() {
+    return $$('[data-hook=help-rows] .help-row').map(function (row) {
+      return {
+        id: row.dataset.helpId || '',
+        title: (row.querySelector('[data-help-title]') || {}).value || '',
+        body: (row.querySelector('[data-help-body]') || {}).value || ''
+      };
+    });
+  }
+
+  function adminProductsHTML() {
+    var list = adminProductList();
+    return '<div class="admin-products admin-list-anchor" data-admin-products="1" tabindex="-1">' +
+      '<div class="admin-chip-row">' +
+        adminFilterChipsHTML('admin-product-filter', adminProductChips(), ui.adminProductFilter || 'all') +
+      '</div>' +
+      '<div class="admin-search">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>' +
+        '<input id="admin-product-search" type="search" placeholder="상품명·제품번호·브랜드·뱃지 검색" autocomplete="off" value="' + esc(ui.adminQuery || '') + '" aria-label="상품 검색">' +
+        '<span class="admin-search-count" data-hook="admin-product-count">' + adminProductCountText(list) + '</span>' +
+      '</div>' +
+      /* v1.9.8 — 등록일 기간 검색(시작일~종료일) */
+      '<div class="range-filters product-range" data-hook="product-range">' +
+        '<div class="rf-dates">' +
+          '<label class="rf-field"><span>등록일</span>' +
+            '<input type="date" id="product-from" data-hook="product-from" value="' + esc(ui.adminProductFrom) + '" aria-label="등록일 시작일"></label>' +
+          '<span class="rf-tilde" aria-hidden="true">~</span>' +
+          '<label class="rf-field"><span>종료일</span>' +
+            '<input type="date" id="product-to" data-hook="product-to" value="' + esc(ui.adminProductTo) + '" aria-label="등록일 종료일"></label>' +
+        '</div>' +
+        '<div class="rf-search"><span class="rf-period" data-hook="product-period">' + esc(periodLabel(ui.adminProductFrom, ui.adminProductTo)) + '</span>' +
+          '<button class="btn ghost small" data-action="product-reset">초기화</button></div>' +
+      '</div>' +
+      '<div class="table-wrap table-scroll" data-hook="admin-product-table">' + adminProductTableHTML(list) + '</div>' +
+    '</div>';
+  }
+  function adminProductCountText(list) {
+    var f = ui.adminProductFilter || 'all';
+    var label = f === 'active' ? '판매중 ' : f === 'hidden' ? '숨김 ' : '';
+    return label + list.length + ' / ' + db.products.length + '개';
+  }
+  function refreshAdminProductTable() {
+    var host = $('[data-hook=admin-product-table]');
+    if (!host) return;
+    var list = adminProductList();
+    host.innerHTML = adminProductTableHTML(list);
+    var c = $('[data-hook=admin-product-count]');
+    if (c) c.textContent = adminProductCountText(list);
+    var per = $('[data-hook=product-period]');
+    if (per) per.textContent = periodLabel(ui.adminProductFrom, ui.adminProductTo);
+  }
+  /* --------------------------------------------------- 쿠폰 발급 대상 UI
+     전체 공용 / 회원 등급별 / 특정 회원 지정(실시간 이름·이메일 검색) */
+  function gradeChipsHTML(prefix, selected) {
+    var sel = selected || [];
+    return GRADE_ORDER.map(function (g) {
+      return '<label class="grade-chip' + (sel.indexOf(g) >= 0 ? ' on' : '') + '">' +
+        '<input type="checkbox" name="' + prefix + '-grade" value="' + g + '"' + (sel.indexOf(g) >= 0 ? ' checked' : '') + '>' +
+        '<span class="grade-badge ' + GRADES[g].cls + '">' + GRADES[g].label + '</span></label>';
+    }).join('');
+  }
+  /* v1.9.13 — 쿠폰 사용 조건 칩(상품 카테고리·뱃지). 뱃지는 「코드 관리 > 뱃지 관리」 목록과 연동된다. */
+  function catChipsHTML(prefix, selected) {
+    var sel = selected || [];
+    return categoriesSorted().map(function (c) {
+      return '<label class="cond-chip' + (sel.indexOf(c.id) >= 0 ? ' on' : '') + '">' +
+        '<input type="checkbox" name="' + prefix + '-cat" value="' + esc(c.id) + '"' + (sel.indexOf(c.id) >= 0 ? ' checked' : '') + '>' +
+        '<span>' + esc(c.label) + '</span></label>';
+    }).join('');
+  }
+  function badgeChipsHTML(prefix, selected) {
+    var sel = normalizeBadgeList(selected || []);
+    return badgeList().map(function (b) {
+      return '<label class="cond-chip badge' + (sel.indexOf(b) >= 0 ? ' on' : '') + '">' +
+        '<input type="checkbox" name="' + prefix + '-badge" value="' + esc(b) + '"' + (sel.indexOf(b) >= 0 ? ' checked' : '') + '>' +
+        '<span>' + esc(b) + '</span></label>';
+    }).join('');
+  }
+  function couponConditionChipsHTML(prefix, cats, badges) {
+    return '<div class="coupon-cond" data-hook="' + prefix + '-cond">' +
+      '<div class="cc-row"><span class="cc-label">상품 카테고리 <small>비우면 전체</small></span>' +
+        '<div class="cond-chips" data-hook="' + prefix + '-cats">' + catChipsHTML(prefix, cats) + '</div></div>' +
+      '<div class="cc-row"><span class="cc-label">상품 뱃지 <small>비우면 전체</small></span>' +
+        '<div class="cond-chips" data-hook="' + prefix + '-badges">' + badgeChipsHTML(prefix, badges) + '</div></div>' +
+      '<p class="cc-hint">카테고리·뱃지를 고르면 <b>두 조건을 모두 만족하는 상품 금액</b>에만 할인이 적용됩니다(회원 등급·회원 지정 조건과 AND).</p>' +
+    '</div>';
+  }
+  function readCouponConditions(prefix) {
+    var cats = $$('[data-hook=' + prefix + '-cats] input[type=checkbox]:checked').map(function (i) { return i.value; });
+    var badges = $$('[data-hook=' + prefix + '-badges] input[type=checkbox]:checked').map(function (i) { return i.value; });
+    return { target_categories: cats, target_badges: normalizeBadgeList(badges) };
+  }
+  function memberPickerHTML(prefix, members, selected) {
+    var sel = selected || [];
+    return '<div class="member-picker">' +
+      '<input type="search" class="member-search" data-hook="' + prefix + '-search" placeholder="회원 이름·이메일" autocomplete="off" aria-label="회원 검색">' +
+      '<div class="tp-users" data-hook="' + prefix + '-users">' + (members.length ? members.map(function (u) {
+        return '<label class="tp-line" data-search="' + esc((u.name + ' ' + u.email + ' ' + gradeLabel(u)).toLowerCase()) + '">' +
+          '<input type="checkbox" name="' + prefix + '-user" value="' + u.id + '"' + (sel.indexOf(u.id) >= 0 ? ' checked' : '') + '>' +
+          '<span>' + esc(u.name) + ' <span class="m">' + esc(u.email) + ' · ' + esc(gradeLabel(u)) + (u.role === 'admin' ? ' · 관리자' : '') + '</span></span></label>';
+      }).join('') : '<div class="m" style="padding:6px 2px">회원이 없습니다.</div>') + '</div>' +
+      '<div class="member-empty" data-hook="' + prefix + '-empty" hidden>검색 결과가 없습니다.</div>' +
+    '</div>';
+  }
+  function targetPickerHTML(prefix, cfg) {
+    var cfgv = cfg || {};
+    var mode = cfgv.mode || 'all';
+    var members = db.users.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var modes = [['all', '전체 공용'], ['grade', '회원 등급별'], ['user', '특정 회원 지정']];
+    return '<div class="target-picker mode-' + mode + '" data-hook="' + prefix + '-picker" data-mode="' + mode + '">' +
+      '<div class="target-modes" role="radiogroup" aria-label="쿠폰 발급 대상">' + modes.map(function (m) {
+        return '<label class="tm-opt"><input type="radio" name="' + prefix + '-mode" value="' + m[0] + '"' + (mode === m[0] ? ' checked' : '') + '><span>' + m[1] + '</span></label>';
+      }).join('') + '</div>' +
+      '<div class="target-grades" data-hook="' + prefix + '-grades">' +
+        '<div class="tg-label">등급 선택 <small>여러 등급을 고를 수 있습니다</small></div>' +
+        '<div class="grade-chips">' + gradeChipsHTML(prefix, cfgv.grades || []) + '</div>' +
+      '</div>' +
+      '<div class="target-members" data-hook="' + prefix + '-members">' + memberPickerHTML(prefix, members, cfgv.users || []) + '</div>' +
+    '</div>';
+  }
+  function readTargetPicker(prefix) {
+    var modeEl = $('input[name=' + prefix + '-mode]:checked');
+    var mode = modeEl ? modeEl.value : 'all';
+    var users = $$('[data-hook=' + prefix + '-users] input[type=checkbox]:checked').map(function (i) { return i.value; });
+    var grades = $$('[data-hook=' + prefix + '-grades] input[type=checkbox]:checked').map(function (i) { return i.value; });
+    return {
+      mode: mode,
+      target_user_ids: mode === 'user' ? users : [],
+      target_grades: mode === 'grade' ? grades : []
+    };
+  }
+  /* 발급 대상 모드 전환 — 입력 중인 다른 폼 값은 건드리지 않고 표시만 바꾼다 */
+  function syncTargetPicker(prefix) {
+    var pick = $('[data-hook=' + prefix + '-picker]');
+    if (!pick) return;
+    var modeEl = $('input[name=' + prefix + '-mode]:checked');
+    var mode = modeEl ? modeEl.value : 'all';
+    pick.setAttribute('data-mode', mode);
+    pick.className = pick.className.replace(/mode-\w+/g, 'mode-' + mode);
+  }
+  function couponAudienceCellHTML(c) {
+    var kind = couponAudienceKind(c);
+    if (kind === 'all') return '<b>전체 공용</b>';
+    if (kind === 'grade') {
+      return '<b>등급별</b><span class="who">' + couponTargetGradesOfLabel(c) + '</span>';
+    }
+    return '<b>전용</b><span class="who">' + esc(couponTargetLabel(c)) + '</span>';
+  }
+  function couponTargetGradesOfLabel(c) {
+    return couponTargetGrades(c).map(function (g) { return GRADES[g].label + '등급'; }).join(' · ');
+  }
+
+  function adminCouponsHTML() {
+    var rows = db.coupons.slice().sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); });
+    var live = rows.filter(couponActive).length;
+    var info = adminPagerInfo(rows, 'coupons', '');
+    return '<div class="data-card coupon-form" data-coupon-form>' +
+        '<h3>새 쿠폰 발행</h3>' +
+        '<p>코드는 영문·숫자 3~20자. 정률은 %, 정액은 원 단위로 입력합니다. 만료일을 비우면 무기한입니다. ' +
+          '<b>발급 대상</b>(회원 등급·특정 회원)과 <b>사용 조건</b>(상품 카테고리·뱃지)은 함께 걸 수 있으며, 실제 적용 시에는 모든 조건을 모두 만족해야 합니다.</p>' +
+        (ui.couponFormError ? '<div class="form-error">' + esc(ui.couponFormError) + '</div>' : '') +
+        '<div class="form-grid coupon-grid">' +
+          '<div class="field"><label>쿠폰 코드</label><input id="cf-code" placeholder="WELCOME10" autocomplete="off" style="text-transform:uppercase"></div>' +
+          '<div class="field"><label>쿠폰명</label><input id="cf-name" placeholder="신규 회원 10% 할인"></div>' +
+          '<div class="field"><label>할인 유형</label><select id="cf-type"><option value="percent">정률 (%)</option><option value="fixed">정액 (원)</option></select></div>' +
+          '<div class="field"><label>할인 값</label><input id="cf-value" type="number" min="1" step="1" placeholder="10"></div>' +
+          '<div class="field"><label>최소 주문금액 (원)</label><input id="cf-min" type="number" min="0" step="1000" value="0"></div>' +
+          '<div class="field"><label>만료일 (선택)</label><input id="cf-expires" type="date"></div>' +
+          '<div class="field span2"><label>발급 대상 (회원 등급 · 특정 회원)</label>' +
+            targetPickerHTML('cf', { mode: ui.couponTargetMode || 'all', grades: ui.couponTargetGrades || [], users: ui.couponTargetSel || [] }) +
+          '</div>' +
+          '<div class="field span2"><label>사용 조건 (상품 카테고리 · 뱃지)</label>' +
+            couponConditionChipsHTML('cf', ui.couponTargetCats || [], ui.couponTargetBadges || []) +
+          '</div>' +
+        '</div>' +
+        '<div class="form-actions" style="border:0;padding-top:4px"><button class="btn small" data-action="create-coupon">쿠폰 발행</button></div>' +
+      '</div>' +
+      '<div class="coupon-stat">사용 가능 <b>' + live + '</b>장 · 전체 ' + rows.length + '장</div>' +
+      '<div class="table-wrap table-scroll"><table class="data coupons coupons-table admin-grid">' +
+        '<thead><tr><th>번호</th><th>쿠폰</th><th>할인</th><th>발급 대상</th><th>사용 조건</th><th>최소 주문</th><th>만료</th><th>사용</th><th>상태</th><th>관리</th></tr></thead><tbody>' +
+        (info.total ? info.rows.map(function (c, i) {
+          var used = db.orders.filter(function (o) { return o.coupon_code === c.code && o.status !== 'cancelled'; }).length;
+          var state = !c.is_active ? '<span class="stock-pill zero">중지</span>'
+            : couponExpired(c) ? '<span class="stock-pill zero">만료</span>' : '<span class="stock-pill">사용중</span>';
+          var cond = couponHasItemConditions(c)
+            ? '<div class="coupon-cond-cell">' +
+                (couponTargetCategories(c).length ? '<span class="cond-tag">' + esc(couponTargetCategories(c).map(catLabel).join('·')) + '</span>' : '') +
+                (couponTargetBadges(c).length ? '<span class="cond-tag badge">' + esc(couponTargetBadges(c).join('·')) + '</span>' : '') +
+              '</div>'
+            : '<span class="m">제한 없음</span>';
+          return '<tr data-coupon="' + esc(c.code) + '" data-cid="' + esc(c.id) + '" data-public="' + (couponIsPublic(c) ? '1' : '0') + '">' +
+            adminSeqCellHTML(info, i) +
+            '<td data-label="쿠폰"><div class="coupon-cell"><b>' + esc(c.code) + '</b><div class="m">' + esc(c.name) + '</div></div></td>' +
+            '<td data-label="할인">' + esc(couponValueLabel(c)) + '</td>' +
+            '<td data-label="발급 대상"><div class="coupon-target">' + couponAudienceCellHTML(c) + '</div></td>' +
+            '<td data-label="사용 조건">' + cond + '</td>' +
+            '<td data-label="최소 주문">' + (Number(c.min_order_amount) ? won(c.min_order_amount) : '제한 없음') + '</td>' +
+            '<td data-label="만료">' + (c.expires_at ? fmtDate(c.expires_at) : '무기한') + '</td>' +
+            '<td data-label="사용">' + used + '건</td>' +
+            '<td data-label="상태">' + state + '</td>' +
+            '<td data-label="관리"><div class="row-actions">' +
+              '<button class="txt-btn" data-action="edit-coupon" data-cid="' + c.id + '">수정</button>' +
+              '<button class="txt-btn" data-action="toggle-coupon" data-cid="' + c.id + '">' + (c.is_active ? '사용 중지' : '사용 재개') + '</button>' +
+            '</div></td>' +
+          '</tr>';
+        }).join('') : '<tr><td colspan="10" class="empty-cell">발행된 쿠폰이 없습니다.</td></tr>') +
+        '</tbody></table></div>' + adminPagerHTML(info);
+  }
+  function couponInputFrom(input) {
+    var code = String(input.code || '').trim().toUpperCase();
+    var name = String(input.name || '').trim();
+    var type = input.discount_type === 'fixed' ? 'fixed' : 'percent';
+    var value = parseInt(input.discount_value, 10);
+    var min = Math.max(0, parseInt(input.min_order_amount, 10) || 0);
+    var targets = [];
+    (Array.isArray(input.target_user_ids) ? input.target_user_ids : []).forEach(function (uid) {
+      if (uid && currentUserById(uid) && targets.indexOf(uid) < 0) targets.push(uid);
+    });
+    var grades = [];
+    (Array.isArray(input.target_grades) ? input.target_grades : []).forEach(function (g) {
+      var gv = String(g).toUpperCase();
+      if (GRADES[gv] && grades.indexOf(gv) < 0) grades.push(gv);
+    });
+    /* v1.9.13 — 사용 조건(카테고리·뱃지) 정규화 */
+    var cats = [];
+    (Array.isArray(input.target_categories) ? input.target_categories : []).forEach(function (id) {
+      var v = String(id || '').trim();
+      if (v && db.categories.some(function (c) { return c.id === v; }) && cats.indexOf(v) < 0) cats.push(v);
+    });
+    var badges = normalizeBadgeList(input.target_badges);
+    if (!name) return { ok: false, message: '쿠폰명을 입력해 주세요.' };
+    if (!(value > 0)) return { ok: false, message: '할인 값을 1 이상으로 입력해 주세요.' };
+    if (type === 'percent' && value > 100) return { ok: false, message: '정률 할인은 100%를 넘을 수 없습니다.' };
+    if (input.target_user_ids && input.target_user_ids.length && !targets.length) {
+      return { ok: false, message: '발급 대상 회원을 찾을 수 없습니다.' };
+    }
+    if (input.target_grades && input.target_grades.length && !grades.length) {
+      return { ok: false, message: '발급 대상 등급을 찾을 수 없습니다.' };
+    }
+    var expires = null;
+    if (input.expires_at) {
+      var raw = String(input.expires_at).slice(0, 10);
+      var d = new Date(raw + 'T23:59:59+09:00');
+      if (isNaN(d)) return { ok: false, message: '만료일 형식이 올바르지 않습니다.' };
+      expires = raw + 'T23:59:59+09:00';
+    }
+    return {
+      ok: true,
+      fields: { code: code, name: name, discount_type: type, discount_value: value,
+                min_order_amount: min, expires_at: expires, target_user_ids: targets, target_grades: grades,
+                target_categories: cats, target_badges: badges }
+    };
+  }
+  function createCoupon(input) {
+    var parsed = couponInputFrom(input);
+    if (!parsed.ok) return parsed;
+    var f = parsed.fields;
+    if (!/^[A-Z0-9_-]{3,20}$/.test(f.code)) return { ok: false, message: '쿠폰 코드는 영문·숫자 3~20자로 입력해 주세요.' };
+    if (couponByCode(f.code)) return { ok: false, message: '이미 사용 중인 쿠폰 코드입니다.' };
+    if (f.expires_at && new Date(f.expires_at).getTime() < Date.now()) return { ok: false, message: '만료일이 이미 지났습니다.' };
+    var c = {
+      id: newId('c'), code: f.code, name: f.name, discount_type: f.discount_type, discount_value: f.discount_value,
+      min_order_amount: f.min_order_amount, expires_at: f.expires_at, is_active: true, created_at: nowISO(),
+      target_user_ids: f.target_user_ids, target_grades: f.target_grades,
+      target_categories: f.target_categories, target_badges: f.target_badges
+    };
+    db.coupons.push(c);
+    save();
+    return { ok: true, coupon: c };
+  }
+  /* 이미 발행된 쿠폰 수정 — 코드는 유지하고 나머지 항목·발급 대상을 바꾼다 */
+  function updateCoupon(id, input) {
+    var c = db.coupons.filter(function (x) { return x.id === id; })[0];
+    if (!c) return { ok: false, message: '쿠폰을 찾을 수 없습니다.' };
+    var parsed = couponInputFrom(input);
+    if (!parsed.ok) return parsed;
+    var f = parsed.fields;
+    c.name = f.name;
+    c.discount_type = f.discount_type;
+    c.discount_value = f.discount_value;
+    c.min_order_amount = f.min_order_amount;
+    c.expires_at = f.expires_at;
+    c.target_user_ids = f.target_user_ids;
+    c.target_grades = f.target_grades;
+    c.target_categories = f.target_categories;
+    c.target_badges = f.target_badges;
+    c.updated_at = nowISO();
+    if (ui.coupon && ui.coupon.id === c.id) {
+      // 사용 중인 쿠폰이 바뀌면 적용 상태를 다시 검사한다
+      if (!couponActive(c)) clearCoupon();
+    }
+    save();
+    return { ok: true, coupon: c };
+  }
+  function toggleCoupon(id) {
+    var c = db.coupons.filter(function (x) { return x.id === id; })[0];
+    if (!c) return { ok: false, message: '쿠폰을 찾을 수 없습니다.' };
+    c.is_active = !c.is_active;
+    if (!c.is_active && ui.coupon && ui.coupon.id === c.id) clearCoupon();
+    save();
+    return { ok: true, coupon: c };
+  }
+  /* 이미 발행된 쿠폰 수정 모달 */
+  function couponEditorHTML() {
+    var m = ui.modal;
+    var c = m && m.cid ? db.coupons.filter(function (x) { return x.id === m.cid; })[0] : null;
+    if (!c) return '';
+    var mode = couponAudienceKind(c);
+    return '<div class="modal edit-modal coupon-edit-modal" role="dialog" aria-modal="true" aria-label="쿠폰 수정">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ADMIN — COUPON</div><h2>쿠폰 수정</h2></div>' +
+      '<div class="edit-body">' +
+        (m.error ? '<div class="form-error">' + esc(m.error) + '</div>' : '') +
+        '<div class="form-grid coupon-grid">' +
+          '<div class="field"><label>쿠폰 코드 <small>코드는 수정할 수 없습니다</small></label><input id="ce-code" value="' + esc(c.code) + '" disabled></div>' +
+          '<div class="field"><label>쿠폰명</label><input id="ce-name" value="' + esc(c.name) + '"></div>' +
+          '<div class="field"><label>할인 유형</label><select id="ce-type"><option value="percent"' + (c.discount_type === 'percent' ? ' selected' : '') + '>정률 (%)</option><option value="fixed"' + (c.discount_type === 'fixed' ? ' selected' : '') + '>정액 (원)</option></select></div>' +
+          '<div class="field"><label>할인 값</label><input id="ce-value" type="number" min="1" step="1" value="' + esc(c.discount_value) + '"></div>' +
+          '<div class="field"><label>최소 주문금액 (원)</label><input id="ce-min" type="number" min="0" step="1000" value="' + esc(c.min_order_amount) + '"></div>' +
+          '<div class="field"><label>만료일 (선택)</label><input id="ce-expires" type="date" value="' + (c.expires_at ? String(c.expires_at).slice(0, 10) : '') + '"></div>' +
+          '<div class="field span2"><label>발급 대상 (회원 등급 · 특정 회원)</label>' +
+            targetPickerHTML('ce', { mode: mode, grades: couponTargetGrades(c), users: couponTargets(c) }) +
+          '</div>' +
+          '<div class="field span2"><label>사용 조건 (상품 카테고리 · 뱃지)</label>' +
+            couponConditionChipsHTML('ce', couponTargetCategories(c), couponTargetBadges(c)) +
+          '</div>' +
+        '</div>' +
+        '<div class="form-actions">' +
+          '<button class="btn ghost small" data-action="close-modal">취소</button>' +
+          '<button class="btn small" data-action="save-coupon-edit" data-cid="' + c.id + '">수정 저장</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ---------------------------------------------------- 카테고리 관리
+     추가·이름 수정·삭제·순서 변경 → 스토어 상단 필터·상품 등록 드롭다운과 즉시 연동 */
+  function categoriesSorted() {
+    return db.categories.slice().sort(function (a, b) { return (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0); });
+  }
+  function categoryProductCount(id) {
+    return db.products.filter(function (p) { return p.category === id; }).length;
+  }
+  function addCategory(input) {
+    var label = String((input && input.label) || '').trim().slice(0, 20);
+    var en = String((input && input.en) || '').trim().toUpperCase().slice(0, 16);
+    if (!label) return { ok: false, message: '카테고리 이름을 입력해 주세요.' };
+    if (db.categories.some(function (c) { return c.label === label; })) {
+      return { ok: false, message: '같은 이름의 카테고리가 이미 있습니다.' };
+    }
+    var maxOrder = db.categories.reduce(function (m, c) { return Math.max(m, Number(c.sort_order) || 0); }, 0);
+    var id;
+    do { id = 'cat_' + idSeq(5); } while (db.categories.some(function (c) { return c.id === id; }));
+    var c = { id: id, label: label, en: en || label.toUpperCase(), sort_order: maxOrder + 1,
+      size_codes: (DEFAULT_SIZE_CODES[id] || ['FREE']).slice(), is_active: true, created_at: nowISO() };
+    db.categories.push(c);
+    save();
+    return { ok: true, category: c };
+  }
+  function updateCategory(id, input) {
+    var c = db.categories.filter(function (x) { return x.id === id; })[0];
+    if (!c) return { ok: false, message: '카테고리를 찾을 수 없습니다.' };
+    var label = String((input && input.label) || '').trim().slice(0, 20);
+    if (!label) return { ok: false, message: '카테고리 이름을 입력해 주세요.' };
+    if (db.categories.some(function (x) { return x.id !== id && x.label === label; })) {
+      return { ok: false, message: '같은 이름의 카테고리가 이미 있습니다.' };
+    }
+    c.label = label;
+    if (input && input.en != null) c.en = String(input.en).trim().toUpperCase().slice(0, 16) || label.toUpperCase();
+    if (input && input.sort_order != null) {
+      var so = parseInt(input.sort_order, 10);
+      if (isFinite(so) && so > 0) c.sort_order = so;
+    }
+    if (input && input.is_active != null) c.is_active = !!input.is_active;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, category: c };
+  }
+  /* v1.9.8 — 카테고리 세부 옵션(노출명·영문 코드·정렬·사용 여부)을 한 번에 저장 */
+  function saveCategoryDetail(cid, input) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 수정할 수 있습니다.' };
+    var c = db.categories.filter(function (x) { return x.id === cid; })[0];
+    if (!c) return { ok: false, message: '카테고리가 없습니다.' };
+    var label = String((input && input.label) || '').trim().slice(0, 20);
+    if (!label) return { ok: false, message: '노출명을 입력해 주세요.' };
+    if (db.categories.some(function (x) { return x.id !== cid && x.label === label; })) {
+      return { ok: false, message: '같은 이름의 카테고리가 이미 있습니다.' };
+    }
+    var so = parseInt(input && input.sort_order, 10);
+    if (!isFinite(so) || so < 1) so = Number(c.sort_order) || 1;
+    c.label = label;
+    c.en = String((input && input.en) || '').trim().toUpperCase().slice(0, 16) || label.toUpperCase();
+    c.sort_order = so;
+    c.is_active = input && input.is_active != null ? !!input.is_active : true;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, category: c };
+  }
+  function deleteCategory(id) {
+    var c = db.categories.filter(function (x) { return x.id === id; })[0];
+    if (!c) return { ok: false, message: '카테고리를 찾을 수 없습니다.' };
+    var used = categoryProductCount(id);
+    if (used) return { ok: false, message: '이 카테고리를 쓰는 상품이 ' + used + '개 있어 삭제할 수 없습니다. 상품 카테고리를 먼저 바꿔 주세요.' };
+    if (db.categories.length <= 1) return { ok: false, message: '카테고리는 1개 이상 필요합니다.' };
+    db.categories = db.categories.filter(function (x) { return x.id !== id; });
+    if (ui.category === id) ui.category = 'all';
+    save();
+    return { ok: true };
+  }
+  /* 카테고리별 사이즈 코드 — 추가·수정·삭제·순서 변경 (관리자 「카테고리」 탭) */
+  function saveCategorySizeCodes(cid, list) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 수정할 수 있습니다.' };
+    var c = db.categories.filter(function (x) { return x.id === cid; })[0];
+    if (!c) return { ok: false, message: '카테고리를 찾을 수 없습니다.' };
+    var seen = {}, next = [];
+    (list || []).forEach(function (s) {
+      var v = normalizeSizeCode(s);
+      if (!v || seen[v]) return;
+      seen[v] = 1; next.push(v);
+    });
+    if (next.length > SIZE_CODE_COUNT_MAX) next = next.slice(0, SIZE_CODE_COUNT_MAX);
+    c.size_codes = next;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, category: c, size_codes: next.slice() };
+  }
+  function addCategorySizeCode(cid, value) {
+    var code = normalizeSizeCode(value);
+    if (!code) return { ok: false, message: '사이즈 코드를 입력해 주세요.' };
+    var codes = sizeCodesOf(cid);
+    if (codes.indexOf(code) >= 0) return { ok: false, message: '이미 등록된 사이즈 코드입니다.' };
+    if (codes.length >= SIZE_CODE_COUNT_MAX) return { ok: false, message: '사이즈 코드는 카테고리당 ' + SIZE_CODE_COUNT_MAX + '개까지 등록할 수 있습니다.' };
+    return saveCategorySizeCodes(cid, codes.concat([code]));
+  }
+  function removeCategorySizeCode(cid, idx) {
+    var codes = sizeCodesOf(cid);
+    if (codes.length <= 1) return { ok: false, message: '사이즈 코드는 1개 이상 필요합니다.' };
+    codes.splice(Math.max(0, Math.min(codes.length - 1, idx)), 1);
+    return saveCategorySizeCodes(cid, codes);
+  }
+  function moveCategorySizeCode(cid, idx, dir) {
+    var codes = sizeCodesOf(cid);
+    var j = idx + (dir === 'up' || dir === '-1' ? -1 : 1);
+    if (idx < 0 || idx >= codes.length || j < 0 || j >= codes.length) return { ok: true, moved: false };
+    var t = codes[idx]; codes[idx] = codes[j]; codes[j] = t;
+    return saveCategorySizeCodes(cid, codes);
+  }
+  /* 상품 편집기 — 카테고리를 바꾸면 사이즈 드롭다운 옵션을 즉시 교체(기존 레거시 사이즈 유지) */
+  function refreshEditorSizeOptions() {
+    var catSel = $('#pe-category');
+    if (!catSel) return;
+    var rows = editorRows();
+    var legacy = rows.map(function (r) { var s = r.querySelector('[name=size]'); return s ? s.value : ''; }).filter(Boolean);
+    var opts = sizeOptionsFor(catSel.value, legacy);
+    rows.forEach(function (row) {
+      var sel = row.querySelector('[name=size]');
+      if (!sel) return;
+      var cur = sel.value;
+      sel.innerHTML = opts.map(function (s) {
+        return '<option value="' + esc(s) + '"' + (s === cur ? ' selected' : '') + '>' + esc(s) + '</option>';
+      }).join('');
+      if (opts.indexOf(cur) < 0) sel.value = opts[0] || '';
+    });
+    if (ui.modal && ui.modal.draft) ui.modal.draft.category = catSel.value;
+  }
+  function moveCategory(id, dir) {    var list = categoriesSorted();
+    var i = list.map(function (c) { return c.id; }).indexOf(id);
+    if (i < 0) return { ok: false, message: '카테고리를 찾을 수 없습니다.' };
+    var j = i + (dir === 'up' ? -1 : 1);
+    if (j < 0 || j >= list.length) return { ok: true, moved: false };
+    var a = list[i], b = list[j];
+    var t = Number(a.sort_order) || i + 1;
+    a.sort_order = Number(b.sort_order) || j + 1;
+    b.sort_order = t;
+    save();
+    return { ok: true, moved: true };
+  }
+  /* v1.9.8 — 카테고리 상세 모달의 사이즈 코드 편집 영역(추가·삭제·순서).
+     사이즈 코드는 모달 안에서 바로 저장된다(라벨·순서·사용 여부는 「저장」 버튼). */
+  function categorySizeEditorHTML(c) {
+    var codes = sizeCodesOf(c.id);
+    return '<div class="cat-size-row" data-cid="' + esc(c.id) + '" data-hook="cat-size-row">' +
+      '<span class="cat-size-label">사이즈 코드 <small>' + codes.length + ' / ' + SIZE_CODE_COUNT_MAX + '</small></span>' +
+      '<div class="size-chip-list" data-hook="size-chip-list">' + (codes.length ? codes.map(function (s, j) {
+        return '<span class="size-chip" data-size="' + esc(s) + '"><b>' + esc(s) + '</b>' +
+          '<button type="button" class="size-chip-btn" data-action="category-size-move" data-cid="' + esc(c.id) + '" data-idx="' + j + '" data-dir="-1" aria-label="' + esc(s) + ' 앞으로"' + (j === 0 ? ' disabled' : '') + '>←</button>' +
+          '<button type="button" class="size-chip-btn" data-action="category-size-move" data-cid="' + esc(c.id) + '" data-idx="' + j + '" data-dir="1" aria-label="' + esc(s) + ' 뒤로"' + (j === codes.length - 1 ? ' disabled' : '') + '>→</button>' +
+          '<button type="button" class="size-chip-x" data-action="category-size-remove" data-cid="' + esc(c.id) + '" data-idx="' + j + '" aria-label="' + esc(s) + ' 삭제">✕</button></span>';
+      }).join('') : '<span class="cat-size-empty">사이즈 코드가 없습니다. 추가하면 드롭다운에 나타납니다.</span>') + '</div>' +
+      '<span class="size-add">' +
+        '<input class="cat-size-new" id="cat-size-new-' + esc(c.id) + '" maxlength="' + SIZE_CODE_MAX + '" placeholder="예: 110" aria-label="' + esc(c.label) + ' 새 사이즈 코드" autocomplete="off">' +
+        '<button type="button" class="txt-btn" data-action="category-size-add" data-cid="' + esc(c.id) + '">+ 추가</button>' +
+      '</span>' +
+    '</div>';
+  }
+  /* 카테고리 표 — 순서 / 카테고리 / 영문 코드 / 사이즈 코드 / 상품 / 사용 / 관리.
+     행을 누르면 세부 옵션(노출명·영문 코드·정렬·사용 여부·사이즈 코드) 편집 모달이 열린다. */
+  function adminCategoryTableHTML(list) {
+    return '<div class="table-wrap table-scroll" data-hook="category-table">' +
+      '<table class="data category-grid admin-grid">' +
+        '<thead><tr><th>순서</th><th>카테고리</th><th>영문 코드</th><th>사이즈 코드</th><th>상품</th><th>사용</th><th>관리</th></tr></thead><tbody>' +
+        (list.length ? list.map(function (c, i) {
+          var used = categoryProductCount(c.id);
+          var codes = sizeCodesOf(c.id);
+          var on = categoryActive(c);
+          return '<tr class="category-row click-row" data-cid="' + esc(c.id) + '" data-category-state="' + (on ? 'on' : 'off') + '"' +
+              ' data-action="category-open" data-rowcid="' + esc(c.id) + '" tabindex="0">' +
+            '<td data-label="순서"><span class="cat-order">' + (i + 1) + '</span></td>' +
+            '<td data-label="카테고리"><b>' + esc(c.label) + '</b><div class="m" style="font-size:10px;color:var(--muted)">' + esc(c.id) + ' · 상세</div></td>' +
+            '<td data-label="영문 코드"><span class="cat-en">' + esc(c.en || '-') + '</span></td>' +
+            '<td data-label="사이즈 코드"><span class="cat-codes">' + (codes.length ? codes.map(function (s) {
+              return '<i class="cat-code" data-size="' + esc(s) + '">' + esc(s) + '</i>';
+            }).join('') : '<span class="m">없음</span>') + '</span></td>' +
+            '<td data-label="상품">' + used + '개</td>' +
+            '<td data-label="사용">' + (on ? '<span class="stock-pill">사용</span>' : '<span class="stock-pill zero">숨김</span>') + '</td>' +
+            '<td data-label="관리"><div class="row-actions">' +
+              '<button class="icon-btn" data-action="admin-category-move" data-cid="' + esc(c.id) + '" data-dir="up" aria-label="' + esc(c.label) + ' 위로" ' + (i === 0 ? 'disabled' : '') + '>↑</button>' +
+              '<button class="icon-btn" data-action="admin-category-move" data-cid="' + esc(c.id) + '" data-dir="down" aria-label="' + esc(c.label) + ' 아래로" ' + (i === list.length - 1 ? 'disabled' : '') + '>↓</button>' +
+              '<button class="txt-btn" data-action="category-open" data-rowcid="' + esc(c.id) + '">수정</button>' +
+              '<button class="txt-btn danger" data-action="category-delete" data-cid="' + esc(c.id) + '">삭제</button>' +
+            '</div></td>' +
+          '</tr>';
+        }).join('') : '<tr><td colspan="7" class="empty-cell">카테고리가 없습니다.</td></tr>') +
+        '</tbody></table></div>';
+  }
+  /* 카테고리 세부 옵션 편집 모달 — 노출명·영문 코드·정렬·사용 여부·사이즈 코드 */
+  function categoryEditorHTML() {
+    var m = ui.modal;
+    var c = m && m.cid ? db.categories.filter(function (x) { return x.id === m.cid; })[0] : null;
+    if (!c) return '';
+    var d = m.draft || {};
+    var label = d.label != null ? d.label : c.label;
+    var en = d.en != null ? d.en : (c.en || '');
+    var order = d.sort_order != null ? d.sort_order : (Number(c.sort_order) || 1);
+    var on = d.is_active != null ? !!d.is_active : categoryActive(c);
+    return '<div class="modal category-detail-modal" role="dialog" aria-modal="true" aria-label="카테고리 세부 옵션" data-category-detail="' + esc(c.id) + '" style="width:min(560px,100%)">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ADMIN — CATEGORY</div><h2>' + esc(c.label) + '</h2></div>' +
+      '<div class="sheet-body">' +
+        (m.error ? '<div class="form-error">' + esc(m.error) + '</div>' : '') +
+        '<div class="form-grid">' +
+          '<div class="field"><label>노출명</label><input id="cat-edit-label" data-hook="cat-edit-label" maxlength="20" value="' + esc(label) + '"></div>' +
+          '<div class="field"><label>영문 코드</label><input id="cat-edit-en" data-hook="cat-edit-en" maxlength="16" value="' + esc(en) + '"></div>' +
+          '<div class="field"><label>정렬 순서</label><input id="cat-edit-order" data-hook="cat-edit-order" type="number" min="1" step="1" value="' + esc(order) + '"></div>' +
+          '<div class="field"><label>사용 여부 <small>숨김은 스토어 필터에서만 빠집니다</small></label>' +
+            '<select id="cat-edit-active" data-hook="cat-edit-active">' +
+              '<option value="1"' + (on ? ' selected' : '') + '>사용</option>' +
+              '<option value="0"' + (on ? '' : ' selected') + '>숨김</option>' +
+            '</select></div>' +
+        '</div>' +
+        '<div class="field"><label>상세 카테고리 옵션 — 사이즈 코드</label>' + categorySizeEditorHTML(c) + '</div>' +
+        '<p class="site-hint">사이즈 코드는 추가·삭제·순서 변경 즉시 저장되며 상품 등록/수정의 사이즈 드롭다운에 반영됩니다. ' +
+          '이 카테고리를 쓰는 상품 <b>' + categoryProductCount(c.id) + '개</b>.</p>' +
+        '<div class="sheet-actions">' +
+          '<button class="btn ghost small" data-action="close-modal">취소</button>' +
+          '<button class="btn small" data-action="category-save-detail" data-cid="' + esc(c.id) + '">저장</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  /* 사이즈 코드를 만지는 동안 모달의 다른 입력(노출명·순서·사용 여부)을 잃지 않도록 초안을 보관한다 */
+  function keepCategoryDraft() {
+    if (ui.modal && ui.modal.type === 'category-detail' && $('#cat-edit-label')) {
+      ui.modal.draft = readCategoryForm();
+    }
+  }
+  function readCategoryForm() {
+    var v = function (sel) { var el = $(sel); return el ? el.value : ''; };
+    return {
+      label: v('#cat-edit-label'), en: v('#cat-edit-en'),
+      sort_order: v('#cat-edit-order'),
+      is_active: v('#cat-edit-active') !== '0'
+    };
+  }
+  function adminCategoriesHTML() {
+    var list = categoriesSorted();
+    var hidden = list.filter(function (c) { return !categoryActive(c); }).length;
+    return '<div class="data-card category-admin" data-category-admin="1">' +
+      '<h3>카테고리 관리 <small class="data-h3-sub">' + list.length + '개' + (hidden ? ' · 숨김 ' + hidden : '') + '</small></h3>' +
+      '<p>행을 누르면 <b>세부 카테고리 옵션</b>(노출명·영문 코드·정렬 순서·사용 여부·사이즈 코드)을 편집 모달에서 조정·저장할 수 있습니다. ' +
+        '이름·순서를 바꾸면 스토어 상단 필터와 상품 등록/수정의 카테고리 목록에 즉시 반영되고, ' +
+        '<b>사이즈 코드</b>(예: 95·100·105, S·M·L·XL, 240·250)는 상품 등록/수정의 사이즈 드롭다운으로 이어집니다. ' +
+        '상품이 연결된 카테고리는 삭제할 수 없습니다(먼저 상품 카테고리를 옮겨 주세요).</p>' +
+      (ui.categoryError ? '<div class="form-error">' + esc(ui.categoryError) + '</div>' : '') +
+      '<div class="category-rows" data-hook="category-rows">' + adminCategoryTableHTML(list) + '</div>' +
+      '<div class="category-add">' +
+        '<input id="cat-new-label" placeholder="새 카테고리 이름 (예: 액세서리)" maxlength="20" aria-label="새 카테고리 이름">' +
+        '<input id="cat-new-en" placeholder="영문 코드 (선택)" maxlength="16" aria-label="새 카테고리 영문 코드">' +
+        '<button class="btn small" data-action="category-add">+ 카테고리 추가</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ======================================================== v1.9.13 코드 관리
+     「카테고리」 탭을 「코드 관리」로 바꾸고 카테고리 관리 | 뱃지 관리 서브탭으로 나눴다.
+     뱃지 코드는 site_settings.product_badges 에 저장되며
+     · 상품 등록/수정의 뱃지 선택 · 쿠폰 사용 조건(뱃지) · 스토어 카드 뱃지가 같은 목록을 본다. */
+  function badgeUsageCount(code) {
+    return db.products.filter(function (p) { return String(p.badge || '').trim().toUpperCase() === code; }).length;
+  }
+  function badgeCouponCount(code) {
+    return db.coupons.filter(function (c) { return couponTargetBadges(c).indexOf(code) >= 0; }).length;
+  }
+  function saveBadgeList(list) {
+    if (!isAdmin()) return { ok: false, message: '관리자만 수정할 수 있습니다.' };
+    var next = normalizeBadgeList(list).slice(0, 24);
+    if (!next.length) return { ok: false, message: '뱃지 코드는 1개 이상 필요합니다.' };
+    var all = siteSettings();
+    all.product_badges = next;
+    db.site_settings = all;
+    if (!save()) return { ok: false, message: quotaMessage() };
+    return { ok: true, badges: next.slice() };
+  }
+  function addBadge(code) {
+    var c = normalizeBadgeCode(code);
+    if (!c) return { ok: false, message: '뱃지 코드를 입력해 주세요.' };
+    if (!/^[A-Z0-9가-힣+_-]{1,16}$/.test(c)) return { ok: false, message: '뱃지 코드는 영문·숫자·한글 1~16자로 입력해 주세요.' };
+    var list = badgeList();
+    if (list.indexOf(c) >= 0) return { ok: false, message: '이미 등록된 뱃지 코드입니다.' };
+    var res = saveBadgeList(list.concat([c]));
+    return res.ok ? { ok: true, badge: c, badges: res.badges } : res;
+  }
+  /* 코드를 바꾸면 그 뱃지를 쓰던 상품과 쿠폰 사용 조건도 함께 바뀐다 */
+  function renameBadge(oldCode, nextCode) {
+    var oldC = normalizeBadgeCode(oldCode), newC = normalizeBadgeCode(nextCode);
+    var list = badgeList();
+    if (list.indexOf(oldC) < 0) return { ok: false, message: '뱃지를 찾을 수 없습니다.' };
+    if (!newC) return { ok: false, message: '뱃지 코드를 입력해 주세요.' };
+    if (!/^[A-Z0-9가-힣+_-]{1,16}$/.test(newC)) return { ok: false, message: '뱃지 코드는 영문·숫자·한글 1~16자로 입력해 주세요.' };
+    if (newC === oldC) return { ok: true, unchanged: true, badges: list };
+    if (list.indexOf(newC) >= 0) return { ok: false, message: '이미 등록된 뱃지 코드입니다.' };
+    var res = saveBadgeList(list.map(function (b) { return b === oldC ? newC : b; }));
+    if (!res.ok) return res;
+    db.products.forEach(function (p) {
+      if (String(p.badge || '').trim().toUpperCase() === oldC) p.badge = newC;
+    });
+    db.coupons.forEach(function (c) {
+      if (Array.isArray(c.target_badges) && couponTargetBadges(c).indexOf(oldC) >= 0) {
+        c.target_badges = couponTargetBadges(c).map(function (b) { return b === oldC ? newC : b; });
+      }
+    });
+    save();
+    return { ok: true, badges: res.badges, changedProducts: badgeUsageCount(newC) };
+  }
+  function deleteBadge(code) {
+    var c = normalizeBadgeCode(code);
+    var list = badgeList();
+    if (list.indexOf(c) < 0) return { ok: false, message: '뱃지를 찾을 수 없습니다.' };
+    if (list.length <= 1) return { ok: false, message: '뱃지는 1개 이상 필요합니다.' };
+    var used = badgeUsageCount(c);
+    if (used) return { ok: false, message: '이 뱃지를 쓰는 상품이 ' + used + '개 있어 삭제할 수 없습니다. 상품 뱃지를 먼저 바꿔 주세요.' };
+    var inCoupon = badgeCouponCount(c);
+    if (inCoupon) return { ok: false, message: '이 뱃지를 사용 조건으로 쓰는 쿠폰이 ' + inCoupon + '장 있어 삭제할 수 없습니다.' };
+    var res = saveBadgeList(list.filter(function (b) { return b !== c; }));
+    return res.ok ? { ok: true, badges: res.badges } : res;
+  }
+  function moveBadge(code, dir) {
+    var c = normalizeBadgeCode(code);
+    var list = badgeList();
+    var i = list.indexOf(c);
+    if (i < 0) return { ok: false, message: '뱃지를 찾을 수 없습니다.' };
+    var j = i + (dir === 'up' ? -1 : 1);
+    if (j < 0 || j >= list.length) return { ok: true, moved: false };
+    var t = list[i]; list[i] = list[j]; list[j] = t;
+    var res = saveBadgeList(list);
+    return res.ok ? { ok: true, moved: true, badges: res.badges } : res;
+  }
+  function adminBadgesHTML() {
+    var list = badgeList();
+    return '<div class="data-card badge-admin" data-badge-admin="1">' +
+      '<h3>뱃지 관리 <small class="data-h3-sub">' + list.length + '종</small></h3>' +
+      '<p>상품 뱃지 코드를 <b>추가·이름 수정·삭제·순서 변경</b>합니다. 여기서 정한 목록이 ' +
+        '<b>상품 등록/수정의 뱃지 선택</b>(직접 입력 없음)과 <b>쿠폰 사용 조건(뱃지)</b>에 그대로 쓰입니다. ' +
+        '이름을 바꾸면 그 뱃지를 쓰던 상품·쿠폰도 함께 바뀌고, <b>상품이 연결된 뱃지는 삭제할 수 없습니다</b>.</p>' +
+      '<div class="table-wrap table-scroll" data-hook="badge-table"><table class="data badge-grid admin-grid">' +
+        '<thead><tr><th>뱃지 코드</th><th>스토어 표시</th><th>사용</th><th>관리</th></tr></thead><tbody>' +
+        (list.length ? list.map(function (b, i) {
+          var used = badgeUsageCount(b), inCoupon = badgeCouponCount(b);
+          return '<tr data-badge-row="' + esc(b) + '">' +
+            '<td data-label="뱃지 코드"><div class="badge-code-cell">' +
+              '<span class="cat-order">' + (i + 1) + '</span>' +
+              '<input class="badge-code-input" id="badge-code-' + i + '" data-hook="badge-code-input" maxlength="16" value="' + esc(b) + '" aria-label="' + esc(b) + ' 뱃지 코드">' +
+            '</div></td>' +
+            '<td data-label="스토어 표시"><span class="badge-preview ' + badgeClass(b) + '">' + esc(b) + '</span></td>' +
+            '<td data-label="사용"><b>' + used + '</b>개<div class="m">쿠폰 ' + inCoupon + '장</div></td>' +
+            '<td data-label="관리"><div class="row-actions">' +
+              '<button class="icon-btn" data-action="badge-move" data-code="' + esc(b) + '" data-dir="up" aria-label="' + esc(b) + ' 위로"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+              '<button class="icon-btn" data-action="badge-move" data-code="' + esc(b) + '" data-dir="down" aria-label="' + esc(b) + ' 아래로"' + (i === list.length - 1 ? ' disabled' : '') + '>↓</button>' +
+              '<button class="txt-btn" data-action="badge-rename" data-code="' + esc(b) + '" data-idx="' + i + '">저장</button>' +
+              '<button class="txt-btn danger" data-action="badge-delete" data-code="' + esc(b) + '">삭제</button>' +
+            '</div></td>' +
+          '</tr>';
+        }).join('') : '<tr><td colspan="4" class="empty-cell">등록된 뱃지가 없습니다.</td></tr>') +
+        '</tbody></table></div>' +
+      '<div class="category-add badge-add">' +
+        '<input id="badge-new-code" placeholder="새 뱃지 코드 (예: 1+1, SALE)" maxlength="16" aria-label="새 뱃지 코드">' +
+        '<button class="btn small" data-action="badge-add">+ 뱃지 추가</button>' +
+      '</div>' +
+    '</div>';
+  }
+  /* v1.9.13 — 「코드 관리」: 카테고리 관리 | 뱃지 관리 서브탭 */
+  var CODE_SUBTABS = [
+    { value: 'cats', label: '카테고리 관리' },
+    { value: 'badges', label: '뱃지 관리' }
+  ];
+  function adminCodeHTML() {
+    var active = ui.codeTab === 'badges' ? 'badges' : 'cats';
+    return '<div class="admin-code" data-admin-code="1" data-code-tab="' + active + '">' +
+      adminSubtabBarHTML('code-subtabs', 'code-subtab', CODE_SUBTABS, active) +
+      (active === 'badges' ? adminBadgesHTML() : adminCategoriesHTML()) +
+    '</div>';
+  }
+
+  /* 관리자 「반품/교환」 탭 — 교환·반품 접수(주문 클레임) 전담
+     v1.9.6: 기간(시작일~종료일)·주문자 검색 + 상태 필터(처리 중 포함) */
+  function adminClaimScope() {
+    var from = ui.adminClaimFrom, to = ui.adminClaimTo, q = ui.adminClaimQuery;
+    return db.order_claims.slice()
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); })
+      .filter(function (c) {
+        if (!dateInRange(c.created_at, from, to)) return false;
+        return textHitsHay(claimSearchHay(c), q);
+      });
+  }
+  function adminClaimChips(scope) {
+    var openOf = function (c) { return c.status === 'requested' || c.status === 'approved'; };
+    return [{ value: 'all', label: '전체', count: scope.length },
+      { value: 'open', label: '처리 중', count: scope.filter(openOf).length }]
+      .concat(Object.keys(CLAIM_STATUS).map(function (s) {
+        return { value: s, label: CLAIM_STATUS[s].label, count: scope.filter(function (c) { return c.status === s; }).length };
+      }));
+  }
+  function adminClaimListOf(scope) {
+    var filter = ui.adminClaimFilter || 'all';
+    if (filter === 'all') return scope;
+    if (filter === 'open') return scope.filter(function (c) { return c.status === 'requested' || c.status === 'approved'; });
+    return scope.filter(function (c) { return c.status === filter; });
+  }
+  function adminClaimsBodyHTML() {
+    var scope = adminClaimScope();
+    var waiting = scope.filter(function (c) { return c.status === 'requested' || c.status === 'approved'; }).length;
+    var filter = ui.adminClaimFilter || 'all';
+    var list = adminClaimListOf(scope);
+    var filterLabel = filter === 'pending' ? '처리 대기' : filter === 'open' ? '처리 중'
+      : ((CLAIM_STATUS[filter] || {}).label || filter);
+    var hasRange = !!(ui.adminClaimFrom || ui.adminClaimTo || String(ui.adminClaimQuery || '').trim());
+    var claimSig = [filter, ui.adminClaimFrom, ui.adminClaimTo, ui.adminClaimQuery].join('|');
+    var info = adminPagerInfo(list, 'claims', claimSig);
+    adminSelSync('claim', claimSig);       // v1.9.16 — 필터가 바뀌면 선택 해제
+    var claimPageIds = info.rows.map(function (c) { return c.id; });
+    var body = info.total
+      ? info.rows.map(function (c, i) {
+          var o = orderById(c.order_id);
+          var u = currentUserById(c.user_id);
+          var items = orderItemsOf(c.order_id);
+          var first = items[0];
+          var itemLine = first ? first.product_name + (items.length > 1 ? ' 외 ' + (items.length - 1) + '건' : '') : '-';
+          var state = CLAIM_STATUS[c.status] || { label: c.status };
+          var feeCls = c.shipping_fee ? 'paid' : 'free';
+          return '<tr data-claim="' + esc(c.id) + '" data-claim-state="' + esc(c.status) + '" data-action="admin-claim-view" data-cid="' + esc(c.id) + '" class="click-row">' +
+            adminSelCellHTML('claim', c.id, c.id + ' 선택') +
+            adminSeqCellHTML(info, i) +
+            '<td data-label="신청"><div class="claim-cell"><b class="claim-kind ' + esc(c.claim_type) + '">' + esc(CLAIM_TYPES[c.claim_type] || '') + '</b>' +
+              '<div class="m">' + esc(c.id) + ' · 상세</div></div></td>' +
+            '<td data-label="주문 / 상품"><b>' + esc(o ? o.order_no : '-') + '</b><div class="m">' + esc(itemLine) + (u ? ' · ' + esc(u.name) : '') + '</div></td>' +
+            '<td data-label="사유">' + esc(claimReasonLabel(c.reason_category)) +
+              '<div class="m" style="font-size:10px;color:var(--muted);margin-top:3px">' + esc(String(c.claim_type === 'exchange' ? '교환 옵션 ' + (c.exchange_option || '-') : (c.reason_detail || '상세 사유 없음')).slice(0, 40)) + '</div></td>' +
+            '<td data-label="배송비"><span class="fee-pill ' + feeCls + '">' + esc(claimFeeLabel(c)) + '</span>' +
+              '<div class="m" style="font-size:10px;color:var(--muted);margin-top:3px">' + (c.shipping_fee ? (c.payment_status === 'paid' ? '결제완료' : '결제 대기') : '판매자 귀책') + '</div></td>' +
+            '<td data-label="접수일시" style="white-space:nowrap;font-size:11px;color:var(--muted)">' + fmtDateTime(c.created_at) + '</td>' +
+            '<td data-label="상태 변경"><select class="mini-select" data-action="admin-claim-status" data-cid="' + c.id + '" aria-label="교환/반품 상태 변경">' +
+              Object.keys(CLAIM_STATUS).map(function (s) {
+                return '<option value="' + s + '"' + (c.status === s ? ' selected' : '') + '>' + CLAIM_STATUS[s].label + '</option>';
+              }).join('') +
+            '</select><div class="m" style="font-size:10px;color:var(--muted);margin-top:3px">' + esc(state.label) +
+              (c.stock_restored ? ' · 재고 복구됨' : '') + '</div></td>' +
+          '</tr>';
+        }).join('')
+      : '<tr><td colspan="8" class="empty-cell">' +
+          (hasRange ? '조건에 맞는 접수건이 없습니다.' : '접수된 교환/반품이 없습니다.') + '</td></tr>';
+    return '<div class="coupon-stat">처리 중 <b>' + waiting + '</b>건 · 조회 ' + scope.length + '건' +
+        (filter === 'all' ? '' : ' · <b>' + esc(filterLabel) + '</b> ' + list.length + '건') +
+        '<span class="table-hint">행을 누르면 신청서 상세</span></div>' +
+      adminFilterChipsHTML('admin-claim-filter', adminClaimChips(scope), filter) +
+      (info.total ? adminBulkBarHTML('claim', {
+          label: '변경할 상태', placeholder: '상태 선택', action: '일괄 상태 변경',
+          hint: '반품을 완료로 바꾸면 재고가 한 번만 복구됩니다(중복 복구 없음).',
+          options: CLAIM_BULK_STATUSES.map(function (s) { return { value: s, label: CLAIM_STATUS[s].label }; })
+        }) : '') +
+      '<div class="table-wrap table-scroll"><table class="data claims admin-claims-table admin-grid" data-bulk-rows="claim">' +
+        '<thead><tr>' + adminSelHeadHTML('claim', claimPageIds) +
+        '<th>번호</th><th>신청</th><th>주문 / 상품</th><th>사유</th><th>배송비</th><th>접수일시</th><th>상태 변경</th></tr></thead>' +
+        '<tbody>' + body + '</tbody>' +
+      '</table></div>' + adminPagerHTML(info);
+  }
+  /* ----------------------------------------- v1.9.8 반품·교환 신청서 상세 모달
+     신청번호·주문번호·신청자·유형·사유·기존/요청 옵션·배송비 결제 금액·상태·상태 변경·처리 메모 */
+  function claimOrderOptionText(claim) {
+    var items = orderItemsOf(claim.order_id);
+    if (!items.length) return '-';
+    return items.map(function (oi) {
+      return oi.product_name + ' (' + oi.color + ' / ' + oi.size + ')' + (oi.quantity > 1 ? ' × ' + oi.quantity : '');
+    }).join('\n');
+  }
+  function adminClaimSheetHTML(cid) {
+    var c = claimById(cid);
+    if (!c) return '';
+    var o = orderById(c.order_id);
+    var u = currentUserById(c.user_id);
+    var state = CLAIM_STATUS[c.status] || { label: c.status, cls: '' };
+    var feeText = c.shipping_fee ? won(c.shipping_fee) : '0원 (판매자 귀책 무료)';
+    var payText = c.shipping_fee
+      ? (c.payment_status === 'paid' ? '결제완료' : c.payment_status === 'pending' ? '결제 대기' : c.payment_status)
+      : '결제 없음 (무료 접수)';
+    var rows = [
+      ['신청번호', c.id],
+      ['주문번호', o ? o.order_no + '  (' + o.id + ')' : c.order_id],
+      ['신청자', (u ? u.name + ' · ' + u.email : '-') + (u && u.phone ? ' · ' + u.phone : '')],
+      ['유형', CLAIM_TYPES[c.claim_type] || c.claim_type],
+      ['사유', claimReasonLabel(c.reason_category)],
+      ['사유 상세', c.reason_detail || '상세 사유 없음'],
+      ['기존 옵션', claimOrderOptionText(c)],
+      ['요청 옵션', c.claim_type === 'exchange' ? (c.exchange_option || '미지정') : '반품 (옵션 변경 없음)'],
+      ['배송비', feeText + ' · ' + payText],
+      ['결제 정보', (c.payment_mode || '-') + (c.payment_key ? ' · ' + String(c.payment_key).slice(0, 16) + '…' : '')],
+      ['접수 일시', fmtDateTime(c.created_at)],
+      ['최근 변경', fmtDateTime(c.updated_at || c.created_at) + (c.stock_restored ? ' · 재고 복구됨' : '')]
+    ];
+    return '<div class="modal admin-claim-sheet" role="dialog" aria-modal="true" aria-label="반품·교환 신청서 상세" style="width:min(660px,100%)">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ADMIN — CLAIM</div><h2>' + esc(c.id) + '</h2></div>' +
+      '<div class="sheet-body">' +
+        '<div class="sheet-status"><span class="claim-chip ' + esc(c.claim_type) + '">' + esc(claimBadgeText(c)) + '</span>' +
+          '<span class="claim-state ' + esc(state.cls) + '">' + esc(state.label) + '</span>' +
+          '<label class="sheet-status-pick"><span>상태 변경</span>' +
+            '<select class="mini-select" data-action="admin-claim-status" data-cid="' + esc(c.id) + '" aria-label="신청서 상태 변경">' +
+              Object.keys(CLAIM_STATUS).map(function (s) {
+                return '<option value="' + s + '"' + (c.status === s ? ' selected' : '') + '>' + CLAIM_STATUS[s].label + '</option>';
+              }).join('') + '</select></label></div>' +
+        '<dl class="sheet-meta">' + rows.map(function (r) {
+          return '<div class="sm-row"><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]).replace(/\n/g, '<br>') + '</dd></div>';
+        }).join('') + '</dl>' +
+        '<div class="sheet-memo"><label for="claim-memo">처리 메모 <small>관리자만 보는 메모입니다(고객 화면 미노출)</small></label>' +
+          '<textarea id="claim-memo" data-hook="claim-memo" rows="3" maxlength="500" placeholder="예: 11/28 수거 접수 · 검수 후 환불 예정">' + esc(c.admin_memo || '') + '</textarea>' +
+          '<div class="sheet-memo-actions"><button class="btn small" data-action="save-claim-memo" data-cid="' + esc(c.id) + '">메모 저장</button>' +
+            '<span class="site-hint" data-hook="claim-memo-hint">' + (c.admin_memo ? '저장된 메모가 있습니다.' : '메모 없음') + '</span></div></div>' +
+        '<div class="sheet-actions">' +
+          (o ? '<button class="btn ghost small" data-action="admin-order-view" data-oid="' + esc(o.id) + '">주문서 보기</button>' : '') +
+          '<button class="btn small" data-action="close-modal">닫기</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+  function adminClaimsHTML() {
+    return '<div class="data-card claim-admin" data-claim-admin="1">' +
+      '<h3>교환·반품 접수</h3>' +
+      '<p>접수된 교환/반품과 배송비 결제 여부입니다. 기간(시작일~종료일)과 주문자(이름·이메일·주문번호·상품명)로 찾을 수 있고, ' +
+        '상태를 <b>접수됨 → 수거중/승인 → 완료</b>(또는 반려)로 바꿀 수 있습니다. ' +
+        '반품을 <b>완료</b>로 바꾸면 해당 주문 상품의 재고가 <b>한 번만</b> 복구됩니다.</p>' +
+      adminRangeFilterHTML('claim', ui.adminClaimFrom, ui.adminClaimTo, ui.adminClaimQuery,
+        '주문자·이메일·주문번호·상품명 검색') +
+      '<div class="admin-list-anchor" data-hook="admin-claims-body" tabindex="-1">' + adminClaimsBodyHTML() + '</div>' +
+    '</div>';
+  }
+  function refreshAdminClaims() {
+    var host = $('[data-hook=admin-claims-body]');
+    if (host) host.innerHTML = adminClaimsBodyHTML();
+  }
+
+  /* 주문관리 행 · 주문 상세 — 각 주문 상품의 제품고유키(product_code)를 함께 보여준다 */
+  function orderItemCodesHTML(items) {
+    if (!items || !items.length) return '-';
+    var head = items.slice(0, 2).map(function (oi) {
+      var v = variantById(oi.variant_id);
+      var p = v ? productById(v.product_id) : null;
+      return '<div class="admin-order-item"><span class="admin-item-code" data-code="' + esc(productCodeOf(p)) + '">' + esc(productCodeOf(p)) + '</span>' +
+        orderProductNameHTML(p, oi) + ' <span style="color:var(--muted)">' + esc(oi.color) + ' / ' + esc(oi.size) + '</span></div>';
+    }).join('');
+    return head + (items.length > 2 ? '<div style="font-size:10px;color:var(--muted)">외 ' + (items.length - 2) + '건</div>' : '');
+  }
+  /* --------------------------------------------- v1.9.6 관리자 조회 공통 헬퍼
+     기간(시작일~종료일) + 주문자 검색어(이름·이메일·주문번호·상품명) 로 목록을 좁힌다.
+     · 날짜는 브라우저 로컬 시간대 기준 YYYY-MM-DD 로 비교(시작일·종료일 포함)
+     · 검색어는 공백으로 나눈 단어가 모두 포함되면 통과 */
+  function localDateKey(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1, 2) + '-' + pad(d.getDate(), 2);
+  }
+  function dateInRange(iso, from, to) {
+    var k = localDateKey(iso);
+    if (!k) return !from && !to;
+    if (from && k < from) return false;
+    if (to && k > to) return false;
+    return true;
+  }
+  function queryWords(q) {
+    return String(q == null ? '' : q).trim().toLowerCase().split(/\s+/).filter(Boolean);
+  }
+  function textHitsHay(hay, q) {
+    var words = queryWords(q);
+    if (!words.length) return true;
+    var h = String(hay || '').toLowerCase();
+    return words.every(function (w) { return h.indexOf(w) >= 0; });
+  }
+  function orderSearchHay(o) {
+    var u = currentUserById(o.user_id);
+    var names = orderItemsOf(o.id).map(function (oi) { return oi.product_name || ''; });
+    return [o.order_no, o.id, o.recipient_name, o.recipient_phone, u ? u.name : '', u ? u.email : '',
+      u ? u.phone : '', names.join(' ')].join(' ');
+  }
+  function claimSearchHay(c) {
+    var o = orderById(c.order_id);
+    var u = currentUserById(c.user_id);
+    var names = orderItemsOf(c.order_id).map(function (oi) { return oi.product_name || ''; });
+    return [c.id, o ? o.order_no : '', o ? o.recipient_name : '', u ? u.name : '', u ? u.email : '',
+      names.join(' '), claimReasonLabel(c.reason_category), c.exchange_option || ''].join(' ');
+  }
+  function periodLabel(from, to) {
+    if (!from && !to) return '전체 기간';
+    return (from || '처음') + ' ~ ' + (to || '오늘');
+  }
+  /* 기간·검색 입력줄 — 주문 관리 / 반품·교환 공통 */
+  function adminRangeFilterHTML(prefix, from, to, query, placeholder) {
+    return '<div class="range-filters" data-hook="' + prefix + '-filters">' +
+      '<div class="rf-dates">' +
+        '<label class="rf-field"><span>시작일</span>' +
+          '<input type="date" id="' + prefix + '-from" data-hook="' + prefix + '-from" value="' + esc(from) + '" aria-label="조회 시작일"></label>' +
+        '<span class="rf-tilde" aria-hidden="true">~</span>' +
+        '<label class="rf-field"><span>종료일</span>' +
+          '<input type="date" id="' + prefix + '-to" data-hook="' + prefix + '-to" value="' + esc(to) + '" aria-label="조회 종료일"></label>' +
+      '</div>' +
+      '<div class="rf-search">' +
+        '<input type="search" id="' + prefix + '-search" data-hook="' + prefix + '-search" value="' + esc(query) +
+          '" placeholder="' + esc(placeholder) + '" aria-label="주문자 검색" autocomplete="off">' +
+        '<button class="btn ghost small" data-action="' + prefix + '-reset">초기화</button>' +
+      '</div>' +
+    '</div>';
+  }
+  /* ----------------------------------------- v1.9.7 관리자 「매출 관리」 탭
+     「주문 관리」에서 분리한 기간별 매출 화면. 기간(시작일~종료일) + 빠른 기간
+     (전체 / 최근 3개월 / 최근 6개월 / 이번 달 / 초기화)으로 조회하고
+     매출 요약 → 기간별 매출 추이 그래프 → 월별(또는 일별) 상세 표 순서로 보여준다.
+     · 취소 주문은 실매출 합계·건당 평균에서 제외하고 「취소 N건 제외」로 표시
+     · 조회 기간이 31일 이하면 일별, 그보다 길면 월별 구간으로 집계 */
+  var REVENUE_PRESETS = [
+    { value: 'all', label: '전체' },
+    { value: '3m', label: '최근 3개월' },
+    { value: '6m', label: '최근 6개월' },
+    { value: 'month', label: '이번 달' }
+  ];
+  function keyOfDate(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1, 2) + '-' + pad(d.getDate(), 2);
+  }
+  function todayKey() { return keyOfDate(new Date()); }
+  function dateFromKey(key) {
+    var p = String(key || '').split('-');
+    if (p.length !== 3) return new Date();
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  }
+  function addDaysToKey(key, n) {
+    var d = dateFromKey(key);
+    d.setDate(d.getDate() + n);
+    return keyOfDate(d);
+  }
+  function daysBetweenKeys(a, b) {
+    return Math.round((dateFromKey(b).getTime() - dateFromKey(a).getTime()) / 86400000);
+  }
+  /* 빠른 기간 → 시작일·종료일 (오늘 기준 · 이번 달 포함) */
+  function revenuePresetRange(preset) {
+    var now = new Date();
+    var y = now.getFullYear(), m = now.getMonth();
+    var firstOfMonth = function (offset) {
+      return keyOfDate(new Date(y, m + offset, 1));
+    };
+    if (preset === '3m') return { from: firstOfMonth(-2), to: todayKey() };
+    if (preset === '6m') return { from: firstOfMonth(-5), to: todayKey() };
+    if (preset === 'month') return { from: firstOfMonth(0), to: todayKey() };
+    return { from: '', to: '' };
+  }
+  /* 매출 조회 대상 — 조회 기간 안의 모든 주문(취소 포함) */
+  function adminRevenueScope() {
+    var from = ui.adminRevFrom, to = ui.adminRevTo;
+    return (db.orders || []).slice()
+      .sort(function (a, b) { return timeOf(a.created_at) - timeOf(b.created_at); })
+      .filter(function (o) { return dateInRange(o.created_at, from, to); });
+  }
+  function revenueBucketAdd(b, o) {
+    b.count += 1;
+    if (o.status === 'cancelled') { b.cancelled += 1; return; }
+    b.live += 1;
+    b.revenue += Number(o.total_amount) || 0;
+  }
+  /* 기간 안의 매출 구간 — 31일 이하는 일별, 그보다 길면 월별 */
+  function revenueBuckets(from, to) {
+    var orders = adminRevenueScope();
+    var keys = orders.map(function (o) { return localDateKey(o.created_at); }).filter(Boolean);
+    var startKey = from || (keys.length ? keys[0] : todayKey());
+    var endKey = to || (keys.length ? keys[keys.length - 1] : todayKey());
+    if (endKey < startKey) { var tmp = startKey; startKey = endKey; endKey = tmp; }
+    if (!from && !to && endKey < todayKey()) endKey = todayKey();
+    var days = daysBetweenKeys(startKey, endKey) + 1;
+    var daily = isFinite(days) && days > 0 && days <= 31;
+    var buckets = [], idx = {};
+    if (daily) {
+      for (var k = startKey; k <= endKey && buckets.length < 62; k = addDaysToKey(k, 1)) {
+        var b = { key: k, label: k.slice(5).replace('-', '/'), long: k.replace(/-/g, '.'),
+          revenue: 0, count: 0, live: 0, cancelled: 0 };
+        buckets.push(b); idx[k] = b;
+      }
+      orders.forEach(function (o) {
+        var bk = idx[localDateKey(o.created_at)];
+        if (bk) revenueBucketAdd(bk, o);
+      });
+    } else {
+      var cur = dateFromKey(startKey);
+      cur.setDate(1);
+      var last = dateFromKey(endKey);
+      while (cur <= last && buckets.length < 240) {
+        var mk = cur.getFullYear() + '-' + pad(cur.getMonth() + 1, 2);
+        var mb = { key: mk, label: (cur.getMonth() + 1) + '월', long: mk.replace('-', '.'),
+          revenue: 0, count: 0, live: 0, cancelled: 0 };
+        buckets.push(mb); idx[mk] = mb;
+        cur.setMonth(cur.getMonth() + 1);
+      }
+      orders.forEach(function (o) {
+        var bk = idx[localDateKey(o.created_at).slice(0, 7)];
+        if (bk) revenueBucketAdd(bk, o);
+      });
+    }
+    buckets.forEach(function (bk) { bk.avg = bk.live ? Math.round(bk.revenue / bk.live) : 0; });
+    return { buckets: buckets, daily: daily, from: startKey, to: endKey };
+  }
+  /* 조회 기간 매출 요약 — 실매출 합계 · 건수 · 건당 평균 · 취소 제외 건수 */
+  function revenueSummaryHTML(scope, from, to) {
+    var cancelled = scope.filter(function (o) { return o.status === 'cancelled'; });
+    var live = scope.filter(function (o) { return o.status !== 'cancelled'; });
+    var amount = live.reduce(function (s, o) { return s + (Number(o.total_amount) || 0); }, 0);
+    var avg = live.length ? Math.round(amount / live.length) : 0;
+    return '<div class="rev-sum" data-hook="admin-revenue" data-amount="' + amount + '"' +
+        ' data-live="' + live.length + '" data-cancelled="' + cancelled.length + '">' +
+      '<div class="rs-head"><span class="rs-label">기간 매출</span>' +
+        '<span class="rs-period" data-hook="rev-period">' + esc(periodLabel(from, to)) + '</span></div>' +
+      '<div class="rs-amount" data-hook="rev-amount" data-amount="' + amount + '">' + won(amount) + '</div>' +
+      '<div class="rs-stats">' +
+        '<div class="rs-stat"><span>조회 건수</span><b data-hook="rev-count">' + scope.length + '</b>건</div>' +
+        '<div class="rs-stat"><span>실매출 건수</span><b data-hook="rev-live">' + live.length + '</b>건</div>' +
+        '<div class="rs-stat"><span>건당 평균</span><b data-hook="rev-avg">' + won(avg) + '</b></div>' +
+        '<div class="rs-stat"><span>취소 제외</span><b data-hook="rev-cancel">' + cancelled.length + '</b>건</div>' +
+      '</div>' +
+      (cancelled.length ? '<p class="rs-cancel-line"><span class="rs-cancel">취소 ' + cancelled.length + '건 제외</span></p>' : '') +
+      '<p class="rs-note">취소 제외 실매출 기준 · 상품금액 + 배송비 − 쿠폰할인</p>' +
+    '</div>';
+  }
+  /* 금액 축약 — 1만/1억 단위(y축 라벨) */
+  function shortWon(n) {
+    var v = Number(n) || 0;
+    if (v >= 100000000) return (Math.round(v / 1000000) / 100) + '억';
+    if (v >= 10000) return (Math.round(v / 1000) / 10) + '만';
+    return String(v);
+  }
+  /* 기간별 매출 추이 — 조회 기간의 구간별 막대 + 꺾은선 (취소 제외 실매출) */
+  function revenueTrendChartHTML(info) {
+    var buckets = info.buckets;
+    var total = buckets.reduce(function (s, b) { return s + b.revenue; }, 0);
+    var count = buckets.reduce(function (s, b) { return s + b.live; }, 0);
+    var max = Math.max.apply(null, buckets.map(function (b) { return b.revenue; }).concat([1]));
+    var W = 600, H = 170, base = 160, top = 12, drawable = base - top;
+    var slot = W / Math.max(1, buckets.length);
+    var barW = Math.max(3, Math.min(48, slot * 0.44));
+    var bars = '', dots = [], pts = [];
+    buckets.forEach(function (b, i) {
+      var h = b.revenue > 0 ? Math.max(2, Math.round(b.revenue / max * drawable)) : 0;
+      var x = slot * i + (slot - barW) / 2;
+      var y = base - h;
+      bars += '<rect class="rc-bar" data-month="' + esc(b.key) + '" data-revenue="' + b.revenue +
+        '" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) +
+        '" height="' + h + '" rx="1.5"></rect>';
+      var cx = (slot * i + slot / 2).toFixed(1);
+      pts.push(cx + ',' + y.toFixed(1));
+      dots.push('<circle class="rc-dot" cx="' + cx + '" cy="' + y.toFixed(1) + '" r="3.2"></circle>');
+    });
+    var grid = [0, 0.5, 1].map(function (f) {
+      var y = base - drawable * f;
+      return '<line class="rc-grid' + (f === 0 ? ' base' : '') + '" x1="0" y1="' + y.toFixed(1) +
+        '" x2="' + W + '" y2="' + y.toFixed(1) + '"></line>';
+    }).join('');
+    var labels;
+    if (buckets.length <= 7) {
+      labels = '<div class="rc-months" style="grid-template-columns:repeat(' + buckets.length +
+        ',minmax(0,1fr))">' + buckets.map(function (b) {
+          return '<div class="rc-m' + (b.revenue ? '' : ' zero') + '" data-month="' + esc(b.key) +
+            '" data-revenue="' + b.revenue + '" data-count="' + b.count + '"' +
+            ' title="' + esc(b.long + ' · ' + b.count + '건 · ' + won(b.revenue)) + '">' +
+            '<b>' + esc(b.label) + '</b><span>' + b.live + '건</span><small>' + won(b.revenue) + '</small></div>';
+        }).join('') + '</div>';
+    } else {
+      var mid = buckets[Math.floor((buckets.length - 1) / 2)];
+      labels = '<div class="rc-axis-labels">' +
+        '<span>' + esc(buckets[0].label) + '</span>' +
+        '<span>' + esc(mid.label) + '</span>' +
+        '<span>' + esc(buckets[buckets.length - 1].label) + '</span></div>';
+    }
+    return '<div class="rev-chart" data-hook="admin-revenue-chart" data-buckets="' + buckets.length +
+      '" data-months="' + buckets.length + '" data-mode="' + (info.daily ? 'day' : 'month') +
+      '" data-total="' + total + '" data-count="' + count + '">' +
+      '<div class="rc-head"><b>기간별 매출 추이</b><span class="rc-sub">' +
+        (info.daily ? '일별' : '월별') + ' · 취소 제외</span></div>' +
+      '<div class="rc-plot">' +
+        '<div class="rc-axis" aria-hidden="true"><span>' + shortWon(max) + '</span><span>' +
+          shortWon(Math.round(max / 2)) + '</span><span>0</span></div>' +
+        '<div class="rc-canvas">' +
+          '<svg class="rc-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img"' +
+            ' aria-label="' + (info.daily ? '일별' : '월별') + ' 매출 추이 ' + buckets.length + '구간">' +
+            grid + bars + '<polyline class="rc-line" points="' + pts.join(' ') + '"></polyline>' + dots.join('') +
+          '</svg>' +
+        '</div>' +
+      '</div>' + labels +
+      '<p class="rc-note">' + (info.daily ? '일별' : '월별') + ' 합계 <b>' + won(total) + '</b> · ' + count + '건</p>' +
+    '</div>';
+  }
+  /* 월별/기간별 상세 표 — 구간 · 실매출 · 주문 · 취소 · 건당 평균 + 합계
+     v1.9.8 — 매출이 0원(유효 주문 0건)인 구간 행은 출력하지 않는다(그래프는 흐름 파악용으로 유지). */
+  function revenueDetailTableHTML(info) {
+    var all = info.buckets;
+    var buckets = all.filter(function (b) { return b.live > 0 && b.revenue > 0; });
+    var hidden = all.length - buckets.length;
+    var sumRevenue = 0, sumCount = 0, sumLive = 0, sumCancel = 0;
+    buckets.forEach(function (b) {
+      sumRevenue += b.revenue; sumCount += b.count; sumLive += b.live; sumCancel += b.cancelled;
+    });
+    var pager = adminPagerInfo(buckets, 'revenue', [info.from, info.to, info.daily ? 'daily' : 'monthly'].join('|'));
+    var body = pager.rows.map(function (b, i) {
+      return '<tr data-period="' + esc(b.key) + '" data-revenue="' + b.revenue + '">' +
+        adminSeqCellHTML(pager, i) +
+        '<td data-label="기간"><b>' + esc(b.long) + '</b></td>' +
+        '<td data-label="실매출">' + won(b.revenue) + '</td>' +
+        '<td data-label="주문">' + b.live + '건</td>' +
+        '<td data-label="취소">' + (b.cancelled ? '<span class="rs-cancel">' + b.cancelled + '건</span>' : '-') + '</td>' +
+        '<td data-label="건당 평균">' + (b.live ? won(b.avg) : '-') + '</td>' +
+      '</tr>';
+    }).join('');
+    if (!buckets.length) {
+      body = '<tr><td colspan="6" class="empty-cell">조회 기간에 매출이 발생한 ' + (info.daily ? '날' : '달') + '이 없습니다.</td></tr>';
+    }
+    return '<div class="rev-table-block">' +
+      '<div class="rev-table-head"><b>' + (info.daily ? '일별' : '월별') + ' 상세</b>' +
+        '<span class="rev-sub">' + esc(periodLabel(info.from, info.to)) + ' · 매출 ' + buckets.length + '구간' +
+          (hidden ? ' · 무매출 ' + hidden + '구간 제외' : '') + '</span></div>' +
+      '<div class="table-wrap table-scroll"><table class="data rev-table admin-grid" data-revenue-rows="' + buckets.length + '">' +
+        '<thead><tr><th>번호</th><th>기간</th><th>실매출</th><th>주문</th><th>취소</th><th>건당 평균</th></tr></thead>' +
+        '<tbody>' + body + '</tbody>' +
+        (buckets.length ? '<tfoot><tr data-period="sum">' +
+          '<th scope="row" colspan="2">합계</th>' +
+          '<td data-hook="rev-table-total">' + won(sumRevenue) + '</td>' +
+          '<td>' + sumCount + '건</td>' +
+          '<td>' + sumCancel + '건</td>' +
+          '<td>' + (sumLive ? won(Math.round(sumRevenue / sumLive)) : '-') + '</td>' +
+        '</tr></tfoot>' : '') +
+      '</table></div>' + adminPagerHTML(pager) +
+    '</div>';
+  }
+  function adminRevenueInnerHTML() {
+    var from = ui.adminRevFrom, to = ui.adminRevTo;
+    var preset = ui.adminRevPreset || '';
+    var scope = adminRevenueScope();
+    var info = revenueBuckets(from, to);
+    var presets = '<div class="rev-presets" data-hook="revenue-presets" role="group" aria-label="빠른 기간 선택">' +
+      REVENUE_PRESETS.map(function (p) {
+        var on = preset === p.value;
+        return '<button type="button" class="af-chip rp-chip' + (on ? ' active' : '') + '"' +
+          ' data-action="revenue-preset" data-value="' + p.value + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+          esc(p.label) + '</button>';
+      }).join('') +
+      '<button type="button" class="btn ghost small rp-reset" data-action="revenue-reset">초기화</button>' +
+    '</div>';
+    return presets +
+      '<div class="rev-panel">' + revenueSummaryHTML(scope, from, to) + revenueTrendChartHTML(info) + '</div>' +
+      revenueDetailTableHTML(info);
+  }
+  /* 매출 관리 탭 — 기간 검색은 다시 그리지 않고(입력값·포커스 유지) 아래 본문만 갱신한다 */
+  function adminRevenueTabHTML() {
+    return '<div class="admin-revenue admin-list-anchor" data-admin-revenue="1" tabindex="-1">' +
+      '<div class="data-card rev-card">' +
+        '<h3>매출 조회 기간</h3>' +
+        '<p>시작일~종료일로 조회하거나 <b>전체 · 최근 3개월 · 최근 6개월 · 이번 달</b> 빠른 기간을 고르세요. ' +
+          '취소 주문은 실매출 합계·건당 평균에서 빠지고 「취소 N건 제외」로 따로 표시됩니다.</p>' +
+        '<div class="range-filters rev-filters" data-hook="revenue-filters">' +
+          '<div class="rf-dates">' +
+            '<label class="rf-field"><span>시작일</span>' +
+              '<input type="date" id="revenue-from" data-hook="revenue-from" value="' + esc(ui.adminRevFrom) +
+                '" aria-label="매출 조회 시작일"></label>' +
+            '<span class="rf-tilde" aria-hidden="true">~</span>' +
+            '<label class="rf-field"><span>종료일</span>' +
+              '<input type="date" id="revenue-to" data-hook="revenue-to" value="' + esc(ui.adminRevTo) +
+                '" aria-label="매출 조회 종료일"></label>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div data-hook="admin-revenue-body">' + adminRevenueInnerHTML() + '</div>' +
+    '</div>';
+  }
+  function refreshAdminRevenue() {
+    var host = $('[data-hook=admin-revenue-body]');
+    if (host) host.innerHTML = adminRevenueInnerHTML();
+  }
+  function setRevenueDateInputs(from, to) {
+    var f = $('[data-hook=revenue-from]');
+    var t = $('[data-hook=revenue-to]');
+    if (f) f.value = from || '';
+    if (t) t.value = to || '';
+  }
+
+  /* 주문 관리 — 상태 필터(처리 대기 포함) + 기간 매출 + 목록 */
+  function adminOrderScope() {
+    var from = ui.adminOrderFrom, to = ui.adminOrderTo, q = ui.adminOrderQuery;
+    return (db.orders || []).slice()
+      .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); })
+      .filter(function (o) {
+        if (!dateInRange(o.created_at, from, to)) return false;
+        return textHitsHay(orderSearchHay(o), q);
+      });
+  }
+  function adminOrderChips(scope) {
+    var pendingOf = function (o) { return o.status === 'paid' || o.status === 'preparing'; };
+    return [{ value: 'all', label: '전체', count: scope.length },
+      { value: 'pending', label: '처리 대기', count: scope.filter(pendingOf).length }]
+      .concat(Object.keys(STATUS).map(function (s) {
+        return { value: s, label: STATUS[s].label, count: scope.filter(function (o) { return o.status === s; }).length };
+      }));
+  }
+  function adminOrderListOf(scope) {
+    var filter = ui.adminOrderFilter || 'all';
+    if (filter === 'all') return scope;
+    if (filter === 'pending') return scope.filter(function (o) { return o.status === 'paid' || o.status === 'preparing'; });
+    return scope.filter(function (o) { return o.status === filter; });
+  }
+  function adminOrdersBodyHTML() {
+    var scope = adminOrderScope();
+    var filter = ui.adminOrderFilter || 'all';
+    var list = adminOrderListOf(scope);
+    var sig = [filter, ui.adminOrderFrom, ui.adminOrderTo, ui.adminOrderQuery].join('|');
+    var info = adminPagerInfo(list, 'orders', sig);
+    adminSelSync('order', sig);            // v1.9.16 — 필터가 바뀌면 선택 해제
+    var filterLabel = filter === 'pending' ? '처리 대기' : ((STATUS[filter] || {}).label || filter);
+    var head = '<div class="coupon-stat">' +
+        (filter === 'all' ? '전체 <b>' + scope.length + '</b>건'
+          : '<b>' + esc(filterLabel) + '</b> ' + list.length + '건') +
+        ' · 결제완료 <b>' + scope.filter(function (o) { return o.status === 'paid'; }).length + '</b>건' +
+        ' · 처리 대기 <b>' + scope.filter(function (o) { return o.status === 'paid' || o.status === 'preparing'; }).length + '</b>건' +
+        '<span class="table-hint">행을 누르면 주문서 상세</span></div>' +
+      adminFilterChipsHTML('admin-order-filter', adminOrderChips(scope), filter);
+    var body;
+    var hasRange = !!(ui.adminOrderFrom || ui.adminOrderTo || String(ui.adminOrderQuery || '').trim());
+    if (!info.total) {
+      body = '<div class="empty-state" style="border:1px solid var(--line-soft);background:#fff"><h3>' +
+        (hasRange ? '조건에 맞는 주문이 없습니다' : '주문이 없습니다') + '</h3><p>' +
+        (hasRange ? '다른 기간·검색어·상태를 선택해 보세요.' : '고객 주문이 들어오면 여기에서 상태를 관리할 수 있습니다.') + '</p></div>';
+    } else {
+      var pageIds = info.rows.map(function (o) { return o.id; });
+      body = adminBulkBarHTML('order', {
+          label: '변경할 상태', placeholder: '상태 선택', action: '일괄 상태 변경',
+          hint: '여러 건을 골라 한 번에 바꿉니다. 취소된 주문·이미 같은 상태인 주문은 제외됩니다.',
+          options: ORDER_BULK_STATUSES.map(function (s) { return { value: s, label: STATUS[s].label }; })
+        }) +
+        '<div class="table-wrap table-scroll"><table class="data admin-orders-table admin-grid" data-bulk-rows="order">' +
+        '<thead><tr>' + adminSelHeadHTML('order', pageIds) +
+        '<th>번호</th><th>주문번호</th><th>주문자</th><th>상품</th><th>결제금액</th><th>일시</th><th>상태 변경</th></tr></thead><tbody>' +
+        info.rows.map(function (o, i) {
+          var items = orderItemsOf(o.id);
+          var u = currentUserById(o.user_id);
+          return '<tr data-order="' + esc(o.id) + '" data-status="' + esc(o.status) + '" data-action="admin-order-view" data-oid="' + esc(o.id) + '" class="click-row">' +
+            adminSelCellHTML('order', o.id, o.order_no + ' 선택', false, o.status === 'cancelled' ? '취소된 주문은 변경할 수 없습니다.' : '') +
+            adminSeqCellHTML(info, i) +
+            '<td data-label="주문번호"><b style="letter-spacing:0.02em">' + esc(o.order_no) + '</b>' +
+              '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc(o.id) + ' · 상세</div></td>' +
+            '<td data-label="주문자">' + esc(u ? u.name : o.recipient_name) +
+              (u ? ' <span class="grade-badge ' + GRADES[gradeOf(u)].cls + '">' + gradeLabel(u) + '</span>' : '') +
+              '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc(o.recipient_phone) + '</div></td>' +
+            '<td data-label="상품">' + orderItemCodesHTML(items) + '</td>' +
+            '<td data-label="결제금액"><b>' + won(o.total_amount) + '</b><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc(PAYMENTS[o.payment_method] || '') + '</div></td>' +
+            '<td data-label="일시" style="white-space:nowrap;font-size:11px;color:var(--muted)">' + fmtDateTime(o.created_at) + '</td>' +
+            '<td data-label="상태 변경"><select class="mini-select" data-action="admin-order-status" data-oid="' + o.id + '"' + (o.status === 'cancelled' ? ' disabled' : '') + '>' +
+              Object.keys(STATUS).map(function (s) {
+                return '<option value="' + s + '"' + (o.status === s ? ' selected' : '') + '>' + STATUS[s].label + '</option>';
+              }).join('') +
+            '</select></td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table></div>' + adminPagerHTML(info);
+    }
+    /* v1.9.7 — 기간 매출·매출 추이는 「매출 관리」 탭으로 분리(주문 관리는 주문 처리에 집중) */
+    return head + body;
+  }
+  /* ------------------------------------------- v1.9.8 관리자 주문서 상세 모달
+     주문번호·일시·상태 / 주문자·연락처·배송지 / 상품·옵션·수량·금액 /
+     쿠폰·포인트·결제수단을 한 장의 주문서로 보여준다. 상태 변경도 여기서 바로. */
+  function adminOrderSheetHTML(oid) {
+    var o = orderById(oid);
+    if (!o) return '';
+    var items = orderItemsOf(o.id);
+    var u = currentUserById(o.user_id);
+    var st = STATUS[o.status] || { label: o.status, cls: '' };
+    var subtotal = items.reduce(function (s, oi) { return s + (Number(oi.unit_price) || 0) * (Number(oi.quantity) || 0); }, 0);
+    var claim = claimOfOrder(o.id);
+    var rows = [
+      ['주문번호', o.order_no + '  (' + o.id + ')'],
+      ['주문 일시', fmtDateTime(o.created_at)],
+      ['주문 상태', st.label + (o.status === 'cancelled' ? ' · 재고 복구됨' : '')],
+      ['주문자', (u ? u.name : o.recipient_name) + (u ? ' · ' + u.email + ' (' + gradeLabel(u) + ')' : '')],
+      ['연락처', (u && u.phone ? u.phone + ' / ' : '') + '받는 분 ' + o.recipient_name + ' · ' + o.recipient_phone],
+      ['배송지', (o.postcode ? '[' + o.postcode + '] ' : '') + (o.shipping_address || '') + (o.address_detail ? ' ' + o.address_detail : '')],
+      ['결제수단', (PAYMENTS[o.payment_method] || o.payment_method || '-') + ' · ' + (o.payment_provider || '-') + ' / ' + (o.payment_mode || '-')],
+      ['결제키', o.payment_key || '(없음)']
+    ];
+    return '<div class="modal admin-order-sheet" role="dialog" aria-modal="true" aria-label="주문서 상세" style="width:min(680px,100%)">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ADMIN — ORDER SHEET</div><h2>' + esc(o.order_no) + '</h2></div>' +
+      '<div class="sheet-body">' +
+        '<div class="sheet-status"><span class="status ' + st.cls + '">' + esc(st.label) + '</span>' +
+          '<label class="sheet-status-pick"><span>상태 변경</span>' +
+            '<select class="mini-select" data-action="admin-order-status" data-oid="' + esc(o.id) + '"' + (o.status === 'cancelled' ? ' disabled' : '') + '>' +
+              Object.keys(STATUS).map(function (s) {
+                return '<option value="' + s + '"' + (o.status === s ? ' selected' : '') + '>' + STATUS[s].label + '</option>';
+              }).join('') +
+            '</select></label></div>' +
+        '<dl class="sheet-meta">' + rows.map(function (r) {
+          return '<div class="sm-row"><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>';
+        }).join('') + '</dl>' +
+        '<table class="data sheet-items admin-grid"><thead><tr><th>상품</th><th>옵션</th><th>수량</th><th>단가</th><th>금액</th></tr></thead><tbody>' +
+          items.map(function (oi) {
+            var v = variantById(oi.variant_id);
+            var p = v ? productById(v.product_id) : null;
+            return '<tr data-order-item="' + esc(oi.id) + '"><td data-label="상품"><span class="oi-code" data-code="' + esc(productCodeOf(p)) + '">' + esc(productCodeOf(p)) + '</span>' + esc(oi.product_name) + '</td>' +
+              '<td data-label="옵션"><span class="opt-inline"><i class="dot opt-dot' + (isLightHex(orderedColorHex(p, oi)) ? ' light' : '') + '" style="background:' + esc(orderedColorHex(p, oi)) + '"></i>' + esc(oi.color) + ' / ' + esc(oi.size) + '</span></td>' +
+              '<td data-label="수량">' + oi.quantity + '</td><td data-label="단가">' + won(oi.unit_price) + '</td>' +
+              '<td data-label="금액">' + won(oi.unit_price * oi.quantity) + '</td></tr>';
+          }).join('') + '</tbody></table>' +
+        '<div class="sheet-sum">' +
+          '<div class="sum-line"><span>상품금액</span><span>' + won(subtotal) + '</span></div>' +
+          (o.discount_amount ? '<div class="sum-line discount"><span>쿠폰 할인' + (o.coupon_code ? ' (' + esc(o.coupon_code) + ')' : '') + '</span><span>−' + won(o.discount_amount) + '</span></div>' : '<div class="sum-line"><span>쿠폰 할인</span><span>없음</span></div>') +
+          '<div class="sum-line' + (o.points_used ? ' point' : '') + '"><span>포인트 사용</span><span>' + (o.points_used ? '−' + won(o.points_used) : '없음') + '</span></div>' +
+          '<div class="sum-line ship"><span>배송비</span><span>' + (o.shipping_fee ? won(o.shipping_fee) : '무료') + '</span></div>' +
+          '<div class="sum-line total"><span>총 결제금액</span><b>' + won(o.total_amount) + '</b></div>' +
+        '</div>' +
+        (claim ? '<div class="sheet-claim">' + claimStripHTML(claim) + '</div>' : '') +
+        smsLogsHTML(o) +
+        '<div class="sheet-actions">' +
+          '<button class="btn ghost small" data-action="order-detail" data-oid="' + esc(o.id) + '">고객용 주문 상세</button>' +
+          '<button class="btn small" data-action="close-modal">닫기</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+  function adminOrdersHTML(orders) {
+    return '<div class="admin-orders" data-admin-orders="1">' +
+      adminRangeFilterHTML('order', ui.adminOrderFrom, ui.adminOrderTo, ui.adminOrderQuery,
+        '주문자·이메일·주문번호·상품명 검색') +
+      '<div class="admin-list-anchor" data-hook="admin-orders-body" tabindex="-1">' + adminOrdersBodyHTML() + '</div>' +
+    '</div>';
+  }
+  /* 기간·검색 입력은 목록만 다시 그린다(검색창 포커스·입력값 유지) */
+  function refreshAdminOrders() {
+    var host = $('[data-hook=admin-orders-body]');
+    if (host) host.innerHTML = adminOrdersBodyHTML();
+  }
+
+  /* ---------------------------------------------------------- product editor */
+  function firstCategoryId() {
+    var list = categoriesSorted();
+    return list.length ? list[0].id : 'outer';
+  }
+  function defaultDraft() {
+    return {
+      id: null, product_code: nextProductCode(), name: '', brand: 'MONO ATELIER', category: firstCategoryId(), price: '', original_price: '',
+      badge: '', description: '', image: 'coat.webp', images: ['coat.webp'], uploads: [], free_shipping: '',
+      model_info: '', is_active: true, base_hex: '#1B1B1D',
+      variants: [{ key: 'r1', color: '', color_hex: '#1B1B1D', size: 'M', stock: 10 }]
+    };
+  }
+  function draftFromProduct(p) {
+    return {
+      id: p.id, product_code: productCodeOf(p), name: p.name, brand: p.brand, category: p.category, price: p.price,
+      original_price: p.original_price || '', badge: p.badge || '', description: p.description || '',
+      model_info: p.model_info || '',
+      image: p.image, images: productImages(p), uploads: [],
+      free_shipping: p.free_shipping_threshold == null ? '' : String(p.free_shipping_threshold),
+      is_active: !!p.is_active,
+      base_hex: (variantsOf(p.id)[0] || {}).color_hex || '#1B1B1D',
+      variants: variantsOf(p.id).map(function (v, i) {
+        return { key: 'r' + i, id: v.id, color: v.color, color_hex: v.color_hex, size: v.size, stock: v.stock };
+      })
+    };
+  }
+  /* 이미지 풀 — 기본 에셋 + 업로드한 사진 (+ 기존 저장값) */
+  function imagePool(d) {
+    var list = ALL_IMAGES.slice();
+    (d.uploads || []).forEach(function (u) { if (list.indexOf(u.data) < 0) list.push(u.data); });
+    (d.images || []).forEach(function (x) { if (x && list.indexOf(x) < 0) list.push(x); });
+    return list;
+  }
+  function imageOptionLabel(v, uploads) {
+    if (!isDataImage(v)) return v;
+    var hit = (uploads || []).filter(function (u) { return u.data === v; })[0];
+    return '업로드 · ' + (hit ? hit.name : '사진');
+  }
+  /* 현재 등록된 이미지 목록 — 첫 번째가 대표. 대표 지정·순서 이동·삭제 */
+  function selectedImagesHTML(d) {
+    var imgs = (d.images && d.images.length) ? d.images : [d.image || 'coat.webp'];
+    return imgs.map(function (img, i) {
+      var main = i === 0;
+      return '<div class="sel-img' + (main ? ' main' : '') + '" data-sel-img="' + i + '">' +
+        '<img src="' + imgSrc(img) + '" alt="' + (main ? '대표 이미지' : '갤러리 이미지 ' + (i + 1)) + '">' +
+        '<span class="sel-ord">' + (main ? '대표' : (i + 1) + '번째') + '</span>' +
+        '<div class="sel-acts">' +
+          (main ? '<span class="main-badge" data-main-badge="1">대표</span>'
+                : '<button type="button" class="txt-btn" data-action="set-main-image" data-idx="' + i + '">대표 지정</button>') +
+          (i > 0 ? '<button type="button" class="txt-btn img-move" data-action="move-image" data-idx="' + i + '" data-dir="-1" aria-label="앞으로 이동">←</button>' : '') +
+          (i < imgs.length - 1 ? '<button type="button" class="txt-btn img-move" data-action="move-image" data-idx="' + i + '" data-dir="1" aria-label="뒤로 이동">→</button>' : '') +
+          (imgs.length > 1 && !main ? '<button type="button" class="icon-x" data-action="remove-gallery-image" data-idx="' + i + '" aria-label="이미지 제거">✕</button>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+  function uploadRowHTML(d) {
+    var ups = d.uploads || [];
+    return '<div class="upload-row" data-hook="upload-row">' +
+        '<label class="btn ghost small upload-btn"><span class="up-ico" aria-hidden="true">📷</span><span class="up-txt">사진 업로드</span>' +
+          '<input type="file" id="pe-upload" accept="image/*" multiple aria-label="상품 이미지 파일 업로드"></label>' +
+        '<span class="upload-hint">긴 변 ' + UPLOAD_MAX_SIDE + 'px · JPEG ' + Math.round(UPLOAD_QUALITY * 100) +
+          '% 로 자동 축소해 저장합니다 · ' + ups.length + '/' + UPLOAD_MAX_COUNT + '장</span>' +
+      '</div>' +
+      (ups.length
+        ? '<div class="upload-list" data-hook="upload-list">' + ups.map(function (u, i) {
+            return '<div class="upload-item" data-upload="' + i + '">' +
+              '<img src="' + u.data + '" alt="" data-bytes="' + dataUrlBytes(u.data) + '">' +
+              '<button type="button" class="icon-x" data-action="remove-upload" data-idx="' + i + '" aria-label="업로드 이미지 삭제">✕</button>' +
+              '<span class="tag">' + esc(u.name) + '</span></div>';
+          }).join('') + '</div>'
+        : '');
+  }
+  /* v1.9.13 — 뱃지는 「코드 관리 > 뱃지 관리」에 등록된 코드에서만 고른다(직접 입력 없음).
+     예전 데이터에 목록에 없는 뱃지가 남아 있으면 그 코드를 맨 아래에 그대로 두어 저장 시 유지한다. */
+  function badgeEditorHTML(d) {
+    var cur = d.badge ? String(d.badge).trim() : '';
+    var list = badgeList();
+    var opts = [['', '없음']].concat(list.map(function (b) { return [b, b]; }));
+    if (cur && list.indexOf(normalizeBadgeCode(cur)) < 0) opts.push([cur, cur + ' (등록 안 됨)']);
+    return '<div class="badge-editor">' +
+      '<select id="pe-badge" data-hook="badge-select" aria-label="상품 뱃지">' + opts.map(function (o) {
+        return '<option value="' + esc(o[0]) + '"' + (cur === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+      }).join('') + '</select>' +
+      '<span class="badge-editor-hint">뱃지 코드는 「코드 관리 → 뱃지 관리」에서 추가•수정합니다</span>' +
+    '</div>';
+  }
+  /* 옵션 행 — 컬러명 · 색상 스와치(누르면 색상 레이어) · HEX(직접 입력) · 사이즈 · 재고 */
+  function variantRowHTML(v, idx, sizeOptions) {
+    var hex = resolveColorHex(v.color, v.color_hex);
+    var opts = (sizeOptions && sizeOptions.length) ? sizeOptions.slice() : SIZE_ORDER.slice();
+    if (v.size && opts.indexOf(v.size) < 0) opts.push(v.size);   // 레거시 사이즈 누락 방지
+    return '<div class="var-row" data-vid="' + (v.id || '') + '" data-row="' + idx + '">' +
+      '<input name="color" placeholder="컬러명 (예: 하얀색)" value="' + esc(v.color) + '" autocomplete="off" aria-label="컬러명">' +
+      '<button type="button" class="row-swatch swatch-btn' + (isLightHex(hex) ? ' light' : '') + '" data-action="open-color-layer" data-row="' + idx + '" style="--c:' + esc(hex) + '" aria-label="' + esc(v.color || '컬러') + ' 색상 선택" title="색상 선택"><i class="' + swatchClass(hex) + '" style="background:' + esc(hex) + '"></i></button>' +
+      '<input name="hex" type="color" class="sr-color" value="' + esc(hex) + '" aria-label="컬러 피커" tabindex="-1">' +
+      '<input name="hexText" type="text" maxlength="7" class="hex-text" value="' + esc(hex) + '" aria-label="컬러 HEX 코드" autocomplete="off" spellcheck="false" placeholder="#FFFFFF">' +
+      '<select name="size">' + opts.map(function (s) {
+        return '<option value="' + esc(s) + '"' + (v.size === s ? ' selected' : '') + '>' + esc(s) + '</option>';
+      }).join('') + '</select>' +
+      '<input name="stock" type="number" min="0" step="1" value="' + (v.stock == null ? 0 : v.stock) + '" aria-label="재고">' +
+      '<button class="icon-x" type="button" data-action="remove-variant" aria-label="옵션 삭제">✕</button>' +
+    '</div>';
+  }
+  /* ------------- 편집기 색상 적용 도우미 (기본 색상 · 프리셋 · 이미지 팔레트 공통) */
+  function editorRows() { return $$('#variant-rows .var-row'); }
+  function rowIndexOf(row) {
+    var rows = editorRows();
+    for (var i = 0; i < rows.length; i++) if (rows[i] === row) return i;
+    return -1;
+  }
+  /* 지금 색을 적용할 옵션 행 — 사용자가 마지막으로 만지던 행, 없으면 첫 행 */
+  function targetEditorRow() {
+    var rows = editorRows();
+    if (!rows.length) return null;
+    var idx = ui.editRow;
+    if (idx == null || idx < 0 || idx >= rows.length) return rows[0];
+    return rows[idx];
+  }
+  function setRowHex(row, hex) {
+    var n = normalizeHex(hex);
+    if (!row || !n) return false;
+    var pick = row.querySelector('[name=hex]');
+    var text = row.querySelector('[name=hexText]');
+    if (pick && String(pick.value || '').toUpperCase() !== n) pick.value = n;
+    if (text && String(text.value || '').toUpperCase() !== n) text.value = n;
+    return true;
+  }
+  /* 지금 색을 적용할 옵션 행 — 사용자가 마지막으로 만지던 행 (활성 행 표시용) */
+  function updateColorTarget() {
+    var rows = editorRows();
+    var row = targetEditorRow();
+    rows.forEach(function (r) { r.classList.toggle('active', !!row && r === row); });
+  }
+  function colorPresetsHTML() {
+    return COLOR_PRESETS.map(function (p) {
+      return '<button type="button" class="preset" data-action="pick-preset" data-hex="' + p[1] + '" data-name="' + esc(p[0]) + '"' +
+        ' title="' + esc(p[0] + ' ' + p[1]) + '" aria-label="' + esc(p[0]) + ' ' + p[1] + '">' +
+        '<i class="preset-dot' + (isLightHex(p[1]) ? ' light' : '') + '" style="--c:' + p[1] + '"></i><span>' + esc(p[0]) + '</span></button>';
+    }).join('');
+  }
+  function paletteSourceHTML(d) {
+    var imgs = (d.images && d.images.length) ? d.images : [d.image || 'coat.webp'];
+    return imgs.map(function (img, i) {
+      var label = (i === 0 ? '대표' : (i + 1) + '번째') + ' · ' + imageOptionLabel(img, d.uploads);
+      return '<option value="' + i + '">' + esc(label) + '</option>';
+    }).join('');
+  }
+  function renderEditorPalette(colors, message) {
+    var host = $('[data-hook=palette]');
+    if (!host) return;
+    if (!colors || !colors.length) {
+      host.innerHTML = '<span class="ce-empty">' + esc(message || '색을 찾지 못했습니다.') + '</span>';
+      return;
+    }
+    host.innerHTML = colors.map(function (c) {
+      return '<button type="button" class="pal" data-action="pick-palette" data-hex="' + esc(c.hex) + '" data-name="' + esc(c.name) + '"' +
+        ' title="' + esc(c.name + ' ' + c.hex + ' · ' + c.share + '%') + '" aria-label="' + esc(c.name + ' ' + c.hex) + ' 적용">' +
+        '<i class="pal-dot' + (isLightHex(c.hex) ? ' light' : '') + '" style="--c:' + esc(c.hex) + '"></i>' +
+        '<b>' + esc(c.hex) + '</b><span>' + esc(c.name) + '</span>' +
+        '<em class="pal-share">' + c.share + '%</em></button>';
+    }).join('');
+  }
+  function colorLayerHTML(d) {
+    if (ui.colorRow == null) return '';
+    var rows = d.variants || [];
+    var idx = Math.max(0, Math.min(rows.length - 1, ui.colorRow));
+    var row = rows[idx] || {};
+    var cur = resolveColorHex(row.color, row.color_hex);
+    var imgs = (d.images && d.images.length) ? d.images : [d.image || 'coat.webp'];
+    return '<div class="color-layer" data-color-layer="1">' +
+      '<div class="cl-scrim" data-action="close-color-layer"></div>' +
+      '<div class="cl-panel" role="dialog" aria-modal="true" aria-label="옵션 색상 선택">' +
+        '<div class="cl-head"><b>색상 선택 <small>' + (idx + 1) + '번 옵션' + (row.color ? ' · ' + esc(row.color) : ' · 컬어명 미입력') + '</small></b>' +
+          '<button type="button" class="icon-x" data-action="close-color-layer" aria-label="색상 레이어 닫기">✕</button></div>' +
+        '<div class="cl-now"><i class="' + swatchClass(cur) + '" style="background:' + esc(cur) + '" data-hook="cl-now-dot"></i>' +
+          '<b data-hook="cl-now-hex">' + esc(cur) + '</b><span>지금 옵션 색</span></div>' +
+        '<div class="cl-section">' +
+          '<div class="cl-label">기본 색상 <small>16색 프리셋 · 누르면 바로 적용</small></div>' +
+          '<div class="color-presets" data-hook="color-presets" role="group" aria-label="색상 프리셋">' + colorPresetsHTML() + '</div>' +
+        '</div>' +
+        '<div class="cl-section">' +
+          '<div class="cl-label">직접 색상 선택 <small>색상 피커 · HEX 입력</small></div>' +
+          '<div class="cl-direct">' +
+            '<input type="color" id="pe-layer-color" value="' + esc(cur) + '" aria-label="색상 피커">' +
+            '<input type="text" id="pe-layer-hex" class="hex-text" maxlength="7" value="' + esc(cur) + '" placeholder="#FFFFFF" autocomplete="off" spellcheck="false" aria-label="HEX 값">' +
+            '<button type="button" class="btn small" data-action="apply-layer-color">적용</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="cl-section">' +
+          '<div class="cl-label">이미지에서 추출 <small>이 상품에 등록된 사진의 주요 색·비중</small></div>' +
+          '<div class="cl-src-row"><select id="pe-layer-src" aria-label="분석할 사진" data-action="layer-palette-src">' + paletteSourceHTML(d) + '</select>' +
+            '<button type="button" class="btn ghost small" data-action="layer-extract">색 추출</button></div>' +
+          '<div class="ce-body" data-hook="palette">' + (ui.colorPalette ? '' : '<span class="ce-empty">이미지를 분석해 주요 색을 찾습니다…</span>') + '</div>' +
+        '</div>' +
+        '<div class="cl-foot"><span class="cl-hint">스와치를 누르면 ' + (idx + 1) + '번 옵션에 바로 적용됩니다.</span>' +
+          '<button class="btn ghost small" data-action="close-color-layer">닫기</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+  /* 색상 레이어 열기 — 편집 중인 입력값을 draft 로 보존한 뒤 다시 그린다 */
+  function openColorLayer(idx) {
+    if (!ui.modal || ui.modal.type !== 'edit') return;
+    ui.modal.draft = readEditor();
+    ui.colorRow = Math.max(0, parseInt(idx, 10) || 0);
+    ui.colorPalette = null;
+    ui.colorPaletteMsg = '';
+    renderModal();
+    extractColorLayerPalette();
+  }
+  function closeColorLayer() {
+    var el = document.querySelector('.color-layer');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+    ui.colorRow = null;
+    ui.colorPalette = null;
+  }
+  function extractColorLayerPalette() {
+    if (!ui.modal || ui.modal.type !== 'edit' || ui.colorRow == null) return;
+    var d = ui.modal.draft || {};
+    var imgs = (d.images && d.images.length) ? d.images : [d.image || 'coat.webp'];
+    var sel = $('#pe-layer-src');
+    var idx = sel ? Math.max(0, Math.min(imgs.length - 1, parseInt(sel.value, 10) || 0)) : 0;
+    var host = $('[data-hook=palette]');
+    if (host) host.innerHTML = '<span class="ce-empty">이미지를 분석하는 중…</span>';
+    sampleImageColors(imgs[idx], {}, function (res) {
+      if (!ui.modal || ui.modal.type !== 'edit' || ui.colorRow == null) return;
+      if (!res.ok) { renderEditorPalette([], res.message); ui.colorPaletteMsg = res.message; return; }
+      ui.colorPalette = res.colors;
+      ui.colorPaletteMsg = '';
+      renderEditorPalette(res.colors, '');
+    });
+  }
+  /* 레이어에서 고른 색상 → 해당 옵션 행에만 적용하고 레이어를 닫는다(입력값 유지) */
+  function applyLayerColor(hex, name) {
+    var n = normalizeHex(hex);
+    if (!n) return { ok: false, message: '올바른 HEX 값(#FFFFFF)을 입력해 주세요.' };
+    var row = editorRows()[ui.colorRow];
+    if (!row) return { ok: false, message: '옵션을 찾을 수 없습니다. 다시 시도해 주세요.' };
+    setRowHex(row, n);
+    var nameInput = row.querySelector('[name=color]');
+    var named = '';
+    if (nameInput && !String(nameInput.value || '').trim() && name) { nameInput.value = name; named = name; }
+    var dot = row.querySelector('.row-swatch i');
+    if (dot) { dot.style.background = n; dot.className = swatchClass(n); }
+    var btn = row.querySelector('.row-swatch');
+    if (btn) { btn.style.setProperty('--c', n); btn.classList.toggle('light', isLightHex(n)); }
+    ui.colorRow = null;
+    ui.colorPalette = null;
+    closeColorLayer();
+    updateColorTarget();
+    return { ok: true, hex: n, name: named, rowIndex: rowIndexOf(row), label: nameInput ? String(nameInput.value || '').trim() : '' };
+  }
+  function productEditorHTML() {
+    var d = ui.modal.draft;
+    var title = d.id ? '상품 수정' : '상품 등록';
+    return '<div class="modal edit-modal" role="dialog" aria-modal="true" aria-label="' + title + '">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">ADMIN — PRODUCT</div><h2>' + title + '</h2></div>' +
+      '<div class="edit-body">' +
+        (ui.editError ? '<div class="form-error">' + esc(ui.editError) + '</div>' : '') +
+        '<div class="form-grid">' +
+          '<div class="field span2"><label>상품명</label><input id="pe-name" value="' + esc(d.name) + '" placeholder="예: 울 더블 브레스티드 코트"></div>' +
+          '<div class="field span2"><label>제품고유키(제품번호) <small>상품을 구분하는 번호 · 비우면 자동 채번 · 중복 불가</small></label>' +
+            '<input id="pe-code" value="' + esc(d.product_code || '') + '" placeholder="예: MA-0014" autocomplete="off" spellcheck="false" style="text-transform:uppercase">' +
+            '<div class="field-hint" data-hook="code-hint">다음 자동 번호: ' + esc(nextProductCode()) + '</div></div>' +
+          '<div class="field"><label>브랜드</label><input id="pe-brand" value="' + esc(d.brand) + '"></div>' +
+          '<div class="field"><label>카테고리 <small>사이즈 코드가 드롭다운에 반영됩니다</small></label><select id="pe-category">' +
+            categoriesSorted().map(function (c) { return '<option value="' + c.id + '"' + (d.category === c.id ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="field"><label>판매가 (원)</label><input id="pe-price" type="number" min="0" step="100" value="' + esc(d.price) + '" placeholder="189000"></div>' +
+          '<div class="field"><label>정가 (원, 선택)</label><input id="pe-original" type="number" min="0" step="100" value="' + esc(d.original_price) + '" placeholder="220000"></div>' +
+          '<div class="field"><label>뱃지</label>' + badgeEditorHTML(d) + '</div>' +
+          '<div class="field"><label>판매 상태</label><label class="toggle' + (d.is_active ? ' on' : '') + '" data-hook="active-toggle"><input type="checkbox" id="pe-active"' + (d.is_active ? ' checked' : '') + '> <span data-hook="active-label">' + (d.is_active ? '판매 중' : '숨김 (판매 안 함)') + '</span></label></div>' +
+          '<div class="field span2"><label>설명</label><textarea id="pe-desc" placeholder="소재와 실루엣에 대한 짧은 설명">' + esc(d.description) + '</textarea></div>' +
+          '<div class="field span2"><label>모델 정보 <small>선택 — 상세의 「모델 정보」에 표시됩니다. 비우면 표시하지 않습니다</small></label>' +
+            '<input id="pe-model" maxlength="60" value="' + esc(d.model_info || '') + '" placeholder="예: 174cm · 54kg · M 사이즈 착용"></div>' +
+          '<div class="field span2 image-field"><label>상품 이미지 <small>첫 번째가 대표 이미지 · 순서 이동·삭제 가능</small></label>' +
+            '<div class="selected-images" data-hook="selected-images">' + selectedImagesHTML(d) + '</div>' +
+            uploadRowHTML(d) +
+          '</div>' +
+          '<div class="field span2"><label>무료배송 기준 금액 (원) <small>비우면 기본 100,000원 · 0 입력 시 무조건 무료배송</small></label>' +
+            '<input id="pe-freeship" type="number" min="0" step="1000" value="' + esc(d.free_shipping) + '" placeholder="예: 50000 (비우면 기본 10만 원)"></div>' +
+        '</div>' +
+        '<div class="var-editor">' +
+          '<div class="panel-head" style="margin-bottom:10px"><h2 style="font-size:11px;letter-spacing:.14em">옵션별 재고</h2><button class="btn ghost small" data-action="add-variant">+ 옵션 추가</button></div>' +
+          '<div class="var-row-head"><span>컬러</span><span>색상</span><span>HEX</span><span>사이즈</span><span>재고</span><span></span></div>' +
+          '<div id="variant-rows">' + d.variants.map(function (v, i) { return variantRowHTML(v, i, sizeOptionsFromDraft(d)); }).join('') + '</div>' +
+          '<p class="var-hint">색상 스와치를 누르면 기본 16색·직접 선택·이미지 추출 팔레트가 열립니다. 사이즈 목록은 선택한 카테고리의 사이즈 코드입니다.</p>' +
+        '</div>' +
+        '<div class="form-actions">' +
+          '<button class="btn ghost small" data-action="close-modal">취소</button>' +
+          '<button class="btn small" data-action="save-product">' + (d.id ? '수정 저장' : '등록하기') + '</button>' +
+        '</div>' +
+      '</div>' +
+      colorLayerHTML(d) +
+    '</div>';
+  }
+  function readEditor() {
+    var rows = $$('#variant-rows .var-row').map(function (r) {
+      var name = r.querySelector('[name=color]').value.trim();
+      var picker = normalizeHex(r.querySelector('[name=hex]').value);
+      var text = normalizeHex((r.querySelector('[name=hexText]') || {}).value);
+      /* HEX 텍스트가 유효하면 그 값을 쓴다(직접 입력이 피커보다 늘 우선) */
+      var hex = text || picker || DEFAULT_HEX;
+      return {
+        id: r.dataset.vid || null,
+        color: name,
+        color_hex: normalizeStoredHex(name, hex),
+        size: r.querySelector('[name=size]').value,
+        stock: parseInt(r.querySelector('[name=stock]').value, 10) || 0
+      };
+    });
+    var d = (ui.modal && ui.modal.draft) || {};
+    var images = (d.images && d.images.length ? d.images : [d.image || 'coat.webp']).slice();
+    var main = images[0] || d.image || 'coat.webp';
+    var fsRaw = ($('#pe-freeship') || {}).value;
+    fsRaw = fsRaw == null ? '' : String(fsRaw).trim();
+    var freeShip = fsRaw === '' ? null : Math.max(0, parseInt(fsRaw, 10) || 0);
+    var bSel = ($('#pe-badge') || {}).value || '';
+    var badge = bSel ? normalizeBadge(bSel) : null;
+    var modelRaw = ($('#pe-model') || {}).value || '';
+    var activeEl = $('#pe-active');
+    return {
+      id: ui.modal.draft.id,
+      product_code: normalizeProductCode(($('#pe-code') || {}).value),
+      name: $('#pe-name').value,
+      brand: $('#pe-brand').value,
+      category: $('#pe-category').value,
+      price: $('#pe-price').value,
+      original_price: $('#pe-original').value,
+      badge: badge,
+      model_info: normalizeModelInfo(modelRaw),
+      description: $('#pe-desc').value,
+      image: main,
+      images: images,
+      uploads: (ui.modal.draft.uploads || []).slice(),
+      free_shipping_threshold: freeShip,
+      is_active: activeEl ? !!activeEl.checked : (ui.modal.draft.is_active !== false),
+      base_hex: (rows[0] && rows[0].color_hex) || normalizeHex(d.base_hex) || DEFAULT_HEX,
+      variants: rows
+    };
+  }
+  /* 이미지 선택 변경(추가/해제·대표 지정·업로드) 뒤 편집기 다시 그리기 — 입력값은 readEditor 로 보존 */
+  function updateDraftImages(mutator) {
+    if (!ui.modal || ui.modal.type !== 'edit') return;
+    var draft = readEditor();
+    mutator(draft);
+    if (!draft.images || !draft.images.length) draft.images = [draft.image || 'coat.webp'];
+    draft.image = draft.images[0];
+    ui.modal.draft = draft;
+    ui.editError = '';
+    renderModal();
+  }
+
+  /* -------------------------------------------------- 이미지 파일 업로드
+     파일 → <img> → Canvas 리사이즈(긴 변 900px) → JPEG 82% Data URL.
+     localStorage(5MB) 를 넘기지 않도록 올릴 때 바로 줄여서 보관한다. */
+  function dataUrlBytes(url) {
+    var i = String(url || '').indexOf(',');
+    return i < 0 ? 0 : Math.round((String(url).length - i - 1) * 3 / 4);
+  }
+  function resizeImageFile(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file || !/^image\//i.test(file.type || '')) { reject(new Error('이미지 파일만 업로드할 수 있습니다.')); return; }
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('파일을 읽을 수 없습니다.')); };
+      reader.onload = function () {
+        var im = new Image();
+        im.onerror = function () { reject(new Error('이미지를 열 수 없습니다.')); };
+        im.onload = function () {
+          var w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
+          if (!w || !h) { reject(new Error('이미지를 열 수 없습니다.')); return; }
+          var scale = Math.min(1, UPLOAD_MAX_SIDE / Math.max(w, h));
+          var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+          var canvas = document.createElement('canvas');
+          canvas.width = cw; canvas.height = ch;
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#f3efe7';   // 투명 PNG → 아이보리 배경
+          ctx.fillRect(0, 0, cw, ch);
+          ctx.drawImage(im, 0, 0, cw, ch);
+          var data;
+          try { data = canvas.toDataURL('image/jpeg', UPLOAD_QUALITY); }
+          catch (e) { reject(new Error('이미지를 변환할 수 없습니다.')); return; }
+          resolve({ data: data, name: String(file.name || '사진').replace(/\.[a-z0-9]+$/i, '').slice(0, 24), w: cw, h: ch });
+        };
+        im.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function handleImageUploads(files) {
+    if (!ui.modal || ui.modal.type !== 'edit') return;
+    var list = Array.prototype.slice.call(files || []);
+    if (!list.length) return;
+    var draft = readEditor();
+    draft.uploads = (ui.modal.draft.uploads || []).slice();
+    var room = UPLOAD_MAX_COUNT - draft.uploads.length;
+    if (room <= 0) { toast('사진은 ' + UPLOAD_MAX_COUNT + '장까지 업로드할 수 있습니다.', 'warn'); return; }
+    if (list.length > room) { list = list.slice(0, room); toast('사진은 ' + UPLOAD_MAX_COUNT + '장까지만 추가했습니다.', 'warn'); }
+    Promise.all(list.map(resizeImageFile)).then(function (rows) {
+      rows.forEach(function (r) { draft.uploads.push(r); });
+      var imgs = (draft.images || []).slice();
+      var wasDefault = !draft.id && imgs.length === 1 && imgs[0] === 'coat.webp';
+      if (wasDefault) imgs = [];
+      rows.forEach(function (r) { if (imgs.indexOf(r.data) < 0) imgs.push(r.data); });
+      draft.images = imgs.length ? imgs : [draft.image || 'coat.webp'];
+      draft.image = draft.images[0];
+      ui.modal.draft = draft;
+      ui.editError = '';
+      renderModal();
+      var bytes = rows.reduce(function (s, r) { return s + dataUrlBytes(r.data); }, 0);
+      toast(rows.length + '장의 사진을 추가했습니다 · ' + Math.round(bytes / 1024) + 'KB');
+    })['catch'](function (err) {
+      toast(err && err.message ? err.message : '사진을 추가하지 못했습니다.', 'warn');
+    });
+  }
+
+  /* ---------------------------------------------------- 리뷰 사진·동영상
+     사진은 상품 업로드와 같은 Canvas 축소(JPEG), 동영상은 4MB 이하만 Data URL 로 보관한다. */
+  function readVideoFile(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file || !/^video\//i.test(file.type || '')) { reject(new Error('동영상 파일만 첨부할 수 있습니다.')); return; }
+      if (file.size > REVIEW_VIDEO_MAX_BYTES) { reject(new Error('동영상은 ' + Math.round(REVIEW_VIDEO_MAX_BYTES / 1024 / 1024) + 'MB 이하만 첨부할 수 있습니다.')); return; }
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('동영상을 읽을 수 없습니다.')); };
+      reader.onload = function () {
+        resolve({ type: 'video', src: String(reader.result || ''), name: String(file.name || '동영상').slice(0, 30) });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function handleReviewMedia(files) {
+    if (!ui.review) return;
+    var list = Array.prototype.slice.call(files || []);
+    if (!list.length) return;
+    var ta = $('#rv-content');
+    ui.review.content = ta ? ta.value : ui.review.content;
+    var room = REVIEW_MAX_MEDIA - ui.review.media.length;
+    if (room <= 0) { toast('사진·동영상은 ' + REVIEW_MAX_MEDIA + '개까지 첨부할 수 있습니다.', 'warn'); return; }
+    if (list.length > room) { list = list.slice(0, room); toast('사진·동영상은 ' + REVIEW_MAX_MEDIA + '개까지만 추가했습니다.', 'warn'); }
+    Promise.all(list.map(function (f) {
+      return /^video\//i.test(f.type || '') ? readVideoFile(f) : resizeImageFile(f).then(function (r) {
+        return { type: 'image', src: r.data, name: r.name };
+      });
+    })).then(function (rows) {
+      rows.forEach(function (r) { ui.review.media.push(r); });
+      ui.review.error = '';
+      renderModal();
+      toast(rows.length + '개를 첨부했습니다.');
+    })['catch'](function (err) {
+      toast(err && err.message ? err.message : '파일을 첨부하지 못했습니다.', 'warn');
+    });
+  }
+
+  /* ---------------------------------------------------------------- modals */
+  function openAuth(tab, message) {
+    ui.auth.tab = tab || 'login';
+    ui.auth.error = '';
+    ui.auth.message = message || '';
+    if (tab === 'signup' && !ui.auth.draft) ui.auth.draft = null;
+    ui.modal = { type: 'auth' };
+    renderModal(); syncLock();
+  }
+  /* 비밀번호 입력 + 보기/숨기기 토글 (👁) — 모바일에서 오타를 바로 확인할 수 있다 */
+  function pwFieldHTML(id, extra, placeholder, value) {
+    return '<div class="pw-field" data-pw-field="' + esc(id) + '">' +
+      '<input id="' + esc(id) + '" type="password" value="' + esc(value || '') + '" placeholder="' + esc(placeholder || '••••••') + '"' + (extra ? ' ' + extra : '') + '>' +
+      '<button type="button" class="pw-eye" data-action="toggle-pw" data-target="' + esc(id) + '" aria-label="비밀번호 보기" aria-pressed="false" title="비밀번호 보기">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>' +
+        '<span class="pw-eye-slash" aria-hidden="true"></span>' +
+      '</button></div>';
+  }
+  function emailAuthStateHTML() {
+    var a = ui.emailAuth;
+    var s = notifySettings();
+    if (a && a.verified) return '<span class="email-code-state ok" data-hook="email-code-state">✓ 인증 완료</span>';
+    if (a && a.sentAt && !emailCodeExpired()) {
+      return '<span class="email-code-state sent" data-hook="email-code-state">' +
+        (s.email_auth_mode === 'test'
+          ? '테스트 인증번호 <b data-hook="email-test-code">' + esc(a.code) + '</b>' +
+            ' <button type="button" class="txt-btn" data-action="auto-fill-email-code">자동 입력</button>'
+          : '인증번호를 발송했습니다. 메일함을 확인해 주세요.') +
+        '</span>';
+    }
+    if (a && a.sentAt) return '<span class="email-code-state" data-hook="email-code-state">인증번호가 만료되었습니다. 다시 발송해 주세요.</span>';
+    return '<span class="email-code-state" data-hook="email-code-state">이메일 인증이 필요합니다.</span>';
+  }
+  function authHTML() {
+    var tab = ui.auth.tab;
+    var dr = ui.auth.draft || {};
+    return '<div class="modal auth-modal" role="dialog" aria-modal="true" aria-label="로그인 및 회원가입">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="auth-body">' +
+        '<div class="eyebrow" style="margin-bottom:6px">MONO ATELIER</div>' +
+        '<h2 style="font-family:var(--serif);font-size:26px;font-weight:400;margin-bottom:18px">' + (tab === 'login' ? '다시 만나 반가워요' : '새로운 회원이 되어 주세요') + '</h2>' +
+        '<div class="auth-tabs">' +
+          '<button data-action="auth-tab" data-tab="login" class="' + (tab === 'login' ? 'active' : '') + '">로그인</button>' +
+          '<button data-action="auth-tab" data-tab="signup" class="' + (tab === 'signup' ? 'active' : '') + '">회원가입</button>' +
+        '</div>' +
+        (ui.auth.message ? '<div style="font-size:11px;background:#f6f2ea;border:1px solid var(--line);padding:10px 12px;margin-bottom:14px;color:var(--ink-soft)">' + esc(ui.auth.message) + '</div>' : '') +
+        (ui.auth.error ? '<div class="form-error">' + esc(ui.auth.error) + '</div>' : '') +
+        (tab === 'login' ? '' +
+          '<div class="field"><label>이메일</label><input id="af-email" type="email" value="' + esc(dr.email || '') + '" placeholder="you@example.com" data-enter="do-login" autocomplete="username"></div>' +
+          '<div class="field"><label>비밀번호</label>' + pwFieldHTML('af-password', 'data-enter="do-login" autocomplete="current-password"', '••••••', dr.password) + '</div>' +
+          '<button class="btn block" style="margin-top:8px" data-action="do-login">로그인</button>' +
+          '<div class="demo-box"><p>데모 계정으로 바로 로그인해 보세요.<br>일반 회원 / 관리자 모두 동일한 비밀번호를 사용합니다.</p>' +
+            '<div class="row"><button class="btn ghost" data-action="demo-login" data-role="customer">일반 회원 (데모)</button><button class="btn ghost" data-action="demo-login" data-role="admin">관리자 (데모)</button></div>' +
+            '<p style="margin:10px 0 0">demo@mono.kr · demo1234 / admin@mono.kr · admin1234</p>' +
+          '</div>'
+          : '' +
+          '<div class="field"><label>이메일 <small>인증 후 가입할 수 있습니다</small></label>' +
+            '<div class="email-auth-row"><input id="af-email" type="email" value="' + esc(dr.email || '') + '" placeholder="you@example.com" autocomplete="email">' +
+              '<button type="button" class="btn ghost small email-send" data-action="send-email-code">인증번호 발송</button></div>' +
+            '<div class="email-code-row"><input id="af-email-code" inputmode="numeric" maxlength="6" placeholder="6자리 인증번호" aria-label="이메일 인증번호" autocomplete="one-time-code">' +
+              '<button type="button" class="btn ghost small" data-action="verify-email-code">확인</button>' +
+              emailAuthStateHTML() + '</div>' +
+          '</div>' +
+          '<div class="field-row"><div class="field"><label>비밀번호 <small>8자 이상 · 대/소문자·숫자·특수문자</small></label>' + pwFieldHTML('af-password', '', '8자 이상', dr.password) + pwRulesHTML(dr.password) + '</div>' +
+          '<div class="field"><label>비밀번호 확인</label>' + pwFieldHTML('af-password2', '', '다시 입력', dr.password2) + '</div></div>' +
+          '<div class="field"><label>이름</label><input id="af-name" value="' + esc(dr.name || '') + '" placeholder="홍길동"></div>' +
+          '<div class="field"><label>연락처</label><input id="af-phone" value="' + esc(dr.phone || '') + '" placeholder="010-0000-0000"></div>' +
+          '<div class="field"><label>주소</label>' + addressGroupHTML('af', { postcode: dr.postcode || '', base: dr.address || '', detail: dr.address_detail || '' }) + '</div>' +
+          '<button class="btn block" style="margin-top:8px" data-action="do-signup">가입하고 시작하기</button>' +
+          '<p class="auth-note">가입 정보는 이 브라우저의 localStorage에만 저장되는 데모입니다.</p>') +
+      '</div>' +
+    '</div>';
+  }
+  function receiptHTML(order) {
+    var items = orderItemsOf(order.id);
+    var subtotal = items.reduce(function (s, i) { return s + i.unit_price * i.quantity; }, 0);
+    return '<div class="modal receipt-modal" role="dialog" aria-modal="true" aria-label="주문 완료">' +
+      '<button class="modal-close" data-action="close-receipt" aria-label="닫기">✕</button>' +
+      '<div class="receipt-body">' +
+        '<div class="receipt-check"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg></div>' +
+        '<h2>주문이 완료되었습니다</h2>' +
+        '<p class="lead">주문번호 <b style="color:var(--ink)">' + esc(order.order_no) + '</b><br>' + fmtDateTime(order.created_at) + ' · ' + esc(PAYMENTS[order.payment_method] || '') + '</p>' +
+        '<div class="receipt-box">' +
+          '<ul class="receipt-items">' + items.map(function (i) {
+            return '<li><span>' + esc(i.product_name) + ' / ' + esc(i.color) + ' ' + esc(i.size) + ' × ' + i.quantity + '</span><span>' + won(i.unit_price * i.quantity) + '</span></li>';
+          }).join('') + '</ul>' +
+          '<div style="border-top:1px solid var(--line-soft);margin:12px 0 6px"></div>' +
+          '<div class="r-line"><span>상품금액</span><span>' + won(subtotal) + '</span></div>' +
+          (order.discount_amount ? '<div class="r-line discount"><span>쿠폰 할인' + (order.coupon_code ? ' (' + esc(order.coupon_code) + ')' : '') + '</span><span>−' + won(order.discount_amount) + '</span></div>' : '') +
+          '<div class="r-line"><span>배송비</span><span>' + (order.shipping_fee ? won(order.shipping_fee) : '무료') + '</span></div>' +
+          (order.points_used ? '<div class="r-line discount"><span>포인트 사용</span><span>−' + won(order.points_used) + '</span></div>' : '') +
+          '<div class="r-line" data-hook="receipt-total" style="padding-top:10px"><span style="color:var(--ink);font-weight:600">총 결제금액</span><b style="font-size:17px">' + won(order.total_amount) + '</b></div>' +
+          '<div style="border-top:1px solid var(--line-soft);margin:12px 0 6px"></div>' +
+          '<div class="r-line"><span>받는 분</span><span>' + esc(order.recipient_name) + ' · ' + esc(order.recipient_phone) + '</span></div>' +
+          '<div class="r-line"><span>배송지</span><span style="text-align:right;max-width:64%">' + esc(order.shipping_address) + '</span></div>' +
+          (order.payment_method === 'bank' ? '<div class="r-line"><span>입금 계좌</span><span>국민은행 123-456-7890 (주)모노아틀리에</span></div>' : '') +
+          '<div class="r-line" data-receipt-payment="1"><span>결제 처리</span><span>' + esc(paymentProviderLabel(order)) + '</span></div>' +
+          (order.payment_key ? '<div class="r-line"><span>결제 키</span><span style="font-size:10px;letter-spacing:0">' + esc(String(order.payment_key).slice(0, 18)) + '…</span></div>' : '') +
+        '</div>' +
+        '<div class="actions">' +
+          '<button class="btn ghost" data-action="receipt-orders">주문 내역 보기</button>' +
+          '<button class="btn" data-action="receipt-continue">쇼핑 계속하기</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  function paymentProviderLabel(order) {
+    if (order.payment_provider === 'tosspayments') {
+      return order.payment_mode === 'server' ? '토스페이먼츠 (서버 승인)' : '토스페이먼츠 테스트 결제';
+    }
+    return order.payment_mode === 'demo-fallback'
+      ? '데모 모의 결제 (토스 결제창 열기 실패)'
+      : '데모 모의 결제';
+  }
+  function confirmHTML() {
+    var c = ui.modal;
+    return '<div class="modal confirm-modal" role="dialog" aria-modal="true" aria-label="확인">' +
+      '<div class="confirm-body">' +
+        '<div class="eyebrow" style="margin-bottom:8px">' + (c.danger ? 'PLEASE CONFIRM' : 'CONFIRM') + '</div>' +
+        '<h2>' + esc(c.title) + '</h2>' +
+        '<p>' + esc(c.message) + '</p>' +
+        '<div class="actions">' +
+          '<button class="btn ghost" data-action="close-modal">취소</button>' +
+          '<button class="btn' + (c.danger ? '' : '') + '" data-action="confirm-yes" style="' + (c.danger ? 'background:var(--danger);border-color:var(--danger)' : '') + '">' + esc(c.confirmLabel || '확인') + '</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  /* ---------------------------------------------------- 교환/반품 신청 모달 */
+  function claimReasonBadgeHTML(type, reason) {
+    var r = CLAIM_REASONS[reason] || {};
+    var seller = !!r.seller;
+    var now = claimFeeOf(type, reason);
+    return '<span class="claim-badge ' + (seller ? 'free' : 'paid') + '" data-claim-badge="' + (seller ? 'free' : 'paid') + '">' +
+        esc(seller ? SELLER_FAULT_BADGE : CUSTOMER_FAULT_BADGE) + '</span>' +
+      '<span class="claim-badge-now">선택: ' + esc(CLAIM_TYPES[type] || '') + ' · ' + (now ? won(now) + ' 결제 필요' : '0원 (무료)') + '</span>';
+  }
+  function claimFeeHTML(type, reason) {
+    var fee = claimFeeOf(type, reason);
+    var seller = !!(CLAIM_REASONS[reason] || {}).seller;
+    var note = seller
+      ? '판매자 귀책(제품 하자·오배송)으로 배송비가 청구되지 않습니다.'
+      : (type === 'exchange'
+          ? '교환은 왕복 배송비 ' + won(CLAIM_FEE.exchange) + ' 이 부과됩니다. (보내는 편도 + 받는 편도)'
+          : '반품은 편도 배송비 ' + won(CLAIM_FEE.return) + ' 이 부과됩니다.');
+    return '<div class="claim-fee-row"><span>배송비</span><b data-hook="claim-fee-value">' + (fee ? won(fee) : '0원') + '</b></div>' +
+      '<div class="claim-fee-note">' + esc(note) + '</div>' +
+      (fee ? '<div class="claim-fee-pay">제출 시 토스페이먼츠 결제창에서 배송비를 결제한 뒤 접수됩니다.</div>' : '');
+  }
+  function claimSubmitLabel(type, reason) {
+    var fee = claimFeeOf(type, reason);
+    if (!fee) return '무료 교환/반품 접수';
+    return '배송비 ' + won(fee) + ' 결제 후 접수';
+  }
+  /* --------------------------------------- 교환 희망 옵션 (실제 상품 옵션에서 선택)
+     자유 텍스트 대신 주문된 상품의 variants 를 읽어 컬러·사이즈를 고르게 하고 재고를 표시한다. */
+  function claimExchangeItems(o) {
+    return orderItemsOf(o.id).map(function (oi) {
+      var v = variantById(oi.variant_id);
+      var p = v ? productById(v.product_id) : null;
+      return { oi: oi, v: v, p: p };
+    }).filter(function (r) { return r.v && r.p; });
+  }
+  function claimExchangeState(o, m) {
+    var rows = claimExchangeItems(o);
+    if (!rows.length) return null;
+    var idx = Math.max(0, Math.min(rows.length - 1, parseInt(m.exchange_item, 10) || 0));
+    var row = rows[idx];
+    var colors = colorsOf(row.p.id);
+    /* 기본값은 '주문한 그 옵션' — 예전에는 상품의 첫 컬러로 시작해, 카멜을 주문해도 교환 화면에
+       차콜(첫 컬러) 스와치가 보였다. 주문 스냅샷(order_items)의 컬러·사이즈를 먼저 쓴다. */
+    var orderedColor = String((row.oi && row.oi.color) || '').trim();
+    var orderedSize = String((row.oi && row.oi.size) || '').trim();
+    var wantColor = String(m.exchange_color || '').trim();
+    var color = wantColor && colors.some(function (c) { return c.color === wantColor; }) ? wantColor
+      : (colors.some(function (c) { return c.color === orderedColor; }) ? orderedColor : ((colors[0] || {}).color || ''));
+    var sizes = sizesOf(row.p.id, color);
+    var size = '';
+    var wantSize = String(m.exchange_size || '').trim();
+    if (wantSize && sizes.some(function (s2) { return s2.size === wantSize; })) size = wantSize;
+    return { rows: rows, idx: idx, row: row, colors: colors, color: color, sizes: sizes, size: size,
+             orderedColor: orderedColor, orderedSize: orderedSize };
+  }
+  function claimExchangeHTML(o, m) {
+    var st = claimExchangeState(o, m);
+    if (!st) {
+      return '<label class="claim-field-label" for="claim-exchange-option">교환 희망 옵션</label>' +
+        '<input id="claim-exchange-option" data-hook="claim-exchange-input" type="text" maxlength="60" placeholder="예: 카멜 / L" value="' + esc(m.exchange_option || '') + '">' +
+        '<div class="claim-hint">상품 정보를 찾을 수 없어 직접 입력으로 안내합니다.</div>';
+    }
+    var row = st.row;
+    var colorHex = (st.colors.filter(function (c) { return c.color === st.color; })[0] || {}).hex || DEFAULT_HEX;
+    /* 주문한 옵션의 실제 HEX — 주문 variant 의 color_hex > 상품 대표색 > 스냅샷 매핑 순서 */
+    var orderedHex = resolveColorHex(st.orderedColor,
+      (row.v && row.v.color_hex) || hexOfColor(row.p.id, st.orderedColor));
+    var sizeStock = st.size ? ((st.sizes.filter(function (s2) { return s2.size === st.size; })[0] || {}).stock || 0) : null;
+    return '<label class="claim-field-label">교환 희망 옵션 <span class="opt">상품의 실제 옵션에서 선택</span></label>' +
+      (st.rows.length > 1
+        ? '<div class="claim-opt-row"><span>상품</span><select class="claim-select" data-action="claim-ex-item" aria-label="교환 상품">' +
+            st.rows.map(function (r, i) {
+              return '<option value="' + i + '"' + (i === st.idx ? ' selected' : '') + '>' + esc(r.oi.product_name) + ' / ' + esc(r.oi.color) + ' ' + esc(r.oi.size) + '</option>';
+            }).join('') + '</select></div>'
+        : '<div class="claim-ex-item">' + esc(row.oi.product_name) + '</div>') +
+      '<div class="claim-opt-row claim-ordered-row" data-hook="claim-ordered">' +
+        '<span>주문 옵션</span>' +
+        '<span class="claim-color-dot ' + swatchClass(orderedHex) + '" style="background:' + esc(orderedHex) + '" data-hex="' + esc(orderedHex) + '"></span>' +
+        '<span class="claim-ordered-txt">' + esc(st.orderedColor || '-') + ' / ' + esc(st.orderedSize || '-') + '</span>' +
+      '</div>' +
+      '<div class="claim-opt-row"><span>컬러</span>' +
+        '<span class="claim-color-dot ' + swatchClass(colorHex) + '" style="background:' + esc(colorHex) + '" data-hex="' + esc(colorHex) + '" data-hook="claim-ex-dot"></span>' +
+        '<select class="claim-select" data-action="claim-ex-color" data-hook="claim-ex-color" aria-label="교환 컬러">' +
+          st.colors.map(function (c) {
+            var total = variantsOf(row.p.id).filter(function (v) { return v.color === c.color; }).reduce(function (sum, v) { return sum + Math.max(0, v.stock); }, 0);
+            return '<option value="' + esc(c.color) + '"' + (c.color === st.color ? ' selected' : '') + '>' + esc(c.color) + ' · 재고 ' + total + '개</option>';
+          }).join('') +
+        '</select></div>' +
+      '<div class="claim-opt-row"><span>사이즈</span>' +
+        '<select class="claim-select" data-action="claim-ex-size" data-hook="claim-ex-size" aria-label="교환 사이즈">' +
+          '<option value="">사이즈 선택</option>' +
+          st.sizes.map(function (s2) {
+            return '<option value="' + s2.size + '"' + (s2.size === st.size ? ' selected' : '') + (s2.stock <= 0 ? ' disabled' : '') + '>' +
+              s2.size + ' · ' + (s2.stock > 0 ? '재고 ' + s2.stock + '개' : '품절') + '</option>';
+          }).join('') +
+        '</select></div>' +
+      (st.size
+        ? '<div class="claim-hint' + (sizeStock <= 0 ? ' warn' : '') + '">선택: ' + esc(st.color) + ' / ' + esc(st.size) +
+            (sizeStock > 0 ? ' · 재고 ' + sizeStock + '개' : ' · 품절된 옵션입니다') + '</div>'
+        : '<div class="claim-hint">컬러와 사이즈를 선택하면 신청 옵션이 확정됩니다.</div>');
+  }
+  function currentExchangeOption(o, m) {
+    var st = claimExchangeState(o, m);
+    if (!st) return String(m.exchange_option || '');
+    if (!st.size) return '';
+    return st.color + ' / ' + st.size;
+  }
+  function claimModalHTML() {
+    var m = ui.modal;
+    var o = orderById(m.oid);
+    if (!o) return '';
+    var type = m.claim_type || 'return';
+    var reason = m.reason_category || 'change_of_mind';
+    var items = orderItemsOf(o.id);
+    var itemLine = items.map(function (oi) { return oi.product_name + ' / ' + oi.color + ' ' + oi.size; }).join(', ');
+    return '<div class="modal claim-modal" role="dialog" aria-modal="true" aria-label="교환·반품 신청" data-claim-modal="' + esc(o.id) + '">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head">' +
+        '<div class="eyebrow">EXCHANGE / RETURN</div>' +
+        '<h2>교환·반품 신청</h2>' +
+        '<p class="claim-order-line">' + esc(o.order_no) + ' · ' + esc(itemLine) + '</p>' +
+      '</div>' +
+      '<div class="claim-body">' +
+        (m.error ? '<div class="form-error" data-hook="claim-error">' + esc(m.error) + '</div>' : '') +
+        '<div class="claim-step">' +
+          '<div class="claim-step-label">1. 유형 선택</div>' +
+          '<div class="claim-types" role="group" aria-label="교환 또는 반품">' +
+            ['return', 'exchange'].map(function (t) {
+              return '<button type="button" class="claim-type' + (type === t ? ' active' : '') + '" data-action="claim-type" data-claim-type="' + t + '" aria-pressed="' + (type === t ? 'true' : 'false') + '">' +
+                '<b>' + CLAIM_TYPES[t] + '</b><small>' + (t === 'return' ? '상품을 돌려보내고 환불' : '다른 옵션으로 교환') + '</small></button>';
+            }).join('') +
+          '</div>' +
+        '</div>' +
+        '<div class="claim-step">' +
+          '<div class="claim-step-label">2. 사유 선택</div>' +
+          '<div class="claim-reasons" role="group" aria-label="교환·반품 사유">' +
+            Object.keys(CLAIM_REASONS).map(function (k) {
+              var r = CLAIM_REASONS[k];
+              return '<button type="button" class="claim-reason' + (reason === k ? ' active' : '') + (r.seller ? ' seller' : '') + '" data-action="claim-reason" data-reason="' + k + '" aria-pressed="' + (reason === k ? 'true' : 'false') + '">' +
+                '<span class="cr-name">' + esc(r.label) + '</span>' +
+                '<span class="cr-fee">' + (r.seller ? '무료' : '반품 ' + won(CLAIM_FEE.return) + ' / 교환 ' + won(CLAIM_FEE.exchange)) + '</span>' +
+              '</button>';
+            }).join('') +
+          '</div>' +
+          '<div class="claim-badge-row" data-hook="claim-badge">' + claimReasonBadgeHTML(type, reason) + '</div>' +
+        '</div>' +
+        '<div class="claim-exchange" data-hook="claim-exchange"' + (type === 'exchange' ? '' : ' hidden') + '>' +
+          claimExchangeHTML(o, m) +
+        '</div>' +
+        '<div class="claim-step">' +
+          '<label class="claim-field-label" for="claim-detail">상세 사유 <span class="opt">(선택)</span></label>' +
+          '<textarea id="claim-detail" data-hook="claim-detail" maxlength="300" placeholder="예: 밑단 박음질이 풀려 있습니다 / 허리가 커서 교환하고 싶습니다">' + esc(m.reason_detail || '') + '</textarea>' +
+        '</div>' +
+        '<div class="claim-fee" data-hook="claim-fee">' + claimFeeHTML(type, reason) + '</div>' +
+      '</div>' +
+      '<div class="claim-foot">' +
+        '<button class="btn ghost" data-action="close-modal">취소</button>' +
+        '<button class="btn" data-action="submit-claim" data-hook="claim-submit">' + esc(claimSubmitLabel(type, reason)) + '</button>' +
+      '</div>' +
+    '</div>';
+  }
+  /* 선택 변경 — 모달 전체를 다시 그리지 않고 배지·배송비·버튼만 갱신(입력한 사유 유지) */
+  function syncClaimModal() {
+    var m = ui.modal;
+    if (!m || m.type !== 'claim') return;
+    var root = $('#modal-layer .claim-modal');
+    if (!root) return;
+    var type = m.claim_type || 'return';
+    var reason = m.reason_category || 'change_of_mind';
+    $$('.claim-type', root).forEach(function (b) {
+      var on = b.dataset.claimType === type;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    $$('.claim-reason', root).forEach(function (b) {
+      var on = b.dataset.reason === reason;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    var badge = $('[data-hook=claim-badge]', root);
+    if (badge) badge.innerHTML = claimReasonBadgeHTML(type, reason);
+    var fee = $('[data-hook=claim-fee]', root);
+    if (fee) fee.innerHTML = claimFeeHTML(type, reason);
+    var submit = $('[data-hook=claim-submit]', root);
+    if (submit) submit.textContent = claimSubmitLabel(type, reason);
+    var ex = $('[data-hook=claim-exchange]', root);
+    if (ex) {
+      ex.hidden = type !== 'exchange';
+      if (type === 'exchange') {
+        var o2 = orderById(m.oid);
+        if (o2) ex.innerHTML = claimExchangeHTML(o2, m);
+      }
+    }
+  }
+
+  /* 푸터 HELP 항목 → 안내 모달 (관리자가 편집한 제목·본문 그대로) */
+  function helpModalHTML() {
+    var m = ui.modal;
+    var t = helpTopicById(m.topicId);
+    if (!t) {
+      return '<div class="modal help-modal" role="dialog" aria-modal="true" aria-label="안내">' +
+        '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+        '<div class="modal-head"><div class="eyebrow">HELP</div><h2>안내</h2></div>' +
+        '<div class="help-body">해당 안내를 찾을 수 없습니다. 관리자에게 문의해 주세요.</div>' +
+        '<div class="help-foot"><button class="btn small" data-action="close-modal">확인</button></div>' +
+      '</div>';
+    }
+    return '<div class="modal help-modal" role="dialog" aria-modal="true" aria-label="' + esc(t.title) + '" data-help-topic="' + esc(t.id) + '">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">HELP — MONO ATELIER</div><h2>' + esc(t.title) + '</h2></div>' +
+      '<div class="help-body" data-hook="help-body">' + heroTitleHTML(t.body) + '</div>' +
+      '<div class="help-foot"><button class="btn small" data-action="close-modal">확인</button></div>' +
+    '</div>';
+  }
+
+  /* FAQ 게시판 — 카테고리·검색·아코디언 + v1.9.6 페이지당 5개 페이징 */
+  var FAQ_PAGE_SIZE = 5;
+  function faqPageCount(list) { return Math.max(1, Math.ceil(list.length / FAQ_PAGE_SIZE)); }
+  function faqPageItems(list) {
+    var pages = faqPageCount(list);
+    var page = Math.min(Math.max(1, Number(ui.faqPage) || 1), pages);
+    ui.faqPage = page;
+    return list.slice((page - 1) * FAQ_PAGE_SIZE, page * FAQ_PAGE_SIZE);
+  }
+  function faqListHTML(list) {
+    if (!list.length) return '<div class="faq-empty">조건에 맞는 질문이 없습니다. 다른 검색어를 입력해 보세요.</div>';
+    return list.map(function (f) {
+      return '<details class="faq-item" data-faq="' + esc(f.id) + '">' +
+        '<summary><span class="faq-cat">' + esc(f.category) + '</span>' +
+          '<span class="faq-q">' + esc(f.question) + '</span><span class="faq-arrow" aria-hidden="true">+</span></summary>' +
+        '<div class="faq-a" data-hook="faq-answer">' + heroTitleHTML(f.answer) + '</div>' +
+      '</details>';
+    }).join('');
+  }
+  function faqPagerHTML(list) {
+    var pages = faqPageCount(list);
+    var page = Math.min(Math.max(1, Number(ui.faqPage) || 1), pages);
+    var nums = [];
+    for (var i = 1; i <= pages; i++) {
+      nums.push('<button type="button" class="fp-num' + (i === page ? ' active' : '') + '"' +
+        ' data-action="faq-page" data-page="' + i + '" aria-label="' + i + '페이지"' +
+        (i === page ? ' aria-current="page"' : '') + '>' + i + '</button>');
+    }
+    return '<div class="faq-pager" data-hook="faq-pager">' +
+      '<button type="button" class="fp-step" data-action="faq-page" data-page="prev"' +
+        (page <= 1 ? ' disabled' : '') + ' aria-label="이전 페이지">‹ 이전</button>' +
+      '<div class="fp-nums">' + nums.join('') + '</div>' +
+      '<button type="button" class="fp-step" data-action="faq-page" data-page="next"' +
+        (page >= pages ? ' disabled' : '') + ' aria-label="다음 페이지">다음 ›</button>' +
+      '<span class="fp-info" data-hook="faq-page-info">' + page + ' / ' + pages + '페이지 · 전체 ' + list.length + '건</span>' +
+    '</div>';
+  }
+  function faqModalHTML() {
+    var cats = ['all'].concat(faqCategories());
+    var list = filteredFaqs();
+    return '<div class="modal faq-modal" role="dialog" aria-modal="true" aria-label="자주 묻는 질문">' +
+      '<button class="modal-close" data-action="close-modal" aria-label="닫기">✕</button>' +
+      '<div class="modal-head"><div class="eyebrow">HELP — FAQ</div><h2>자주 묻는 질문</h2>' +
+        '<p class="faq-sub">카테고리를 고르거나 검색어로 빠르게 찾아보세요.</p></div>' +
+      '<div class="faq-body">' +
+        '<div class="faq-tools">' +
+          '<input id="faq-search" type="search" data-hook="faq-search" value="' + esc(ui.faqQuery) + '" placeholder="질문·답변 검색" aria-label="FAQ 검색" autocomplete="off">' +
+          '<div class="faq-cats" data-hook="faq-cats">' + cats.map(function (c) {
+            return '<button type="button" class="' + (ui.faqCat === c ? 'active' : '') + '" data-action="faq-cat" data-cat="' + esc(c) + '">' + (c === 'all' ? '전체' : esc(c)) + '</button>';
+          }).join('') + '</div>' +
+        '</div>' +
+        '<div class="faq-list" data-hook="faq-list">' + faqListHTML(faqPageItems(list)) + '</div>' +
+        faqPagerHTML(list) +
+      '</div>' +
+    '</div>';
+  }
+  function renderFaqModal() {
+    /* 카테고리 관리에서 필터 중이던 카테고리가 사라졌으면 전체로 되돌린다 */
+    if (ui.faqCat !== 'all' && faqCategories().indexOf(ui.faqCat) < 0) ui.faqCat = 'all';
+    var all = filteredFaqs();
+    var pageList = faqPageItems(all);
+    var list = $('[data-hook=faq-list]');
+    if (list) list.innerHTML = faqListHTML(pageList);
+    var pager = $('[data-hook=faq-pager]');
+    if (pager) {
+      var holder = document.createElement('div');
+      holder.innerHTML = faqPagerHTML(all);
+      pager.parentNode.replaceChild(holder.firstElementChild, pager);
+    }
+    $$('.faq-cats [data-action=faq-cat]').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.cat === ui.faqCat);
+    });
+  }
+
+  function renderModal() {
+    var layer = $('#modal-layer');
+    if (!layer) return;
+    var m = ui.modal;
+    if (!m) { layer.hidden = true; layer.innerHTML = ''; return; }
+    layer.hidden = false;
+    var inner = '<div class="modal-scrim" data-action="close-modal"></div>';
+    if (m.type === 'product') inner += productModalHTML();
+    else if (m.type === 'auth') inner += authHTML();
+    else if (m.type === 'order') inner += orderDetailHTML(m.oid);
+    /* v1.9.8 — 관리자 조회 모달(주문서·반품신청서·FAQ 1건·카테고리 세부 옵션) */
+    else if (m.type === 'admin-order') inner += adminOrderSheetHTML(m.oid);
+    else if (m.type === 'admin-claim') inner += adminClaimSheetHTML(m.cid);
+    else if (m.type === 'admin-faq') inner += faqDetailHTML();
+    else if (m.type === 'category-detail') inner += categoryEditorHTML();
+    else if (m.type === 'admin-member') inner += adminMemberHTML();
+    else if (m.type === 'admin-review') inner += adminReviewDetailHTML();
+    else if (m.type === 'admin-qna') inner += adminQnaDetailHTML();
+    else if (m.type === 'admin-qna-product') inner += adminQnaProductHTML();
+    else if (m.type === 'claim') inner += claimModalHTML();
+    else if (m.type === 'receipt') inner += receiptHTML(orderById(m.oid) || m.order);
+    else if (m.type === 'edit') inner += productEditorHTML();
+    else if (m.type === 'coupon-edit') inner += couponEditorHTML();
+    else if (m.type === 'help') inner += helpModalHTML();
+    else if (m.type === 'review') inner += reviewModalHTML();
+    else if (m.type === 'faq') inner += faqModalHTML();
+    else if (m.type === 'confirm') inner += confirmHTML();
+    else if (m.type === 'bulk-reclaim') inner += bulkReclaimHTML();   // v1.9.16 — 리뷰 일괄 회수(공통 사유)
+    layer.innerHTML = inner;
+    if (m.type === 'product') { applyStageTransform(layer); bindProductStage(); }
+  }
+  function closeModal() {
+    if (ui.media) {
+      closeReviewMedia();
+      return;
+    }
+    if (ui.review) {
+      closeReviewModal();
+      return;
+    }
+    /* v1.9.12 — Q&A 상세에서 연 상품 미리보기는 닫아도 Q&A 상세로 돌아간다(첫 화면이 아니라) */
+    if (ui.modal && ui.modal.type === 'admin-qna-product') {
+      var closeQid = ui.modal.qid;
+      /* 미리보기는 히스토리에 새로 쌓고 열었으므로 한 겹만 되돌리면 Q&A 상세가 복원된다 */
+      try { history.back(); return; } catch (e) {}
+      if (closeQid && qnaById(closeQid)) {
+        ui.modal = { type: 'admin-qna', qid: closeQid };
+        renderModal(); syncLock();
+        return;
+      }
+    }
+    var scroll = captureModalScroll();
+    ui.modal = null;
+    if (ui.lightbox) { ui.lightbox = null; renderLightbox(); }
+    renderModal();
+    syncLock();
+    restoreModalScroll(scroll);
+  }
+
+  /* ---------------------------------------------------------------- actions */
+  function requiresLogin(message) {
+    if (currentUser()) return false;
+    openAuth('login', message || '로그인 후 이용할 수 있습니다.');
+    return true;
+  }
+  function doAddFromModal(thenBuy) {
+    var m = ui.modal;
+    if (!m || m.type !== 'product') return;
+    if (!m.size) { toast('사이즈를 선택해 주세요.', 'warn'); return; }
+    var p = productById(m.pid);
+    var v = findVariant(m.pid, m.color, m.size);
+    if (!v || v.stock <= 0) { toast('선택한 옵션은 품절입니다.', 'warn'); return; }
+    if (!currentUser()) {
+      if (thenBuy) ui.pendingBuy = { pid: m.pid, color: m.color, size: m.size, qty: m.qty };
+      else ui.pendingAdd = { pid: m.pid, color: m.color, size: m.size, qty: m.qty };
+      openAuth('login', '로그인 후 장바구니에 담을 수 있습니다.');
+      return;
+    }
+    var res = addToCart(m.pid, m.color, m.size, m.qty);
+    if (!res.ok) { toast(res.message || '담을 수 없습니다.', 'warn'); return; }
+    toast('장바구니에 담았습니다.' + (res.capped ? ' (재고 ' + res.stock + '개까지)' : ''));
+    if (thenBuy) {
+      var row = cartRows().filter(function (r) { return r.variant.id === v.id; })[0];
+      if (row) { openCheckout([row.item.id]); return; }
+      closeModal();
+      ui.cartOpen = true;
+      renderCart(); renderHeader(); syncLock();
+      return;
+    }
+    closeModal();
+    ui.cartOpen = true;
+    renderCart(); renderHeader(); syncLock();
+  }
+  function finishPendingAuth() {
+    if (ui.pendingBuy) {
+      var b = ui.pendingBuy; ui.pendingBuy = null;
+      var r1 = addToCart(b.pid, b.color, b.size, b.qty);
+      if (r1.ok) {
+        var bv = findVariant(b.pid, b.color, b.size);
+        var row = bv ? cartRows().filter(function (r) { return r.variant.id === bv.id; })[0] : null;
+        if (row) { openCheckout([row.item.id]); return; }
+      }
+    }
+    if (ui.pendingAdd) {
+      var a = ui.pendingAdd; ui.pendingAdd = null;
+      var r2 = addToCart(a.pid, a.color, a.size, a.qty);
+      if (r2.ok) {
+        ui.modal = null; ui.cartOpen = true;
+        renderAll();
+        toast('장바구니에 담았습니다.');
+        return;
+      }
+    }
+    ui.modal = null;
+    if (ui.view === 'checkout' || ui.view === 'mypage') { renderAll(); return; }
+    renderAll();
+  }
+
+  /* ----------------------------------------------------------------- events */
+  document.addEventListener('click', function (ev) {
+    var el = ev.target.closest('[data-action]');
+    if (!el) return;
+    var a = el.dataset.action;
+    var user = currentUser();
+
+    switch (a) {
+      case 'go-home': ev.preventDefault(); ui.category = 'all'; go('home'); break;
+      case 'nav-category': ui.query = ''; setCategory(el.dataset.cat); break;
+      case 'scroll-shop': {
+        if (ui.view !== 'home') { ui.view = 'home'; renderAll(); }
+        var shop = $('#shop');
+        if (shop) window.scrollTo({ top: shop.offsetTop - 80, behavior: 'smooth' });
+        break;
+      }
+      case 'scroll-editorial': {
+        if (ui.view !== 'home') { ui.view = 'home'; renderAll(); }
+        var ed = $('#editorial');
+        if (ed) window.scrollTo({ top: ed.offsetTop - 90, behavior: 'smooth' });
+        break;
+      }
+      case 'clear-filter': ui.query = ''; ui.category = 'all'; renderAll(); break;
+      /* v1.9.9 — 썸네일 보기 ↔ 목록 보기 (상품 목록만 다시 그린다) */
+      case 'store-view': {
+        var sv = el.dataset.value === 'list' ? 'list' : 'grid';
+        if (ui.storeView === sv) break;
+        ui.storeView = sv;
+        saveStoreView(sv);
+        if (ui.view !== 'home') { renderView(); }
+        else renderShopResults();
+        syncViewToggle();
+        break;
+      }
+      case 'open-product': openProduct(el.dataset.pid); break;
+      case 'clear-search': {
+        ui.query = '';
+        var si = $('#shop-search');
+        if (si) { si.value = ''; try { si.focus(); } catch (e) {} }
+        renderShopResults();
+        break;
+      }
+      case 'quick-add': ev.stopPropagation(); openProduct(el.dataset.pid); break;
+      case 'close-modal': closeModal(); break;
+      case 'open-help': {
+        var topic = helpTopicById(el.dataset.help);
+        if (!topic) { toast('안내를 찾을 수 없습니다.', 'warn'); break; }
+        ui.modal = { type: 'help', topicId: topic.id };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'lb-open': openLightbox(); break;
+      case 'lb-close': closeLightbox(); break;
+      case 'lb-prev': lightboxStep(-1); break;
+      case 'lb-next': lightboxStep(1); break;
+      case 'lb-zoom-in': lightboxZoomBy(1); break;
+      case 'lb-zoom-out': lightboxZoomBy(-1); break;
+      case 'lb-zoom-reset': setLightboxZoom(1); break;
+      case 'pick-color':
+        if (ui.modal && ui.modal.type === 'product') {
+          ui.modal.color = el.dataset.color;
+          var stillValid = findVariant(ui.modal.pid, ui.modal.color, ui.modal.size);
+          if (!stillValid) ui.modal.size = '';
+          syncProductModal();
+        }
+        break;
+      case 'pick-size':
+        if (ui.modal && ui.modal.type === 'product') {
+          ui.modal.size = el.dataset.size;
+          ui.modal.qty = 1;
+          syncProductModal();
+        }
+        break;
+      case 'pick-image':
+        if (ui.modal && ui.modal.type === 'product') {
+          ui.modal.img = Number(el.dataset.idx) || 0;
+          syncGallery($('#modal-layer .product-modal'));
+        }
+        break;
+      case 'gallery-prev':
+      case 'gallery-next':
+        if (ui.modal && ui.modal.type === 'product') {
+          var pImg = productById(ui.modal.pid);
+          var n = productImages(pImg).length || 1;
+          ui.modal.img = ((ui.modal.img || 0) + (a === 'gallery-next' ? 1 : -1) + n) % n;
+          syncGallery($('#modal-layer .product-modal'));
+        }
+        break;
+      case 'pm-inc': {
+        if (!ui.modal) break;
+        var pv = ui.modal.size ? findVariant(ui.modal.pid, ui.modal.color, ui.modal.size) : null;
+        var max = pv ? pv.stock : 1;
+        if (ui.modal.qty >= max) { toast('재고는 ' + max + '개까지 선택할 수 있습니다.', 'warn'); break; }
+        ui.modal.qty++; syncProductModal();
+        break;
+      }
+      case 'pm-dec':
+        if (ui.modal && ui.modal.qty > 1) { ui.modal.qty--; syncProductModal(); }
+        break;
+      case 'add-cart': doAddFromModal(false); break;
+      case 'buy-now': doAddFromModal(true); break;
+
+      case 'open-cart':
+        if (!currentUser()) { openAuth('login', '로그인하면 장바구니를 사용할 수 있습니다.'); break; }
+        ui.cartOpen = true; renderHeader(); renderCart(); syncLock();
+        break;
+      case 'close-cart': ui.cartOpen = false; renderHeader(); renderCart(); syncLock(); break;
+      case 'use-coupon-mypage': {
+        if (!currentUser()) break;
+        var ucRes = applyCouponCode(el.dataset.code, cartRows());
+        if (!ucRes.ok) { toast(ucRes.message, 'warn'); break; }
+        ui.myTab = 'profile';
+        ui.view = 'home';
+        ui.cartOpen = true;
+        renderAll();
+        toast(ucRes.coupon.code + ' 쿠폰을 적용했습니다.');
+        break;
+      }
+      case 'apply-coupon': {
+        var box = el.closest('.coupon-box');
+        var input = box ? box.querySelector('input.coupon-code') : null;
+        var res = applyCouponCode(input ? input.value : ui.couponCode, activeRows());
+        if (!res.ok) toast(res.message, 'warn');
+        else toast(res.coupon.code + ' 쿠폰을 적용했습니다.');
+        refreshMoneyViews();
+        break;
+      }
+      case 'use-coupon': {
+        var res2 = applyCouponCode(el.dataset.code, activeRows());
+        if (!res2.ok) toast(res2.message, 'warn');
+        else toast(res2.coupon.code + ' 쿠폰을 적용했습니다.');
+        refreshMoneyViews();
+        break;
+      }
+      case 'remove-coupon':
+        clearCoupon();
+        refreshMoneyViews();
+        toast('쿠폰을 해제했습니다.');
+        break;
+      case 'cart-select': {
+        var cid = el.dataset.cid;
+        ui.cartSel[cid] = el.checked;
+        renderCart();
+        break;
+      }
+      case 'cart-select-all': setAllSelected(el.checked); break;
+      case 'cart-remove-selected':
+        removeSelectedCartItems();
+        break;
+      case 'cart-remove-all': {
+        var allRows = cartRows();
+        if (!allRows.length) break;
+        ui.modal = {
+          type: 'confirm', title: '장바구니를 비울까요?', danger: true, confirmLabel: '전체 삭제',
+          message: '담긴 ' + allRows.length + '개 옵션을 장바구니에서 모두 삭제합니다.',
+          onConfirm: { kind: 'cart-clear' }
+        };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'cart-inc':
+      case 'cart-dec': {
+        var row = cartRows().filter(function (r) { return r.item.id === el.dataset.cid; })[0];
+        if (!row) break;
+        setCartQty(el.dataset.cid, row.item.quantity + (a === 'cart-inc' ? 1 : -1));
+        break;
+      }
+      case 'cart-remove': removeCartItem(el.dataset.cid); break;
+      case 'cart-checkout': {
+        var sel = selectedRows();
+        if (!sel.length) { toast('주문할 상품을 선택해 주세요.', 'warn'); break; }
+        openCheckout(sel.map(function (r) { return r.item.id; }));
+        break;
+      }
+      case 'back-to-cart': ui.cartOpen = true; renderHeader(); renderCart(); syncLock(); break;
+      case 'pick-pay': ui.payMethod = el.value; break;
+      case 'same-as-user': {
+        var u = currentUser();
+        if (!u) break;
+        var on = el.checked;
+        $('#co-recipient').value = on ? u.name : '';
+        $('#co-recipient-phone').value = on ? u.phone : '';
+        fillAddressFields('co', on ? userAddressParts(u) : { zip: '', base: '', detail: '' });
+        break;
+      }
+      case 'toggle-agree': ui.agree = el.checked; break;
+      case 'place-order': {
+        if (requiresLogin()) break;
+        var agreeEl = $('#co-agree');
+        if (!agreeEl || !agreeEl.checked) { toast('주문 내용 확인 및 결제에 동의해 주세요.', 'warn'); break; }
+        var methodEl = $('input[name=pay]:checked');
+        var addr = readAddressGroup('co');
+        var payload = {
+          recipient_name: ($('#co-recipient') || {}).value,
+          recipient_phone: ($('#co-recipient-phone') || {}).value,
+          shipping_address: addr.full,
+          postcode: addr.postcode,
+          points_used: pointUseApplied(totalsOf(checkoutRows(), ui.coupon).total),
+          payment_method: methodEl ? methodEl.value : 'card'
+        };
+        if (!payload.recipient_name || !payload.recipient_phone || !addr.base) {
+          toast('받는 분, 연락처, 주소를 모두 입력해 주세요. (주소는 「주소 검색」으로 선택)', 'warn'); break;
+        }
+        var pay = startPayment(payload);
+        if (!pay.ok) { toast(pay.message, 'warn'); break; }
+        if (pay.redirected) { toast('토스페이먼츠 결제창을 여는 중입니다…'); break; }
+        if (pay.order) showReceipt(pay.order);
+        break;
+      }
+      case 'close-receipt':
+        ui.modal = null;
+        ui.view = currentUser() ? 'mypage' : 'home';
+        ui.myTab = 'orders';
+        renderAll();
+        window.scrollTo({ top: 0 });
+        break;
+      case 'receipt-orders':
+        ui.modal = null; ui.myTab = 'orders'; go('mypage');
+        break;
+      case 'receipt-continue':
+        ui.modal = null; go('home');
+        break;
+
+      case 'open-auth': openAuth('login', ''); break;
+      case 'auth-tab': ui.auth.tab = el.dataset.tab; ui.auth.error = '';
+        if (el.dataset.tab === 'signup') ui.auth.draft = readAuthDraft();
+        renderModal(); break;
+      case 'demo-login': {
+        var role = el.dataset.role;
+        var email = role === 'admin' ? 'admin@mono.kr' : 'demo@mono.kr';
+        var pw = role === 'admin' ? 'admin1234' : 'demo1234';
+        var res = login(email, pw);
+        if (!res.ok) { ui.auth.error = res.message; renderModal(); break; }
+        toast(res.user.name + '님, 환영합니다.');
+        finishPendingAuth();
+        break;
+      }
+      case 'do-login': {
+        var email = ($('#af-email') || {}).value || '';
+        var pw = ($('#af-password') || {}).value || '';
+        var res = login(email, pw);
+        if (!res.ok) { ui.auth.error = res.message; renderModal(); break; }
+        toast(res.user.name + '님, 환영합니다.');
+        finishPendingAuth();
+        break;
+      }
+      case 'do-signup': {
+        var afAddr = readAddressGroup('af');
+        ui.auth.draft = readAuthDraft();   // 실패해도 입력값을 그대로 다시 보여준다
+        var res2 = signup({
+          email: ($('#af-email') || {}).value, password: ($('#af-password') || {}).value,
+          password2: ($('#af-password2') || {}).value, name: ($('#af-name') || {}).value,
+          phone: ($('#af-phone') || {}).value,
+          address: afAddr.base, address_detail: afAddr.detail, postcode: afAddr.postcode
+        });
+        if (!res2.ok) { ui.auth.error = res2.message; renderModal(); break; }
+        ui.auth.draft = null;
+        toast('가입이 완료되었습니다. 환영합니다!');
+        finishPendingAuth();
+        break;
+      }
+      case 'send-email-code': {
+        var seEmail = ($('#af-email') || {}).value;
+        ui.auth.draft = readAuthDraft();   // 발송 후 다시 그려도 입력값·주소 유지
+        var seRes = sendEmailCode(seEmail);
+        if (!seRes.ok) { ui.auth.error = seRes.message; renderModal(); break; }
+        ui.auth.error = '';
+        renderModal();
+        toast(seRes.mode === 'test'
+          ? '테스트 인증번호 ' + seRes.code + ' 를 발송했습니다. (화면에도 표시)'
+          : '인증번호를 이메일로 발송했습니다.');
+        break;
+      }
+      case 'verify-email-code': {
+        ui.auth.draft = readAuthDraft();
+        var veRes = verifyEmailCode(($('#af-email') || {}).value, ($('#af-email-code') || {}).value);
+        ui.auth.error = veRes.ok ? '' : veRes.message;
+        renderModal();
+        if (veRes.ok) toast('이메일 인증이 완료되었습니다.');
+        break;
+      }
+      case 'auto-fill-email-code': {
+        var acode = emailAuthState().code;
+        if (!acode) break;
+        var acInp = $('#af-email-code');
+        if (acInp) { acInp.value = acode; acInp.focus(); }
+        break;
+      }
+      case 'save-notify-settings': {
+        if (!isAdmin()) break;
+        var nsRes = saveNotifySettings({
+          email_auth_mode: ($('#ns-email-mode') || {}).value,
+          email_api_url: ($('#ns-email-url') || {}).value,
+          sms_enabled: !!($('#ns-sms-enabled') || {}).checked,
+          sms_mode: ($('#ns-sms-mode') || {}).value,
+          sms_api_url: ($('#ns-sms-url') || {}).value,
+          sms_sender: ($('#ns-sms-sender') || {}).value
+        });
+        renderAll();
+        toast(nsRes.ok ? '알림 설정을 저장했습니다.' : nsRes.message, nsRes.ok ? '' : 'warn');
+        break;
+      }
+      case 'logout': logout(); break;
+      case 'go-mypage':
+        if (!currentUser()) { openAuth('login', ''); break; }
+        ui.myTab = 'profile'; go('mypage'); break;
+      case 'my-tab':
+        if (el.dataset.tab === 'data' && !isAdmin()) break; // 데이터 관리는 관리자 전용
+        ui.myTab = el.dataset.tab; renderAll(); break;
+      case 'save-profile': {
+        if (!currentUser()) break;
+        var u = currentUser();
+        var name = $('#pf-name').value.trim();
+        var email = $('#pf-email').value.trim().toLowerCase();
+        var phone = $('#pf-phone').value.trim();
+        var pfAddr = readAddressGroup('pf');
+        if (!name || !phone || !pfAddr.base) { ui.profileError = '이름·연락처·주소를 모두 입력해 주세요.'; renderAll(); break; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { ui.profileError = '올바른 이메일 주소를 입력해 주세요.'; renderAll(); break; }
+        if (db.users.some(function (x) { return x.id !== u.id && x.email.toLowerCase() === email; })) {
+          ui.profileError = '이미 사용 중인 이메일입니다.'; renderAll(); break;
+        }
+        u.name = name; u.email = email; u.phone = phone;
+        u.address = pfAddr.full;
+        u.address_detail = pfAddr.detail;
+        u.postcode = pfAddr.postcode;
+        ui.profileError = '';
+        save(); renderAll(); toast('회원 정보를 저장했습니다.');
+        break;
+      }
+      case 'ask-cancel-order': {
+        var oid = el.dataset.oid;
+        var o = orderById(oid);
+        if (!o) break;
+        ui.modal = {
+          type: 'confirm', title: '주문을 취소할까요?', danger: true, confirmLabel: '주문 취소',
+          message: o.order_no + ' 주문을 취소하면 결제가 취소되고 재고가 자동으로 복구됩니다.',
+          onConfirm: { kind: 'cancel-order', oid: oid }
+        };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'order-detail': {
+        /* v1.9.14 — 관리자 주문서에서 연 「고객용 주문 상세」도 한 겹 쌓아 뒤로가기 = 주문서 복귀 */
+        var odPrev = ui.modal && TRACKED_LAYERS[ui.modal.type] ? ui.modal.type : null;
+        ui.modal = { type: 'order', oid: el.dataset.oid };
+        renderModal(); syncLock();
+        if (odPrev) pushRouteState();
+        break;
+      }
+      /* ---------------- v1.9: 구매확정 · 리뷰 · 포인트 · FAQ · 주소 검색 */
+      case 'confirm-purchase': {
+        var conf = confirmOrderItem(el.dataset.oi);
+        if (!conf.ok) { toast(conf.message, 'warn'); break; }
+        renderAll();
+        toast('구매확정 완료 · ' + conf.points.toLocaleString('ko-KR') + 'P 적립 (보유 ' + conf.balance.toLocaleString('ko-KR') + 'P)');
+        break;
+      }
+      case 'open-review': {
+        openReviewModal(el.dataset.pid, el.dataset.oi);
+        break;
+      }
+      case 'edit-review': {
+        openReviewModal(el.dataset.pid, '', el.dataset.rid);
+        break;
+      }
+      case 'review-page': {
+        if (!ui.modal || ui.modal.type !== 'product') break;
+        ui.reviewPage = Math.max(1, parseInt(el.dataset.page, 10) || 1);
+        var rvHost = $('#modal-layer [data-hook=pm-reviews]');
+        var rvProd = productById(ui.modal.pid);
+        if (rvHost && rvProd) rvHost.innerHTML = productReviewsInnerHTML(rvProd);
+        /* v1.9.13 — 페이지를 바꾸면 리뷰 섹션 맨 위로 맞춘다(Q&A 페이징과 동일) */
+        scrollToModalSection('pm-reviews-section');
+        break;
+      }
+      case 'close-review': {
+        closeReviewModal();
+        break;
+      }
+      case 'toggle-pw': {
+        var pwTarget = $('#' + el.dataset.target);
+        if (!pwTarget) break;
+        var showPw = pwTarget.type === 'password';
+        pwTarget.type = showPw ? 'text' : 'password';
+        el.classList.toggle('on', showPw);
+        el.setAttribute('aria-pressed', showPw ? 'true' : 'false');
+        el.setAttribute('aria-label', showPw ? '비밀번호 숨기기' : '비밀번호 보기');
+        el.setAttribute('title', showPw ? '비밀번호 숨기기' : '비밀번호 보기');
+        break;
+      }
+      case 'review-star': {
+        if (!ui.review) break;
+        ui.review.rating = Math.max(1, Math.min(5, parseInt(el.dataset.val, 10) || 5));
+        $$('[data-hook=rv-stars] .rv-star').forEach(function (b) {
+          var on = Number(b.dataset.val) <= ui.review.rating;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-pressed', Number(b.dataset.val) === ui.review.rating ? 'true' : 'false');
+        });
+        var lab = $('[data-hook=rv-rating]');
+        if (lab) lab.textContent = ui.review.rating + '점';
+        break;
+      }
+      case 'review-item': {
+        if (!ui.review) break;
+        var cv = $('#rv-content');
+        ui.review.content = cv ? cv.value : ui.review.content;
+        ui.review.oi = el.value;
+        var pick = reviewableItems(ui.review.pid, currentUser()).filter(function (x) { return x.item.id === el.value; })[0];
+        if (pick) ui.review.pid = pick.product.id;
+        ui.review.rewrite = !!reviewOfOrderItem(el.value);
+        ui.review.error = '';
+        renderModal();
+        break;
+      }
+      case 'remove-review-media': {
+        if (!ui.review) break;
+        var cv2 = $('#rv-content');
+        ui.review.content = cv2 ? cv2.value : ui.review.content;
+        ui.review.media.splice(parseInt(el.dataset.idx, 10) || 0, 1);
+        ui.review.error = '';
+        renderModal();
+        break;
+      }
+      case 'submit-review': {
+        var rv = ui.review;
+        if (!rv) break;
+        var ta = $('#rv-content');
+        rv.content = ta ? ta.value : rv.content;
+        var keepScroll = captureModalScroll();
+        var saved = rv.mode === 'edit'
+          ? updateReview({ id: rv.rid, rating: rv.rating, content: rv.content, media: rv.media })
+          : addReview({ oi: rv.oi, rating: rv.rating, content: rv.content, media: rv.media });
+        if (!saved.ok) { rv.error = saved.message; renderModal(); break; }
+        closeReviewModal();
+        /* v1.9.2 — 저장 직후 새로고침 없이 주문 카드·주문 상세·상품 상세를 즉시 갱신한다.
+           (리뷰 쓰기 버튼이 바로 「리뷰 수정」/「리뷰 완료」로 바뀌고, 다시 눌렀을 때
+            배송완료·구매확정 안내가 나오지 않도록) */
+        renderAll();
+        restoreModalScroll(keepScroll);
+        syncRoute();
+        toast((rv.mode === 'edit' ? '리뷰를 수정했습니다.' : (saved.rewrite ? '리뷰를 다시 등록했습니다.' : '리뷰를 등록했습니다.')) +
+          (saved.bonus ? ' 포토·영상 리뷰 ' + saved.bonus.toLocaleString('ko-KR') + 'P 추가 적립 (보유 ' + saved.balance.toLocaleString('ko-KR') + 'P)' : ''));
+        break;
+      }
+      case 'open-review-media': {
+        openReviewMedia(el.dataset.rid, el.dataset.midx, el.dataset.type);
+        break;
+      }
+      case 'order-product': {
+        var opPid = el.dataset.pid;
+        var opP = opPid ? productById(opPid) : null;
+        if (!opP) { toast('삭제된 상품입니다.', 'warn'); break; }
+        if (!isActiveValue(opP.is_active)) { toast('판매가 중지된 상품입니다.', 'warn'); break; }
+        openProduct(opP.id);
+        break;
+      }
+      case 'reject-review': {
+        if (!isAdmin()) break;
+        var rrRow = el.closest('tr');
+        var rrScope = rrRow || $('.admin-review-sheet') || document;
+        var rrInp = rrScope.querySelector('[data-hook=rv-reject-reason]');
+        var rrReason = ((rrInp && rrInp.value) || '').trim();
+        var rr = rejectReview(el.dataset.rid, rrReason);
+        if (!rr.ok) { toast(rr.message, 'warn'); break; }
+        ui.memberPtsError = '';
+        renderAll();
+        toast('리뷰를 반려했습니다.' + (rr.reclaimed ? ' 포인트 ' + rr.reclaimed.toLocaleString('ko-KR') + 'P 회수 (회원 보유 ' + rr.balance.toLocaleString('ko-KR') + 'P)' : ' 회수할 포인트가 없습니다.'));
+        break;
+      }
+      /* v1.9.9 — 리뷰 상세 모달의 승인(게시) · 포인트 복원 */
+      case 'approve-review': {
+        if (!isAdmin()) break;
+        var ar = approveReview(el.dataset.rid);
+        if (!ar.ok) { toast(ar.message, 'warn'); break; }
+        renderAll();
+        toast(ar.message || ('리뷰를 게시 상태로 되돌렸습니다.' + (ar.restored ? ' 포인트 ' + ar.restored.toLocaleString('ko-KR') + 'P 복원' : '')));
+        break;
+      }
+      /* ---------- v1.9.9 회원 관리(상세 · 포인트/등급 조정) ---------- */
+      case 'open-member': {
+        if (!isAdmin()) break;
+        var muid = el.dataset.uid || '';
+        if (!muid || !currentUserById(muid)) { toast('회원을 찾을 수 없습니다.', 'warn'); break; }
+        ui.memberPtsError = '';
+        ui.modal = { type: 'admin-member', uid: muid };
+        renderModal(); syncLock();
+        break;
+      }
+      /* v1.9.10 — 회원 상세의 주문·리뷰 요약 박수 → 해당 탭에서 그 회원 건만 조회 */
+      case 'member-orders': {
+        if (!isAdmin()) break;
+        var moU = currentUserById(el.dataset.uid || ((ui.modal && ui.modal.uid) || ''));
+        if (!moU) { toast('회원을 찾을 수 없습니다.', 'warn'); break; }
+        var moCount = memberOrders(moU.id).length;
+        resetAdminFilters();
+        ui.modal = null;
+        ui.adminTab = 'orders';
+        ui.adminOrderQuery = moU.email;      // 초기화 뒤 그 회원 이메일만 자동 세팅
+        renderAll();
+        pushRouteState();                    // 뒤로가기 = 회원 상세 모달 복귀
+        toast(moU.name + ' 님의 주문 ' + moCount + '건을 조회합니다.');
+        focusAdminList('orders');
+        break;
+      }
+      case 'member-reviews': {
+        if (!isAdmin()) break;
+        var mrU = currentUserById(el.dataset.uid || ((ui.modal && ui.modal.uid) || ''));
+        if (!mrU) { toast('회원을 찾을 수 없습니다.', 'warn'); break; }
+        var mrCount = memberReviews(mrU.id).length;
+        resetAdminFilters();
+        ui.modal = null;
+        ui.adminTab = 'reviews';
+        ui.adminReviewQuery = mrU.email;
+        renderAll();
+        pushRouteState();
+        toast(mrU.name + ' 님의 리뷰 ' + mrCount + '건을 조회합니다.');
+        focusAdminList('reviews');
+        break;
+      }
+      /* v1.9.10 — 리뷰 관리 검수 상태 필터 · 초기화 */
+      case 'review-state': {
+        if (!isAdmin()) break;
+        ui.adminReviewFilter = el.dataset.value || 'all';
+        refreshAdminReviews();
+        break;
+      }
+      case 'review-reset': {
+        if (!isAdmin()) break;
+        ui.adminReviewQuery = '';
+        ui.adminReviewFilter = 'all';
+        var rqEl = $('[data-hook=review-search]');
+        if (rqEl) rqEl.value = '';
+        refreshAdminReviews();
+        break;
+      }
+      /* ================= v1.9.16 멀티 선택 · 일괄 처리(주문 · 반품/교환 · 리뷰) ================= */
+      case 'order-select': {
+        if (!isAdmin()) break;
+        adminSelSet('order', el.dataset.selId, !!el.checked);
+        refreshBulkSel('order');
+        break;
+      }
+      case 'order-select-all': {
+        if (!isAdmin()) break;
+        $$('[data-bulk-rows="order"] tbody input[data-action="order-select"]').forEach(function (cb) {
+          cb.checked = !!el.checked;
+          adminSelSet('order', cb.dataset.selId, !!el.checked);
+        });
+        refreshBulkSel('order');
+        break;
+      }
+      case 'order-bulk-clear': {
+        if (!isAdmin()) break;
+        adminSelClear('order');
+        $$('[data-bulk-rows="order"] input[data-action="order-select"]').forEach(function (cb) { cb.checked = false; });
+        refreshBulkSel('order');
+        break;
+      }
+      case 'order-bulk-apply': {
+        if (!isAdmin()) break;
+        var obStatus = (($('[data-hook=order-bulk-status]') || {}).value || '').trim();
+        if (!obStatus) { toast('일괄 변경할 상태를 먼저 선택해 주세요.', 'warn'); break; }
+        var obIds = adminSelIdList('order');
+        if (!obIds.length) { toast('먼저 변경할 주문을 선택해 주세요.', 'warn'); break; }
+        var obRes = bulkUpdateOrderStatus(obIds, obStatus);
+        if (!obRes.ok) { toast(obRes.message, 'warn'); break; }
+        adminSelClear('order');
+        refreshAdminOrders();
+        var obMsg = '주문 ' + obRes.changed + '건을 ' + STATUS[obStatus].label + '(으)로 변경했습니다.';
+        if (obRes.skipped) obMsg += ' 제외 ' + obRes.skipped + '건(취소 ' + obRes.skippedCancelled + ' · 이미 같은 상태 ' + obRes.skippedSame + (obRes.skippedMissing ? ' · 찾을 수 없음 ' + obRes.skippedMissing : '') + ').';
+        if (obRes.restored) obMsg += ' 재고 ' + obRes.restored + '개를 복구했습니다.';
+        if (obRes.refunded) obMsg += ' 사용 포인트 ' + obRes.refunded.toLocaleString('ko-KR') + 'P를 환급했습니다.';
+        toast(obMsg, obRes.changed ? 'ok' : 'warn');
+        break;
+      }
+      case 'claim-select': {
+        if (!isAdmin()) break;
+        adminSelSet('claim', el.dataset.selId, !!el.checked);
+        refreshBulkSel('claim');
+        break;
+      }
+      case 'claim-select-all': {
+        if (!isAdmin()) break;
+        $$('[data-bulk-rows="claim"] tbody input[data-action="claim-select"]').forEach(function (cb) {
+          cb.checked = !!el.checked;
+          adminSelSet('claim', cb.dataset.selId, !!el.checked);
+        });
+        refreshBulkSel('claim');
+        break;
+      }
+      case 'claim-bulk-clear': {
+        if (!isAdmin()) break;
+        adminSelClear('claim');
+        $$('[data-bulk-rows="claim"] input[data-action="claim-select"]').forEach(function (cb) { cb.checked = false; });
+        refreshBulkSel('claim');
+        break;
+      }
+      case 'claim-bulk-apply': {
+        if (!isAdmin()) break;
+        var cbStatus = (($('[data-hook=claim-bulk-status]') || {}).value || '').trim();
+        if (!cbStatus) { toast('일괄 변경할 상태를 먼저 선택해 주세요.', 'warn'); break; }
+        var cbIds = adminSelIdList('claim');
+        if (!cbIds.length) { toast('먼저 변경할 접수건을 선택해 주세요.', 'warn'); break; }
+        var cbRes = bulkUpdateClaimStatus(cbIds, cbStatus);
+        if (!cbRes.ok) { toast(cbRes.message, 'warn'); break; }
+        adminSelClear('claim');
+        refreshAdminClaims();
+        var cbMsg = '교환/반품 ' + cbRes.changed + '건을 ' + CLAIM_STATUS[cbStatus].label + '(으)로 변경했습니다.';
+        if (cbRes.skipped) cbMsg += ' 제외 ' + cbRes.skipped + '건(이미 같은 상태 ' + cbRes.skippedSame + (cbRes.skippedMissing ? ' · 찾을 수 없음 ' + cbRes.skippedMissing : '') + ').';
+        if (cbRes.restored) cbMsg += ' 반품 재고 ' + cbRes.restored + '개를 복구했습니다.';
+        toast(cbMsg, cbRes.changed ? 'ok' : 'warn');
+        break;
+      }
+      case 'review-select': {
+        if (!isAdmin()) break;
+        if (el.disabled) break;
+        adminSelSet('review', el.dataset.selId, !!el.checked);
+        refreshBulkSel('review');
+        break;
+      }
+      case 'review-select-all': {
+        if (!isAdmin()) break;
+        $$('[data-bulk-rows="review"] tbody input[data-action="review-select"]:not([disabled])').forEach(function (cb) {
+          cb.checked = !!el.checked;
+          adminSelSet('review', cb.dataset.selId, !!el.checked);
+        });
+        refreshBulkSel('review');
+        break;
+      }
+      case 'review-bulk-clear': {
+        if (!isAdmin()) break;
+        adminSelClear('review');
+        $$('[data-bulk-rows="review"] input[data-action="review-select"]').forEach(function (cb) { cb.checked = false; });
+        refreshBulkSel('review');
+        break;
+      }
+      case 'review-bulk-apply': {
+        if (!isAdmin()) break;
+        var rbIds = adminSelIdList('review').filter(function (id) {
+          var rv = reviewById(id);
+          return !!rv && !reviewIsHidden(rv);
+        });
+        if (!rbIds.length) { toast('회수할 리뷰를 선택해 주세요. 이미 반려된 리뷰는 회수할 수 없습니다.', 'warn'); break; }
+        ui.modal = { type: 'bulk-reclaim', rids: rbIds };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'run-bulk-reclaim': {
+        if (!isAdmin()) break;
+        var brEl = $('[data-hook=bulk-reclaim-reason]');
+        var brReason = String(brEl ? brEl.value : '').trim();
+        var brErr = $('[data-hook=bulk-reclaim-error]');
+        if (!brReason) {
+          if (brEl) { brEl.classList.add('br-invalid'); try { brEl.focus(); } catch (e) {} }
+          if (brErr) brErr.hidden = false;
+          toast('반려 사유를 입력해 주세요.', 'warn');
+          break;
+        }
+        var brIds2 = ((ui.modal || {}).rids || []).slice();
+        var brRes = bulkReclaimReviews(brIds2, brReason);
+        if (!brRes.ok) { toast(brRes.message, 'warn'); break; }
+        ui.modal = null;
+        renderModal(); syncLock();
+        adminSelClear('review');
+        refreshAdminReviews();
+        var brMsg = '리뷰 ' + brRes.done + '건을 반려하고 포인트 ' + brRes.reclaimed.toLocaleString('ko-KR') + 'P를 회수했습니다.';
+        if (brRes.skipped) brMsg += ' 제외 ' + brRes.skipped + '건(이미 반려 ' + brRes.skippedRejected + ').';
+        toast(brMsg, brRes.done ? 'ok' : 'warn');
+        break;
+      }
+      /* v1.9.11 — 상품 리뷰 추천/비추천·정렬, 상품 Q&A */
+      case 'review-vote': {
+        if (!currentUser()) { openAuth('login', '로그인 후 추천할 수 있습니다.'); break; }
+        var vres = toggleReviewVote(el.dataset.rid, el.dataset.vote);
+        if (!vres.ok) { toast(vres.message, 'warn'); break; }
+        var vSc = captureModalScroll();
+        var vHost = $('#modal-layer [data-hook=pm-reviews]');
+        var vProd = ui.modal && ui.modal.type === 'product' ? productById(ui.modal.pid) : null;
+        if (vHost && vProd) { vHost.innerHTML = productReviewsInnerHTML(vProd); restoreModalScroll(vSc); }
+        else renderAll();
+        toast(vres.message);
+        break;
+      }
+      case 'review-sort': {
+        if (!ui.modal || ui.modal.type !== 'product') break;
+        ui.reviewSort = el.dataset.value === 'top' ? 'top' : 'new';
+        ui.reviewPage = 1;                     // 정렬을 바꾸면 1페이지로
+        var sHost = $('#modal-layer [data-hook=pm-reviews]');
+        var sProd = productById(ui.modal.pid);
+        if (sHost && sProd) sHost.innerHTML = productReviewsInnerHTML(sProd);
+        break;
+      }
+      case 'qna-page': {
+        if (!ui.modal || ui.modal.type !== 'product') break;
+        ui.qnaPage = Math.max(1, parseInt(el.dataset.page, 10) || 1);
+        var qpHost = $('#modal-layer [data-hook=pm-qna]');
+        var qpProd = productById(ui.modal.pid);
+        if (qpHost && qpProd) qpHost.innerHTML = productQnaInnerHTML(qpProd);
+        scrollToModalSection('pm-qna-section');
+        break;
+      }
+      case 'qna-form-toggle': {
+        if (!ui.modal || ui.modal.type !== 'product') break;
+        ui.qnaForm = !ui.qnaForm;
+        ui.qnaError = '';
+        ui.qnaDraft = null;
+        var qfHost = $('#modal-layer [data-hook=pm-qna]');
+        var qfProd = productById(ui.modal.pid);
+        if (qfHost && qfProd) qfHost.innerHTML = productQnaInnerHTML(qfProd);
+        if (ui.qnaForm) { var tEl = $('#qna-title'); if (tEl) try { tEl.focus(); } catch (e) {} }
+        break;
+      }
+      case 'qna-cancel': {
+        ui.qnaForm = false; ui.qnaError = ''; ui.qnaDraft = null;
+        var qcHost = $('#modal-layer [data-hook=pm-qna]');
+        var qcProd = ui.modal && ui.modal.type === 'product' ? productById(ui.modal.pid) : null;
+        if (qcHost && qcProd) qcHost.innerHTML = productQnaInnerHTML(qcProd);
+        break;
+      }
+      case 'qna-login': openAuth('login', '로그인 후 상품 문의를 남길 수 있습니다.'); break;
+      case 'submit-qna': {
+        if (!currentUser()) { openAuth('login', '로그인 후 상품 문의를 남길 수 있습니다.'); break; }
+        var qInput = {
+          qna_type: ($('#qna-type') || {}).value || 'product',
+          title: ($('#qna-title') || {}).value || '',
+          content: ($('#qna-content') || {}).value || '',
+          is_secret: !!($('#qna-secret') || {}).checked
+        };
+        ui.qnaDraft = qInput;
+        var qRes = submitQna(el.dataset.pid, qInput);
+        if (!qRes.ok) {
+          ui.qnaError = qRes.message;
+          var qeHost = $('#modal-layer [data-hook=pm-qna]');
+          var qeProd = productById(el.dataset.pid);
+          if (qeHost && qeProd) qeHost.innerHTML = productQnaInnerHTML(qeProd);
+          toast(qRes.message, 'warn');
+          break;
+        }
+        ui.qnaForm = false; ui.qnaError = ''; ui.qnaDraft = null; ui.qnaPage = 1;
+        var qsHost = $('#modal-layer [data-hook=pm-qna]');
+        var qsProd = productById(el.dataset.pid);
+        if (qsHost && qsProd) qsHost.innerHTML = productQnaInnerHTML(qsProd);
+        renderHeader();
+        toast('문의를 등록했습니다.' + (qRes.qna.is_secret ? ' (비밀글 · 작성자와 관리자만 볼 수 있습니다)' : ''));
+        break;
+      }
+      /* v1.9.11 — 관리자 Q&A 관리: 상태 필터·초기화·상세 모달·답변 저장·삭제 */
+      case 'qna-state': {
+        if (!isAdmin()) break;
+        ui.adminQnaFilter = el.dataset.value || 'all';
+        refreshAdminQnas();
+        break;
+      }
+      case 'qna-reset': {
+        if (!isAdmin()) break;
+        ui.adminQnaQuery = '';
+        ui.adminQnaFilter = 'all';
+        var qqEl = $('[data-hook=qna-search]');
+        if (qqEl) qqEl.value = '';
+        refreshAdminQnas();
+        break;
+      }
+      case 'open-admin-qna': {
+        if (!isAdmin()) break;
+        var aqid = el.dataset.qid || '';
+        if (!aqid || !qnaById(aqid)) { toast('문의를 찾을 수 없습니다.', 'warn'); break; }
+        ui.modal = { type: 'admin-qna', qid: aqid };
+        renderModal(); syncLock();
+        break;
+      }
+      /* v1.9.12 — Q&A 상세의 제품명 → 그 상품의 관리자 미리보기(뒤로가기 = Q&A 상세) */
+      case 'open-qna-product': {
+        if (!isAdmin()) break;
+        var oqpPid = el.dataset.pid || '';
+        var oqpQid = el.dataset.qid || ((ui.modal && ui.modal.qid) || '');
+        if (!oqpPid || !productById(oqpPid)) { toast('상품을 찾을 수 없습니다.', 'warn'); break; }
+        ui.modal = { type: 'admin-qna-product', pid: oqpPid, qid: oqpQid || null };
+        renderModal(); syncLock();
+        pushRouteState();   // v1.9.12 — 히스토리 한 겹: 뒤로가기 = Q&A 상세 모달로 복귀
+        break;
+      }
+      case 'save-qna-answer': {
+        if (!isAdmin()) break;
+        var sqRes = answerQna(el.dataset.qid, ($('[data-hook=qna-answer-input]') || {}).value);
+        if (!sqRes.ok) { toast(sqRes.message, 'warn'); break; }
+        renderAll();
+        toast(sqRes.status === 'answered' ? '답변을 저장했습니다. 상품 상세에 답변완료로 표시됩니다.' : '답변을 비워 미답변으로 되돌렸습니다.');
+        break;
+      }
+      case 'delete-qna': {
+        if (!isAdmin()) break;
+        var dq = qnaById(el.dataset.qid);
+        if (!dq) { toast('문의를 찾을 수 없습니다.', 'warn'); break; }
+        ui.modal = {
+          type: 'confirm', title: '이 문의를 삭제할까요?', danger: true, confirmLabel: '삭제',
+          message: '「' + dq.title + '」 문의와 답변이 함께 삭제됩니다. 되돌릴 수 없습니다.',
+          onConfirm: { kind: 'qna-delete', qid: dq.id }
+        };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'open-review-detail': {
+        if (!isAdmin()) break;
+        var rvid = el.dataset.rid || '';
+        if (!rvid || !reviewById(rvid)) { toast('리뷰를 찾을 수 없습니다.', 'warn'); break; }
+        ui.modal = { type: 'admin-review', rid: rvid };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'adjust-member-points': {
+        if (!isAdmin()) break;
+        var apUid = el.dataset.uid || ((ui.modal && ui.modal.uid) || '');
+        var apAmt = ($('#mp-amount') || {}).value;
+        var apWhy = ($('#mp-reason') || {}).value;
+        var apRes = adjustMemberPoints(apUid, apAmt, apWhy);
+        if (!apRes.ok) {
+          ui.memberPtsError = apRes.message;
+          var apHost = $('[data-member-error]');
+          if (apHost) apHost.textContent = apRes.message;
+          else { renderModal(); }
+          toast(apRes.message, 'warn');
+          break;
+        }
+        ui.memberPtsError = '';
+        renderAll();
+        toast('포인트 ' + (apRes.amount > 0 ? '+' : '−') + Math.abs(apRes.amount).toLocaleString('ko-KR') + 'P 반영 · 보유 ' + apRes.balance.toLocaleString('ko-KR') + 'P');
+        break;
+      }
+      case 'save-member-grade': {
+        if (!isAdmin()) break;
+        var sgUid = el.dataset.uid || ((ui.modal && ui.modal.uid) || '');
+        var sgGrade = ($('#mp-grade') || {}).value;
+        var sgRes = saveMemberGrade(sgUid, sgGrade);
+        if (!sgRes.ok) { toast(sgRes.message, 'warn'); break; }
+        ui.memberPtsError = '';
+        renderAll();
+        toast('회원 등급을 ' + gradeLabel({ grade: sgRes.grade }) + '로 저장했습니다.');
+        break;
+      }
+      /* v1.9.13 — 멤버십 등급 기준 저장 · 대상자 조회 · 일괄 자동 적용 */
+      case 'save-grade-rules': {
+        if (!isAdmin()) break;
+        var grRes = saveGradeRulesFromForm();
+        if (!grRes.ok) { toast(grRes.message, 'warn'); break; }
+        ui.memberTargets = null;
+        renderAll();
+        toast('멤버십 등급 기준을 저장했습니다. (최근 ' + grRes.rules.months + '개월)');
+        break;
+      }
+      case 'membership-scan': {
+        if (!isAdmin()) break;
+        var scanSaved = saveGradeRulesFromForm();
+        if (!scanSaved.ok) { toast(scanSaved.message, 'warn'); break; }
+        ui.memberTargets = membershipTargets();
+        renderAll();
+        toast(ui.memberTargets.length
+          ? '등급 변경 대상 ' + ui.memberTargets.length + '명을 찾았습니다.'
+          : '등급을 바꿀 회원이 없습니다.');
+        break;
+      }
+      case 'membership-apply': {
+        if (!isAdmin()) break;
+        var apRes = applyMembershipTargets();
+        if (!apRes.ok) { toast(apRes.message, 'warn'); break; }
+        ui.memberTargets = membershipTargets();
+        renderAll();
+        toast(apRes.changed
+          ? '회원 ' + apRes.changed + '명의 등급을 적용했습니다.' + (ui.memberTargets.length ? ' 남은 대상 ' + ui.memberTargets.length + '명.' : '')
+          : '등급이 이미 모두 기준에 맞습니다.');
+        break;
+      }
+      case 'apply-points': {
+        var pInp = $('#co-point-use');
+        var t0 = totalsOf(checkoutRows(), ui.coupon);
+        ui.pointUse = Math.max(0, Math.floor(Number(pInp ? pInp.value : 0) || 0));
+        ui.pointUseMsg = '';
+        var appliedNow = pointUseApplied(t0.total);
+        if (ui.pointUse > 0 && appliedNow <= 0) ui.pointUseMsg = '사용할 수 있는 포인트가 없습니다.';
+        else if (ui.pointUse !== appliedNow) {
+          ui.pointUse = appliedNow;
+          ui.pointUseMsg = '보유 포인트·결제 금액에 맞춰 ' + appliedNow.toLocaleString('ko-KR') + 'P 로 적용했습니다.';
+        }
+        renderView();
+        break;
+      }
+      case 'use-all-points': {
+        var t1 = totalsOf(checkoutRows(), ui.coupon);
+        ui.pointUse = Math.min(userPoints(currentUser()), Math.max(0, t1.total));
+        ui.pointUseMsg = '';
+        renderView();
+        break;
+      }
+      case 'open-postcode': {
+        openAddressSearch(el.dataset.prefix || 'co');
+        break;
+      }
+      case 'close-addr-layer': {
+        closeAddressLayer();
+        break;
+      }
+      case 'pick-address': {
+        var prefix = ui.addressPrefix;
+        if (!prefix) break;
+        fillAddressFields(prefix, { zip: el.dataset.zip, base: el.dataset.base, detail: '' });
+        closeAddressLayer();
+        break;
+      }
+      case 'open-faq': {
+        ui.faqCat = 'all';
+        ui.faqQuery = '';
+        ui.faqPage = 1;
+        ui.modal = { type: 'faq' };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'faq-cat': {
+        var fq = $('#faq-search');
+        if (fq) ui.faqQuery = fq.value;
+        ui.faqCat = el.dataset.cat || 'all';
+        ui.faqPage = 1;   // v1.9.6 — 카테고리를 바꾸면 1페이지로
+        renderFaqModal();
+        break;
+      }
+      case 'faq-page': {
+        var faqAll = filteredFaqs();
+        var faqPages = faqPageCount(faqAll);
+        var want = el.dataset.page;
+        var cur = Math.min(Math.max(1, Number(ui.faqPage) || 1), faqPages);
+        if (want === 'prev') ui.faqPage = Math.max(1, cur - 1);
+        else if (want === 'next') ui.faqPage = Math.min(faqPages, cur + 1);
+        else ui.faqPage = Math.min(Math.max(1, parseInt(want, 10) || 1), faqPages);
+        renderFaqModal();
+        var faqHost = $('[data-hook=faq-list]');
+        if (faqHost) faqHost.scrollTop = 0;
+        break;
+      }
+      case 'save-point-policies': {
+        if (!isAdmin()) break;
+        var policyInput = {};
+        GRADE_ORDER.forEach(function (g) {
+          policyInput[g] = {
+            confirm_rate: ($('#pp-' + g + '-confirm') || {}).value,
+            photo_rate: ($('#pp-' + g + '-photo') || {}).value
+          };
+        });
+        var pRes = savePointPolicies(policyInput);
+        if (!pRes.ok) { toast(pRes.message, 'warn'); break; }
+        renderAll();
+        toast('등급별 포인트 적립률을 저장했습니다.');
+        break;
+      }
+      /* ---------- v1.9.8 FAQ 관리: 그리드 표 + 1건 상세 모달 + 선택 삭제 ---------- */
+      case 'add-faq': {
+        if (!isAdmin()) break;
+        ui.modal = { type: 'admin-faq', fid: '', error: '', draft: null };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'edit-faq': {
+        if (!isAdmin()) break;
+        var efid = el.dataset.rowid || el.dataset.fid || '';
+        if (!efid) break;
+        ui.modal = { type: 'admin-faq', fid: efid, error: '', draft: null };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'save-faq-detail': {
+        if (!isAdmin()) break;
+        var fdForm = readFaqDetailForm();
+        var fdRes = saveFaqItem({
+          id: el.dataset.fid || '', category: fdForm.category, question: fdForm.question,
+          answer: fdForm.answer, sort_order: fdForm.sort_order, is_active: fdForm.is_active
+        });
+        if (!fdRes.ok) {
+          if (ui.modal && ui.modal.type === 'admin-faq') {
+            ui.modal.error = fdRes.message;
+            ui.modal.draft = fdForm;
+            renderModal();
+            if (fdRes.field) {
+              var badEl = document.querySelector('[data-faq-detail] [data-faq-' + fdRes.field + ']');
+              if (badEl) { badEl.classList.add('faq-invalid'); try { badEl.focus(); } catch (e) {} }
+            }
+          }
+          toast(fdRes.message, 'warn');
+          break;
+        }
+        ui.modal = null;
+        renderAll();
+        toast('FAQ 「' + String(fdRes.faq.question).slice(0, 18) + (String(fdRes.faq.question).length > 18 ? '…' : '') + '」 항목을 저장했습니다.');
+        break;
+      }
+      case 'faq-select': {
+        if (!isAdmin()) break;
+        var fsId = el.dataset.fid || '';
+        if (!fsId) break;
+        if (el.checked) ui.faqSel[fsId] = true; else delete ui.faqSel[fsId];
+        refreshFaqToolbars();
+        break;
+      }
+      case 'faq-select-all': {
+        if (!isAdmin()) break;
+        var allFaqs = faqAdminList();
+        ui.faqSel = {};
+        if (el.checked) allFaqs.forEach(function (f) { ui.faqSel[f.id] = true; });
+        $$('[data-hook=faq-admin-rows] [data-action=faq-select]').forEach(function (cb) { cb.checked = !!el.checked; });
+        refreshFaqToolbars();
+        break;
+      }
+      case 'faq-delete-selected': {
+        if (!isAdmin()) break;
+        var delIds = faqSelectedIds();
+        if (!delIds.length) { toast('삭제할 FAQ를 먼저 선택해 주세요.', 'warn'); break; }
+        var dRes = deleteFaqItems(delIds);
+        if (!dRes.ok) { toast(dRes.message, 'warn'); break; }
+        renderAll();
+        toast('선택한 FAQ ' + dRes.removed + '건을 삭제했습니다.');
+        break;
+      }
+      case 'remove-faq': {
+        if (!isAdmin()) break;
+        var rfId = el.dataset.fid || '';
+        if (!rfId) break;
+        var rfDel = deleteFaqItems([rfId]);
+        if (!rfDel.ok) { toast(rfDel.message, 'warn'); break; }
+        renderAll();
+        toast('FAQ 1건을 삭제했습니다.');
+        break;
+      }
+      case 'faq-move': {
+        if (!isAdmin()) break;
+        var fmRes = moveFaqItem(el.dataset.fid, el.dataset.dir);
+        if (!fmRes.ok) { toast(fmRes.message, 'warn'); break; }
+        renderAll();
+        break;
+      }
+      /* ---------- v1.9.5 FAQ 카테고리 목록 관리 ---------- */
+      case 'add-faq-cat': {
+        if (!isAdmin()) break;
+        var fcHost = $('[data-hook=faq-cat-rows]');
+        if (!fcHost) break;
+        fcHost.insertAdjacentHTML('beforeend', faqCatRowHTML('', fcHost.children.length));
+        var lastFc = fcHost.lastElementChild;
+        if (lastFc) {
+          $$('.faq-cat-row', fcHost).forEach(function (r, i) { var no = r.querySelector('.faq-no'); if (no) no.textContent = i + 1; });
+          var fcInput = lastFc.querySelector('[data-faq-cat-name]');
+          if (fcInput) { try { fcInput.focus(); } catch (e) {} }
+        }
+        break;
+      }
+      case 'remove-faq-cat': {
+        if (!isAdmin()) break;
+        var fcRow = el.closest('.faq-cat-row');
+        var fcRowHost = $('[data-hook=faq-cat-rows]');
+        if (!fcRow || !fcRowHost) break;
+        if (fcRowHost.children.length <= 1) { toast('FAQ 카테고리는 최소 1개가 필요합니다.', 'warn'); break; }
+        var fcName = String((fcRow.querySelector('[data-faq-cat-name]') || {}).value || '').trim();
+        var fcUsed = faqCatUsage(fcName);
+        if (fcUsed) { toast('「' + fcName + '」 카테고리를 쓰는 FAQ ' + fcUsed + '건이 있어 삭제할 수 없습니다.', 'warn'); break; }
+        fcRow.remove();
+        $$('.faq-cat-row', fcRowHost).forEach(function (r, i) { var no = r.querySelector('.faq-no'); if (no) no.textContent = i + 1; });
+        break;
+      }
+      case 'faq-cat-move': {
+        if (!isAdmin()) break;
+        var fcMove = el.closest('.faq-cat-row');
+        if (!fcMove || !fcMove.parentNode) break;
+        if (el.dataset.dir === '-1' && fcMove.previousElementSibling) {
+          fcMove.parentNode.insertBefore(fcMove, fcMove.previousElementSibling);
+        } else if (el.dataset.dir === '1' && fcMove.nextElementSibling) {
+          fcMove.parentNode.insertBefore(fcMove.nextElementSibling, fcMove);
+        }
+        $$('[data-hook=faq-cat-rows] .faq-cat-row').forEach(function (r, i) { var no = r.querySelector('.faq-no'); if (no) no.textContent = i + 1; });
+        break;
+      }
+      case 'save-faq-cats': {
+        if (!isAdmin()) break;
+        var fcRows = $$('[data-hook=faq-cat-rows] .faq-cat-row');
+        var fcNames = fcRows.map(function (r) {
+          return String((r.querySelector('[data-faq-cat-name]') || {}).value || '').trim();
+        });
+        var fcPairs = fcRows.map(function (r, i) {
+          return { from: String(r.dataset.catName || '').trim(), to: fcNames[i] };
+        });
+        if (fcNames.filter(function (n) { return !n; }).length) {
+          $$('[data-hook=faq-cat-rows] .faq-cat-name').forEach(function (inp) {
+            inp.classList.toggle('faq-invalid', !String(inp.value || '').trim());
+          });
+          toast('카테고리 이름을 입력하거나 ✕로 지워 주세요.', 'warn');
+          break;
+        }
+        var fcRes = saveFaqCategories(fcNames, fcPairs);
+        if (!fcRes.ok) { toast(fcRes.message, 'warn'); break; }
+        syncFaqCatRows();
+        syncFaqCatSelects(fcPairs);
+        if ($('[data-hook=faq-list]')) renderFaqModal();   // 열려 있는 FAQ 게시판 필터도 즉시 동기화
+        toast('FAQ 카테고리 ' + fcRes.categories.length + '개를 저장했습니다.'
+          + (fcRes.moved ? ' FAQ ' + fcRes.moved + '건의 카테고리도 함께 바뀌었습니다.' : ''));
+        break;
+      }
+      case 'open-claim': {
+        var co = orderById(el.dataset.oid);
+        if (!co) break;
+        if (requiresLogin()) break;
+        var blockWhy = claimBlockReason(co);
+        if (blockWhy) { toast(blockWhy, 'warn'); break; }
+        ui.modal = {
+          type: 'claim', oid: co.id, claim_type: 'return', reason_category: 'change_of_mind',
+          reason_detail: '', exchange_option: '', error: ''
+        };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'claim-type':
+        if (ui.modal && ui.modal.type === 'claim') {
+          var liveDetail = $('[data-hook=claim-detail]');
+          var liveOption = $('[data-hook=claim-exchange-input]');
+          if (liveDetail) ui.modal.reason_detail = liveDetail.value;
+          if (liveOption) ui.modal.exchange_option = liveOption.value;
+          ui.modal.claim_type = el.dataset.claimType === 'exchange' ? 'exchange' : 'return';
+          ui.modal.error = '';
+          syncClaimModal();
+        }
+        break;
+      case 'claim-reason':
+        if (ui.modal && ui.modal.type === 'claim') {
+          var liveDetail2 = $('[data-hook=claim-detail]');
+          var liveOption2 = $('[data-hook=claim-exchange-input]');
+          if (liveDetail2) ui.modal.reason_detail = liveDetail2.value;
+          if (liveOption2) ui.modal.exchange_option = liveOption2.value;
+          if (CLAIM_REASONS[el.dataset.reason]) ui.modal.reason_category = el.dataset.reason;
+          ui.modal.error = '';
+          syncClaimModal();
+        }
+        break;
+      case 'submit-claim': {
+        var cm = ui.modal;
+        if (!cm || cm.type !== 'claim') break;
+        var dEl = $('[data-hook=claim-detail]');
+        cm.reason_detail = dEl ? dEl.value : (cm.reason_detail || '');
+        var cmOrder = orderById(cm.oid);
+        cm.exchange_option = cmOrder ? currentExchangeOption(cmOrder, cm) : (cm.exchange_option || '');
+        var built = buildClaim({
+          oid: cm.oid, claim_type: cm.claim_type, reason_category: cm.reason_category,
+          reason_detail: cm.reason_detail, exchange_option: cm.exchange_option
+        });
+        if (!built.ok) { cm.error = built.message; renderModal(); break; }
+        cm.error = '';
+        var fresh = built.claim;
+        if (!fresh.shipping_fee) {
+          var freeRes = finalizeClaim(fresh, { mode: 'free', payment_key: null });
+          ui.modal = null;
+          if (!freeRes.ok) { toast(freeRes.message || '접수하지 못했습니다.', 'warn'); renderAll(); break; }
+          showClaimDone(freeRes.claim, (CLAIM_TYPES[freeRes.claim.claim_type] || '교환/반품') + ' 신청이 접수되었습니다. (배송비 무료)');
+          break;
+        }
+        savePendingClaim(fresh);
+        if (!tossAvailable()) {
+          var demoRes = finalizeClaim(fresh, { mode: 'demo-fallback', payment_key: null });
+          ui.modal = null;
+          if (!demoRes.ok) { toast(demoRes.message || '접수하지 못했습니다.', 'warn'); renderAll(); break; }
+          showClaimDone(demoRes.claim, '배송비 ' + won(demoRes.claim.shipping_fee) + ' 데모 결제로 접수했습니다.');
+          break;
+        }
+        requestTossClaimPayment(fresh, user);
+        toast('배송비 ' + won(fresh.shipping_fee) + ' 결제창을 여는 중입니다…');
+        break;
+      }
+      case 'go-admin':
+        if (!isAdmin()) { openAuth('login', '관리자 계정으로 로그인해 주세요.'); break; }
+        ui.adminTab = 'products'; go('admin'); break;
+      case 'admin-tab': {
+        /* v1.9.11 — 관리자 상단 탭으로 다른 탭에 옴길 때는 그 탭의 검색어·날짜·상태 필터를 깨끗하게 초기화한다
+           (회원 상세의 「주문/리뷰 조회 →」처럼 검색어를 자동으로 넣는 경로는 초기화 뒤에 값을 세팅한다) */
+        var nextTab = el.dataset.tab || 'products';
+        if (nextTab !== ui.adminTab) resetAdminFilters();
+        /* v1.9.15 — 「메인/사이트」에 들어오면 서브탭은 늘 첫 번째(타이틀/푸터)부터 */
+        if (nextTab === 'site' && nextTab !== ui.adminTab) ui.siteTab = 'title';
+        ui.adminTab = nextTab;
+        ui.integrity = null; ui.couponFormError = '';
+        renderAll();
+        break;
+      }
+      /* ---------- v1.9.8 서브탭·조회 모달 ---------- */
+      case 'site-subtab': {
+        if (!isAdmin()) break;
+        ui.siteTab = el.dataset.value || 'title';
+        renderAll();
+        break;
+      }
+      /* v1.9.15 — 관리자 목록 공통 페이징: 누른 페이지로 다시 그리고 페이저 위치는 화면에 그대로 둔다 */
+      case 'admin-page': {
+        if (!isAdmin()) break;
+        var apKey = el.dataset.key || '';
+        if (!apKey) break;
+        var apNum = Math.max(1, parseInt(el.dataset.page, 10) || 1);
+        ui.adminPages = ui.adminPages || {};
+        var apPrev = ui.adminPages[apKey] || { page: 1, sig: '' };
+        var apSel = '[data-hook="admin-pager-' + apKey + '"]';
+        var apBefore = $(apSel);
+        var apTop = apBefore ? apBefore.getBoundingClientRect().top : null;
+        ui.adminPages[apKey] = { page: apNum, sig: apPrev.sig };
+        renderAll();
+        var apAfter = $(apSel);
+        if (apAfter && apTop != null) {
+          var apDy = apAfter.getBoundingClientRect().top - apTop;
+          if (Math.abs(apDy) > 2) window.scrollBy(0, apDy);
+        }
+        break;
+      }
+      /* v1.9.13 — 「코드 관리」 서브탭: 카테고리 관리 | 뱃지 관리 */
+      case 'code-subtab': {
+        if (!isAdmin()) break;
+        ui.codeTab = el.dataset.value === 'badges' ? 'badges' : 'cats';
+        renderAll();
+        break;
+      }
+      case 'badge-add': {
+        if (!isAdmin()) break;
+        var bAdd = addBadge(($('#badge-new-code') || {}).value);
+        if (!bAdd.ok) { toast(bAdd.message, 'warn'); break; }
+        renderAll();
+        toast(bAdd.badge + ' 뱃지를 추가했습니다.');
+        break;
+      }
+      case 'badge-rename': {
+        if (!isAdmin()) break;
+        var bIdx = el.dataset.idx;
+        var bInput = $('#badge-code-' + bIdx);
+        var bRen = renameBadge(el.dataset.code, bInput ? bInput.value : '');
+        if (!bRen.ok) { toast(bRen.message, 'warn'); break; }
+        renderAll();
+        toast(bRen.unchanged ? '뱃지 코드가 그대로입니다.' : '뱃지 코드를 바꿨습니다. 상품·쿠폰에 함께 반영했습니다.');
+        break;
+      }
+      case 'badge-delete': {
+        if (!isAdmin()) break;
+        var bDel = deleteBadge(el.dataset.code);
+        if (!bDel.ok) { toast(bDel.message, 'warn'); break; }
+        renderAll();
+        toast(el.dataset.code + ' 뱃지를 삭제했습니다.');
+        break;
+      }
+      case 'badge-move': {
+        if (!isAdmin()) break;
+        var bMov = moveBadge(el.dataset.code, el.dataset.dir);
+        if (!bMov.ok) { toast(bMov.message, 'warn'); break; }
+        renderAll();
+        break;
+      }
+      /* v1.9.13 — 사이트 전용 미디어: 썸네일 클릭 = 적용·저장, ✕ = 목록에서 삭제, URL 추가 */
+      case 'site-media-pick': {
+        if (!isAdmin()) break;
+        var smKind = el.dataset.kind === 'story' ? 'story' : 'hero';
+        var smRes = selectSiteMedia(smKind, el.dataset.src);
+        if (!smRes.ok) { toast(smRes.message, 'warn'); break; }
+        paintSiteMedia(smKind);
+        toast((smKind === 'hero' ? '히어로' : '스토리') + ' 사진을 바꿔 저장했습니다.');
+        break;
+      }
+      case 'site-media-delete': {
+        if (!isAdmin()) break;
+        var smdKind = el.dataset.kind === 'story' ? 'story' : 'hero';
+        var smdRes = removeSiteMedia(smdKind, el.dataset.src);
+        if (!smdRes.ok) { toast(smdRes.message, 'warn'); break; }
+        paintSiteMedia(smdKind);
+        toast('사진을 목록에서 삭제했습니다.');
+        break;
+      }
+      case 'site-media-add-url': {
+        if (!isAdmin()) break;
+        var smaKind = el.dataset.kind === 'story' ? 'story' : 'hero';
+        var smaInput = $('#site-' + smaKind + '-url');
+        var smaRes = addSiteMedia(smaKind, smaInput ? smaInput.value : '');
+        if (!smaRes.ok) { toast(smaRes.message, 'warn'); break; }
+        if (smaInput) smaInput.value = '';
+        paintSiteMedia(smaKind);
+        toast(smaRes.added ? '사진을 목록에 추가했습니다. 사진을 누르면 적용됩니다.' : '이미 목록에 있는 사진입니다.');
+        break;
+      }
+      case 'data-subtab': {
+        if (!isAdmin()) break;
+        ui.dataTab = el.dataset.value || 'tables';
+        renderAll();
+        break;
+      }
+      case 'admin-order-view': {
+        if (!isAdmin()) break;
+        var aov = el.dataset.oid || '';
+        if (!aov || !orderById(aov)) { toast('주문을 찾을 수 없습니다.', 'warn'); break; }
+        /* v1.9.14 — 이미 다른 겹(신청서 등)이 열려 있으면 새 화면으로 쌓아
+           뒤로가기 = 주문서만 닫히고 직전 겹(신청서)로 복귀 */
+        var aovPrev = ui.modal && TRACKED_LAYERS[ui.modal.type] ? ui.modal.type : null;
+        ui.modal = { type: 'admin-order', oid: aov };
+        renderModal(); syncLock();
+        if (aovPrev) pushRouteState();
+        break;
+      }
+      case 'admin-claim-view': {
+        if (!isAdmin()) break;
+        var acv = el.dataset.cid || '';
+        if (!acv || !claimById(acv)) { toast('접수건을 찾을 수 없습니다.', 'warn'); break; }
+        var acvPrev = ui.modal && TRACKED_LAYERS[ui.modal.type] ? ui.modal.type : null;
+        ui.modal = { type: 'admin-claim', cid: acv };
+        renderModal(); syncLock();
+        if (acvPrev) pushRouteState();
+        break;
+      }
+      case 'save-claim-memo': {
+        if (!isAdmin()) break;
+        var smc = claimById(el.dataset.cid);
+        if (!smc) { toast('접수건을 찾을 수 없습니다.', 'warn'); break; }
+        var memoEl = $('#claim-memo');
+        smc.admin_memo = String(memoEl ? memoEl.value : '').trim().slice(0, 500);
+        smc.updated_at = nowISO();
+        if (!save()) { toast(quotaMessage(), 'warn'); break; }
+        var memoHint = $('[data-hook=claim-memo-hint]');
+        if (memoHint) memoHint.textContent = smc.admin_memo ? '저장된 메모가 있습니다.' : '메모 없음';
+        toast(smc.admin_memo ? '처리 메모를 저장했습니다.' : '처리 메모를 비웠습니다.');
+        break;
+      }
+      case 'category-open': {
+        if (!isAdmin()) break;
+        var copId = el.dataset.rowcid || el.dataset.cid || '';
+        var copCat = db.categories.filter(function (x) { return x.id === copId; })[0];
+        if (!copCat) { toast('카테고리를 찾을 수 없습니다.', 'warn'); break; }
+        ui.modal = { type: 'category-detail', cid: copId, error: '', draft: null };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'admin-category-move': {
+        if (!isAdmin()) break;
+        var acm = moveCategory(el.dataset.cid, el.dataset.dir === 'down' ? 'down' : 'up');
+        if (!acm.ok) toast(acm.message, 'warn');
+        renderAll();
+        break;
+      }
+      case 'category-save-detail': {
+        if (!isAdmin()) break;
+        var cdf = readCategoryForm();
+        var cdRes = saveCategoryDetail(el.dataset.cid, cdf);
+        if (!cdRes.ok) {
+          if (ui.modal && ui.modal.type === 'category-detail') {
+            ui.modal.error = cdRes.message; ui.modal.draft = cdf; renderModal();
+          }
+          toast(cdRes.message, 'warn');
+          break;
+        }
+        ui.modal = null;
+        renderAll();
+        toast('카테고리 「' + cdRes.category.label + '」 옵션을 저장했습니다.');
+        break;
+      }
+      case 'product-reset': {
+        if (!isAdmin()) break;
+        ui.adminProductFrom = ''; ui.adminProductTo = '';
+        var prF = $('[data-hook=product-from]'); if (prF) prF.value = '';
+        var prT = $('[data-hook=product-to]'); if (prT) prT.value = '';
+        refreshAdminProductTable();
+        break;
+      }
+      /* ---------- v1.9.6 상단 KPI 카드 · 상품 상태 필터 ---------- */
+      case 'admin-kpi': {
+        if (!isAdmin()) break;
+        var ktab = el.dataset.tab || 'products';
+        var kfilter = el.dataset.filter || 'all';
+        /* v1.9.14 — KPI 카드로 다른 탭·필터로 옴긴 것도 히스토리에 한 겹 쌓는다.
+           (상세 진입 → 뒤로가기 = 그 탭·필터, 한 번 더 뒤로가기 = 옴기기 전 탭) */
+        var kpiChanged = (ui.adminTab !== ktab) ||
+          (ktab === 'products' ? (ui.adminProductFilter || 'all') !== kfilter
+            : ktab === 'orders' ? (ui.adminOrderFilter || 'all') !== kfilter
+            : ktab === 'claims' ? (ui.adminClaimFilter || 'all') !== kfilter : true);
+        ui.adminTab = ktab;
+        ui.integrity = '';
+        ui.couponFormError = '';
+        if (ktab === 'products') ui.adminProductFilter = kfilter;
+        if (ktab === 'orders') ui.adminOrderFilter = kfilter;
+        if (ktab === 'claims') ui.adminClaimFilter = kfilter;
+        renderAll();
+        if (kpiChanged) pushRouteState();
+        /* v1.9.7 — 해당 탭·필터로 바꾼 뒤 실제 목록(그리드 표)으로 스크롤·포커스 이동 */
+        focusAdminList(ktab);
+        break;
+      }
+      /* v1.9.7 — 「매출 관리」 기간 검색: 빠른 기간·초기화 */
+      case 'revenue-preset': {
+        if (!isAdmin()) break;
+        ui.adminRevPreset = el.dataset.value || 'all';
+        var pr = revenuePresetRange(ui.adminRevPreset);
+        ui.adminRevFrom = pr.from;
+        ui.adminRevTo = pr.to;
+        setRevenueDateInputs(pr.from, pr.to);
+        refreshAdminRevenue();
+        break;
+      }
+      case 'revenue-reset': {
+        if (!isAdmin()) break;
+        ui.adminRevPreset = 'all';
+        ui.adminRevFrom = '';
+        ui.adminRevTo = '';
+        setRevenueDateInputs('', '');
+        refreshAdminRevenue();
+        break;
+      }
+      case 'admin-product-filter':
+        ui.adminProductFilter = el.dataset.value || 'all';
+        renderAll();
+        break;
+      /* v1.9.6 — 주문/반품·교환 기간·검색 초기화 */
+      case 'order-reset': {
+        ui.adminOrderFrom = ''; ui.adminOrderTo = ''; ui.adminOrderQuery = ''; ui.adminOrderFilter = 'all';
+        var oFromEl = $('[data-hook=order-from]'); if (oFromEl) oFromEl.value = '';
+        var oToEl = $('[data-hook=order-to]'); if (oToEl) oToEl.value = '';
+        var oQEl = $('[data-hook=order-search]'); if (oQEl) oQEl.value = '';
+        refreshAdminOrders();
+        break;
+      }
+      case 'claim-reset': {
+        ui.adminClaimFrom = ''; ui.adminClaimTo = ''; ui.adminClaimQuery = ''; ui.adminClaimFilter = 'all';
+        var cFromEl = $('[data-hook=claim-from]'); if (cFromEl) cFromEl.value = '';
+        var cToEl = $('[data-hook=claim-to]'); if (cToEl) cToEl.value = '';
+        var cQEl = $('[data-hook=claim-search]'); if (cQEl) cQEl.value = '';
+        refreshAdminClaims();
+        break;
+      }
+      /* v1.9.2 — 주문/반품·교환/발송 로그 상태 필터( v1.9.6: 목록만 다시 그린다 ) */
+      case 'admin-order-filter':
+        ui.adminOrderFilter = el.dataset.value || 'all';
+        refreshAdminOrders();
+        break;
+      case 'admin-claim-filter':
+        ui.adminClaimFilter = el.dataset.value || 'all';
+        refreshAdminClaims();
+        break;
+      case 'log-channel':
+        ui.logChannel = el.dataset.value || 'all';
+        renderAll();
+        break;
+      case 'log-status':
+        ui.logStatus = el.dataset.value || 'all';
+        renderAll();
+        break;
+      case 'log-reset':
+        ui.logChannel = 'all'; ui.logStatus = 'all'; ui.logQuery = '';
+        renderAll();
+        break;
+      case 'save-site': {
+        if (!isAdmin()) break;
+        var siteRes = saveSiteSettings(readSiteForm());
+        if (!siteRes.ok) { toast(siteRes.message, 'warn'); break; }
+        renderAll();
+        toast('사이트 설정을 저장했습니다. 스토어에 바로 반영됩니다.');
+        break;
+      }
+      case 'reset-shop-head': {
+        if (!isAdmin()) break;
+        var shRes = saveSiteSettings(SHOP_TEXT_DEFAULTS);
+        if (!shRes.ok) { toast(shRes.message, 'warn'); break; }
+        renderAll();
+        toast('상품 섹션 문구를 기본값으로 되돌렸습니다.');
+        break;
+      }
+      case 'reset-site-title': {
+        if (!isAdmin()) break;
+        var ttRes = saveSiteSettings(TITLE_TEXT_DEFAULTS);
+        if (!ttRes.ok) { toast(ttRes.message, 'warn'); break; }
+        renderAll();
+        toast('타이틀·푸터 카피라이트를 기본값으로 되돌렸습니다.');
+        break;
+      }
+      case 'reset-banner': {
+        if (!isAdmin()) break;
+        var bSeed = (SEED && SEED.site_settings) || {};
+        var bRes = saveSiteSettings({ top_banner_text: bSeed.top_banner_text || '', top_banner_sub: bSeed.top_banner_sub || '' });
+        if (!bRes.ok) { toast(bRes.message, 'warn'); break; }
+        renderAll();
+        toast('상단 안내 띠를 기본 문구로 되돌렸습니다.');
+        break;
+      }
+      case 'save-banner': {
+        if (!isAdmin()) break;
+        var bnRes = saveSiteSettings({ top_banner_text: ($('#site-banner-text') || {}).value, top_banner_sub: ($('#site-banner-sub') || {}).value });
+        if (!bnRes.ok) { toast(bnRes.message, 'warn'); break; }
+        renderAll();
+        toast('상단 안내 띠를 저장했습니다. 스토어에 바로 반영됩니다.');
+        break;
+      }
+      case 'add-help-topic': {        if (!isAdmin()) break;
+        var hrHost = $('[data-hook=help-rows]');
+        if (!hrHost) break;
+        /* v1.9.10 — FAQ 칸(div)은 .help-row 가 아니므로 편집할 항목 수만 센다 */
+        var hrCount = hrHost.querySelectorAll('.help-row').length;
+        hrHost.insertAdjacentHTML('beforeend', helpRowHTML({ id: '', title: '', body: '' }, hrCount));
+        var lastRow = hrHost.querySelectorAll('.help-row');
+        var lastTitle = lastRow.length ? lastRow[lastRow.length - 1].querySelector('[data-help-title]') : null;
+        if (lastTitle) { try { lastTitle.focus(); } catch (e) {} }
+        break;
+      }
+      case 'remove-help-topic': {
+        if (!isAdmin()) break;
+        var rrow = el.closest('.help-row');
+        var rhost = $('[data-hook=help-rows]');
+        if (!rrow || !rhost) break;
+        if (rhost.querySelectorAll('.help-row').length <= 1) { toast('HELP 항목은 최소 1개가 필요합니다.', 'warn'); break; }
+        rrow.remove();
+        $$('[data-hook=help-rows] .help-row').forEach(function (r2, i) {
+          var no = r2.querySelector('.help-no');
+          if (no) no.textContent = i + 1;
+        });
+        break;
+      }
+      case 'save-help': {
+        if (!isAdmin()) break;
+        var hr = saveHelpTopics(readHelpRows());
+        if (!hr.ok) { toast(hr.message, 'warn'); break; }
+        renderAll();
+        toast('HELP 메뉴 ' + hr.topics.length + '개를 저장했습니다.');
+        break;
+      }
+      case 'admin-new-product':
+        if (!isAdmin()) break;
+        ui.editError = '';
+        ui.editRow = null;
+        ui.modal = trackEditDraft({ type: 'edit', draft: defaultDraft() });
+        renderModal(); syncLock(); syncRoute();
+        break;
+      case 'admin-edit-product': {
+        if (!isAdmin()) break;
+        var p = productById(el.dataset.pid);
+        if (!p) break;
+        ui.editError = '';
+        ui.editRow = null;
+        ui.modal = trackEditDraft({ type: 'edit', draft: draftFromProduct(p) });
+        renderModal(); syncLock(); syncRoute();
+        break;
+      }
+      case 'add-variant': {
+        var rowsHost = $('#variant-rows');
+        if (!rowsHost) break;
+        var count = rowsHost.children.length;
+        var lastVar = rowsHost.lastElementChild;
+        var baseHex = normalizeHex(lastVar && lastVar.querySelector('[name=hexText]') ? lastVar.querySelector('[name=hexText]').value : '') ||
+          normalizeHex(ui.modal && ui.modal.draft && ui.modal.draft.base_hex) || DEFAULT_HEX;
+        var sizeOpts = sizeOptionsFromDraft(ui.modal && ui.modal.draft);
+        rowsHost.insertAdjacentHTML('beforeend', variantRowHTML({ color: '', color_hex: baseHex, size: sizeOpts[Math.min(count, sizeOpts.length - 1)], stock: 5 }, count, sizeOpts));
+        updateColorTarget();
+        break;
+      }
+      case 'pick-preset':
+      case 'pick-palette': {
+        if (!ui.modal || ui.modal.type !== 'edit' || ui.colorRow == null) break;
+        var layApplied = applyLayerColor(el.dataset.hex, el.dataset.name);
+        if (!layApplied.ok) { toast(layApplied.message, 'warn'); break; }
+        toast('색상 ' + layApplied.hex + ' 을(를) ' + (layApplied.label ? '‘' + layApplied.label + '’ 옵션' : (layApplied.rowIndex + 1) + '번 옵션') + '에 적용했습니다');
+        break;
+      }
+      case 'open-color-layer': {
+        openColorLayer(el.dataset.row);
+        break;
+      }
+      case 'close-color-layer': {
+        closeColorLayer();
+        break;
+      }
+      case 'apply-layer-color': {
+        var hexIn = $('#pe-layer-hex');
+        var layRes = applyLayerColor(hexIn ? hexIn.value : '', '');
+        if (!layRes.ok) { toast(layRes.message, 'warn'); break; }
+        toast('색상 ' + layRes.hex + ' 을(를) ' + (layRes.rowIndex + 1) + '번 옵션에 적용했습니다');
+        break;
+      }
+      case 'layer-extract': {
+        extractColorLayerPalette();
+        break;
+      }
+      case 'move-image': {
+        var mvIdx = parseInt(el.dataset.idx, 10) || 0;
+        var mvDir = el.dataset.dir === '-1' ? -1 : 1;
+        updateDraftImages(function (d) {
+          var j = mvIdx + mvDir;
+          if (j < 0 || j >= d.images.length) return;
+          var tmp = d.images[mvIdx];
+          d.images[mvIdx] = d.images[j];
+          d.images[j] = tmp;
+        });
+        break;
+      }
+      case 'set-main-image': {
+        var mi = parseInt(el.dataset.idx, 10) || 0;
+        updateDraftImages(function (d) {
+          var img = d.images[mi];
+          if (!img) return;
+          d.images = [img].concat(d.images.filter(function (x, i) { return i !== mi; }));
+        });
+        toast('대표 이미지로 지정했습니다.');
+        break;
+      }
+      case 'remove-gallery-image': {
+        var gi = parseInt(el.dataset.idx, 10) || 0;
+        updateDraftImages(function (d) {
+          if (d.images.length <= 1) return;
+          d.images = d.images.filter(function (x, i) { return i !== gi; });
+        });
+        break;
+      }
+      case 'remove-upload': {
+        var d = ui.modal && ui.modal.draft;
+        if (!d) break;
+        var cur = readEditor();
+        var idx = parseInt(el.dataset.idx, 10) || 0;
+        var gone = (d.uploads || [])[idx];
+        cur.uploads = (d.uploads || []).filter(function (u, i) { return i !== idx; });
+        if (gone) {
+          cur.images = (cur.images || []).filter(function (x) { return x !== gone.data; });
+          if (!cur.images.length) cur.images = [ASSETS[0]];
+        }
+        cur.image = cur.images[0];
+        ui.modal.draft = cur;
+        renderModal();
+        break;
+      }
+      case 'create-coupon': {
+        if (!isAdmin()) break;
+        var picked = readTargetPicker('cf');
+        if (picked.mode === 'user' && !picked.target_user_ids.length) {
+          ui.couponFormError = '쿠폰을 받을 회원을 1명 이상 선택해 주세요.';
+          renderAll();
+          break;
+        }
+        if (picked.mode === 'grade' && !picked.target_grades.length) {
+          ui.couponFormError = '쿠폰을 받을 회원 등급을 1개 이상 선택해 주세요.';
+          renderAll();
+          break;
+        }
+        var cConds = readCouponConditions('cf');
+        var cRes = createCoupon({
+          code: ($('#cf-code') || {}).value,
+          name: ($('#cf-name') || {}).value,
+          discount_type: ($('#cf-type') || {}).value,
+          discount_value: ($('#cf-value') || {}).value,
+          min_order_amount: ($('#cf-min') || {}).value,
+          expires_at: ($('#cf-expires') || {}).value,
+          target_user_ids: picked.target_user_ids,
+          target_grades: picked.target_grades,
+          target_categories: cConds.target_categories,
+          target_badges: cConds.target_badges
+        });
+        if (!cRes.ok) { ui.couponFormError = cRes.message; renderAll(); break; }
+        ui.couponFormError = '';
+        ui.couponTargetMode = 'all';
+        ui.couponTargetGrades = [];
+        ui.couponTargetSel = [];
+        ui.couponTargetCats = [];
+        ui.couponTargetBadges = [];
+        renderAll();
+        toast(cRes.coupon.code + ' 쿠폰을 발행했습니다' +
+          (couponIsPublic(cRes.coupon) ? ' (전체 공용)' : ' (' + couponTargetLabel(cRes.coupon) + ')') + '.');
+        break;
+      }
+      case 'edit-coupon': {
+        if (!isAdmin()) break;
+        var ec = db.coupons.filter(function (x) { return x.id === el.dataset.cid; })[0];
+        if (!ec) { toast('쿠폰을 찾을 수 없습니다.', 'warn'); break; }
+        ui.modal = { type: 'coupon-edit', cid: ec.id, error: '' };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'save-coupon-edit': {
+        if (!isAdmin() || !ui.modal || ui.modal.type !== 'coupon-edit') break;
+        var cePick = readTargetPicker('ce');
+        if (cePick.mode === 'user' && !cePick.target_user_ids.length) {
+          ui.modal.error = '쿠폰을 받을 회원을 1명 이상 선택해 주세요.'; renderModal(); break;
+        }
+        if (cePick.mode === 'grade' && !cePick.target_grades.length) {
+          ui.modal.error = '쿠폰을 받을 회원 등급을 1개 이상 선택해 주세요.'; renderModal(); break;
+        }
+        var ceConds = readCouponConditions('ce');
+        var upRes = updateCoupon(el.dataset.cid, {
+          name: ($('#ce-name') || {}).value,
+          discount_type: ($('#ce-type') || {}).value,
+          discount_value: ($('#ce-value') || {}).value,
+          min_order_amount: ($('#ce-min') || {}).value,
+          expires_at: ($('#ce-expires') || {}).value,
+          target_user_ids: cePick.target_user_ids,
+          target_grades: cePick.target_grades,
+          target_categories: ceConds.target_categories,
+          target_badges: ceConds.target_badges
+        });
+        if (!upRes.ok) { ui.modal.error = upRes.message; renderModal(); break; }
+        ui.modal = null;
+        renderAll();
+        toast(upRes.coupon.code + ' 쿠폰을 수정했습니다.');
+        break;
+      }
+      case 'toggle-coupon': {
+        if (!isAdmin()) break;
+        var tRes = toggleCoupon(el.dataset.cid);
+        if (!tRes.ok) { toast(tRes.message, 'warn'); break; }
+        renderAll();
+        toast(tRes.coupon.code + (tRes.coupon.is_active ? ' 쿠폰을 사용 재개했습니다.' : ' 쿠폰을 중지했습니다.'));
+        break;
+      }
+      case 'remove-variant': {
+        var rowEl = el.closest('.var-row');
+        if (rowEl && $('#variant-rows').children.length > 1) rowEl.remove();
+        else toast('옵션은 최소 1개가 필요합니다.', 'warn');
+        break;
+      }
+      case 'save-product': {
+        if (!isAdmin() || !ui.modal || ui.modal.type !== 'edit') break;
+        var input = readEditor();
+        var res3 = saveProduct(input);
+        if (!res3.ok) {
+          /* 실패해도 방금 입력한 값을 그대로 되살려 다시 그린다(입력 유실 방지) */
+          ui.modal.draft = input;
+          ui.editError = res3.message;
+          renderModal();
+          break;
+        }
+        ui.modal = null;
+        ui.adminQuery = '';   // 방금 등록한 상품이 목록 맨 위에 보이도록 검색을 비운다
+        renderAll();
+        toast(res3.product ? '상품을 저장했습니다.' : '저장되었습니다.');
+        break;
+      }
+      case 'admin-soldout': {
+        if (!isAdmin()) break;
+        var sp = productById(el.dataset.pid);
+        if (!sp) break;
+        ui.modal = {
+          type: 'confirm', title: '전체 옵션을 품절 처리할까요?', confirmLabel: '품절 처리',
+          message: sp.name + '의 모든 옵션 재고를 0으로 만듭니다. 스토어에는 품절로 표시됩니다.',
+          onConfirm: { kind: 'soldout', pid: sp.id }
+        };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'admin-toggle-active': {
+        if (!isAdmin()) break;
+        toggleProductActive(el.dataset.pid);
+        renderAll();
+        break;
+      }
+      case 'export-json': exportJSON(); break;
+      case 'copy-json': {
+        var text = JSON.stringify(exportPayload(), null, 2);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { toast('JSON을 클립보드에 복사했습니다.'); })
+            .catch(function () { toast('복사에 실패했습니다. 다운로드를 사용해 주세요.', 'warn'); });
+        } else { toast('이 브라우저에서는 복사를 지원하지 않습니다.', 'warn'); }
+        break;
+      }
+      case 'run-integrity':
+        ui.integrity = runIntegrity();
+        renderAll();
+        toast('무결성 검사를 완료했습니다.');
+        break;
+      case 'ask-reset':
+        ui.modal = {
+          type: 'confirm', title: '시드 데이터로 초기화할까요?', danger: true, confirmLabel: '초기화',
+          message: '직접 만든 계정·주문·상품이 모두 사라지고 최초 데모 데이터로 돌아갑니다. 이 작업은 되돌릴 수 없습니다.',
+          onConfirm: { kind: 'reset' }
+        };
+        renderModal(); syncLock();
+        break;
+      case 'confirm-yes': {
+        var oc = ui.modal && ui.modal.onConfirm;
+        if (!oc) { closeModal(); break; }
+        if (oc.kind === 'cancel-order') {
+          var cr = cancelOrder(oc.oid);
+          ui.modal = null;
+          if (!cr.ok) { toast(cr.message, 'warn'); }
+          else { toast('주문을 취소하고 재고를 복구했습니다.'); }
+          renderAll();
+        } else if (oc.kind === 'soldout') {
+          soldoutProduct(oc.pid);
+          ui.modal = null;
+          renderAll();
+        } else if (oc.kind === 'reset') {
+          ui.modal = null;
+          resetDB();
+        } else if (oc.kind === 'category-delete') {
+          var dres = deleteCategory(oc.cid);
+          ui.modal = null;
+          ui.categoryError = dres.ok ? '' : dres.message;
+          renderAll();
+          toast(dres.ok ? '카테고리를 삭제했습니다.' : dres.message, dres.ok ? '' : 'warn');
+        } else if (oc.kind === 'cart-clear') {
+          var cleared = removeCartItems(cartRows().map(function (r) { return r.item.id; }));
+          ui.modal = null;
+          renderAll();
+          toast(cleared ? '장바구니를 비웠습니다. (' + cleared + '개 삭제)' : '장바구니가 비어 있습니다.');
+        } else if (oc.kind === 'qna-delete') {
+          var dqr = deleteQna(oc.qid);
+          ui.modal = null;
+          ui.qnaError = '';
+          renderAll();
+          toast(dqr.ok ? '문의를 삭제했습니다.' : dqr.message, dqr.ok ? '' : 'warn');
+        } else { closeModal(); }
+        syncLock();
+        break;
+      }
+      case 'category-add': {
+        if (!isAdmin()) break;
+        var ares = addCategory({ label: ($('#cat-new-label') || {}).value, en: ($('#cat-new-en') || {}).value });
+        ui.categoryError = ares.ok ? '' : ares.message;
+        renderAll();
+        if (ares.ok) toast('카테고리 「' + ares.category.label + '」를 추가했습니다.');
+        break;
+      }
+      case 'category-save': {
+        if (!isAdmin()) break;
+        var row = el.closest('.category-row');
+        if (!row) break;
+        var sres = updateCategory(el.dataset.cid, {
+          label: (row.querySelector('[data-hook=cat-label]') || {}).value,
+          en: (row.querySelector('[data-hook=cat-en]') || {}).value
+        });
+        ui.categoryError = sres.ok ? '' : sres.message;
+        renderAll();
+        if (sres.ok) toast('카테고리를 저장했습니다.');
+        break;
+      }
+      case 'category-size-add': {
+        if (!isAdmin()) break;
+        var csInput = $('#cat-size-new-' + el.dataset.cid);
+        keepCategoryDraft();
+        var csRes = addCategorySizeCode(el.dataset.cid, csInput ? csInput.value : '');
+        if (!csRes.ok) { ui.categoryError = csRes.message; toast(csRes.message, 'warn'); renderAll(); break; }
+        ui.categoryError = '';
+        renderAll();
+        toast('사이즈 코드 「' + normalizeSizeCode(csInput ? csInput.value : '') + '」를 추가했습니다.');
+        break;
+      }
+      case 'category-size-remove': {
+        if (!isAdmin()) break;
+        keepCategoryDraft();
+        var csr = removeCategorySizeCode(el.dataset.cid, parseInt(el.dataset.idx, 10) || 0);
+        if (!csr.ok) { toast(csr.message, 'warn'); break; }
+        renderAll();
+        break;
+      }
+      case 'category-size-move': {
+        if (!isAdmin()) break;
+        keepCategoryDraft();
+        var csm = moveCategorySizeCode(el.dataset.cid, parseInt(el.dataset.idx, 10) || 0, el.dataset.dir);
+        if (!csm.ok) { toast(csm.message, 'warn'); break; }
+        renderAll();
+        break;
+      }
+      case 'category-move': {
+        if (!isAdmin()) break;
+        var mres = moveCategory(el.dataset.cid, el.dataset.dir);
+        if (!mres.ok) toast(mres.message, 'warn');
+        renderAll();
+        break;
+      }
+      case 'category-delete': {
+        if (!isAdmin()) break;
+        var dc = db.categories.filter(function (x) { return x.id === el.dataset.cid; })[0];
+        if (!dc) break;
+        ui.modal = {
+          type: 'confirm', title: '카테고리를 삭제할까요?', danger: true, confirmLabel: '삭제',
+          message: '「' + dc.label + '」 카테고리를 삭제합니다. 이 카테고리를 쓰는 상품이 있으면 삭제되지 않습니다.',
+          onConfirm: { kind: 'category-delete', cid: dc.id }
+        };
+        renderModal(); syncLock();
+        break;
+      }
+      case 'save-payment-settings': {
+        if (!isAdmin()) break;
+        var pres = savePaymentConfig({
+          clientKey: ($('#ps-key') || {}).value,
+          clientKeyMode: ($('#ps-mode') || {}).value,
+          confirmApiUrl: ($('#ps-confirm') || {}).value
+        });
+        renderAll();
+        toast(pres.ok ? '결제 설정을 저장했습니다. (이 브라우저에 적용)' : pres.message, pres.ok ? '' : 'warn');
+        break;
+      }
+      case 'reset-payment-settings': {
+        if (!isAdmin()) break;
+        resetPaymentConfig();
+        renderAll();
+        toast('결제 설정을 기본값으로 초기화했습니다.');
+        break;
+      }
+      case 'demo-open-auth': openAuth('signup', ''); break;
+      default: break;
+    }
+    if (ui.modal && ui.modal.type === 'confirm') { /* handled above */ }
+    if (!ui.modal && a === 'close-modal') { /* noop */ }
+    syncRoute();
+  });
+
+  document.addEventListener('input', function (ev) {
+    var t = ev.target;
+    /* v1.9.4 — FAQ 카드 저장 검증 표시는 다시 입력하면 바로 지운다 */
+    if (t && t.classList && t.classList.contains('faq-invalid')) t.classList.remove('faq-invalid');
+    /* v1.9.16 — 리뷰 일괄 회수 사유를 다시 입력하면 오류 표시를 지운다 */
+    if (t && t.dataset && t.dataset.hook === 'bulk-reclaim-reason') {
+      t.classList.remove('br-invalid');
+      var brErrMsg = $('[data-hook=bulk-reclaim-error]');
+      if (brErrMsg) brErrMsg.hidden = true;
+    }
+    /* 회원가입 — 비밀번호 조건 실시간 체크 + 입력값 보존 */
+    if (t.id === 'af-password') syncPwRules(t.value);
+    if (ui.modal && ui.modal.type === 'auth' && ui.auth.tab === 'signup' && t.id && /^af-/.test(t.id)) {
+      ui.auth.draft = readAuthDraft();
+    }
+    if (t.id === 'shop-search') {
+      applySearchQuery(t.value);
+      return;
+    }
+    if (t.id === 'sort-select') {
+      ui.sort = t.value;
+      renderView();
+      return;
+    }
+    /* 관리자 상품 검색 — 입력 즉시 목록만 다시 그린다(검색창 포커스 유지) */
+    if (t.id === 'admin-product-search') {
+      ui.adminQuery = t.value;
+      refreshAdminProductTable();
+      return;
+    }
+    /* v1.9.11 — 관리자 Q&A 검색어: 목록만 다시 그리고 검색창 포커스 유지 */
+    if (t.id === 'qna-search') {
+      ui.adminQnaQuery = t.value;
+      refreshAdminQnas();
+      return;
+    }
+    /* v1.9.3 상단 안내 띠 — 입력하는 대로 미리보기 갱신(폼 재렌더 없이) */
+    if (t.id === 'site-banner-text' || t.id === 'site-banner-sub') {
+      var bpv = $('[data-hook=banner-preview]');
+      if (bpv) {
+        var bHtml = topBannerInnerHTML({
+          top_banner_text: ($('#site-banner-text') || {}).value || '',
+          top_banner_sub: ($('#site-banner-sub') || {}).value || ''
+        });
+        bpv.innerHTML = bHtml || '<span class="bp-empty">문구를 입력하면 띠가 표시됩니다</span>';
+      }
+      return;
+    }
+    /* v1.9.2 발송 로그 키워드 검색 — 목록만 즉시 교체 */
+    if (t.id === 'log-search') {
+      ui.logQuery = t.value;
+      refreshDispatchList();
+      return;
+    }
+    /* 쿠폰 발급 대상 회원 검색 — 폼을 다시 그리지 않고 목록만 필터 */
+    if (t.classList && t.classList.contains('member-search')) {
+      var picker = t.closest('.member-picker');
+      if (!picker) return;
+      var q = String(t.value || '').trim().toLowerCase();
+      var shown = 0;
+      $$('.tp-line', picker).forEach(function (row) {
+        var hit = !q || String(row.dataset.search || '').indexOf(q) >= 0;
+        row.hidden = !hit;
+        if (hit) shown++;
+      });
+      var emptyEl = picker.querySelector('.member-empty');
+      if (emptyEl) emptyEl.hidden = !(q && !shown);
+      return;
+    }
+    /* 사이트 관리: 오버레이 농도 실시간 표시 */
+    if (t.id === 'site-hero-overlay') {
+      var oval = $('[data-hook=overlay-val]');
+      if (oval) oval.textContent = t.value + '%';
+      var obadge = $('[data-hook=hero-effect-badge]');
+      var oeff = ($('#site-hero-effect') || {}).value || 'none';
+      if (obadge) obadge.textContent = (HERO_EFFECTS[oeff] || '없음') + ' · 오버레이 ' + t.value + '%';
+      return;
+    }
+    /* 제품고유키(제품번호) 입력 — 중복을 즉시 안내하고 자동 채번 번호를 보여준다 */
+    if (t.id === 'pe-code') {
+      var hintEl = $('[data-hook=code-hint]');
+      if (hintEl && ui.modal && ui.modal.type === 'edit') {
+        var cv = normalizeProductCode(t.value);
+        var bad = !!cv && productCodeTaken(cv, ui.modal.draft.id);
+        hintEl.textContent = !cv ? '비우면 저장 시 ' + nextProductCode() + ' 으로 자동 채번됩니다.'
+          : bad ? '이미 사용 중인 제품번호입니다.' : '사용 가능한 제품번호입니다.';
+        hintEl.classList.toggle('bad', bad);
+      }
+      return;
+    }
+    /* v1.9.10 — 상품 섹션 헤더 문구 · 검색창 입력은 미리보기만 그린다 */
+    if (t.id === 'site-shop-eyebrow' || t.id === 'site-shop-title' || t.id === 'site-shop-desc') {
+      updateShopPreview();
+      return;
+    }
+    /* v1.9.14 — 타이틀·카피라이트 입력도 미리보기만 갱신(입력 중 포커스 유지) */
+    if (t.id === 'site-title' || t.id === 'site-page-title' || t.id === 'site-footer-copyright') {
+      updateTitlePreview();
+      return;
+    }
+    /* v1.9.6 — 주문 관리/반품·교환 주문자 검색(목록만 다시 그린다) */
+    if (t.id === 'order-search') {
+      ui.adminOrderQuery = t.value;
+      refreshAdminOrders();
+      return;
+    }
+    if (t.id === 'claim-search') {
+      ui.adminClaimQuery = t.value;
+      refreshAdminClaims();
+      return;
+    }
+    /* v1.9.10 — 리뷰 관리 검색(작성자·이메일·상품명·제품번호·리뷰 내용) — 목록만 다시 그린다 */
+    if (t.id === 'review-search') {
+      ui.adminReviewQuery = t.value;
+      refreshAdminReviews();
+      return;
+    }
+    /* v1.9 FAQ 검색 */
+    if (t.id === 'faq-search') {
+      ui.faqQuery = t.value;
+      ui.faqPage = 1;   // v1.9.6 — 검색어를 바꾸면 1페이지로
+      renderFaqModal();
+      return;
+    }
+    /* v1.9 색상 레이어 — 피커 ↔ HEX 양방향 */
+    if (t.id === 'pe-layer-color' || t.id === 'pe-layer-hex') {
+      var lv = normalizeHex(t.value);
+      if (!lv) return;
+      var lc = $('#pe-layer-color');
+      var lh = $('#pe-layer-hex');
+      if (lc && lc !== t && String(lc.value || '').toUpperCase() !== lv) lc.value = lv;
+      if (lh && lh !== t && String(lh.value || '').toUpperCase() !== lv) lh.value = lv;
+      var nowHex = $('[data-hook=cl-now-hex]');
+      if (nowHex) nowHex.textContent = lv;
+      var nowDot = $('[data-hook=cl-now-dot]');
+      if (nowDot) { nowDot.style.background = lv; nowDot.className = swatchClass(lv); }
+      return;
+    }
+    /* 옵션 컬러명 입력 → HEX 자동 매핑 (크림·하얀색·아이보리·베이지 등)
+       + 컬러 피커·HEX·기본 색상 동기화 (input/change 공통) */
+    if (syncEditorColorInput(t)) return;
+  });
+  /* 편집기 색상 입력 공통 처리 — input(끌어서 조절 중)과 change(선택 완료) 모두에서 동작.
+     · 삼성 인터넷·안드로이드 색상 피커는 change 만 보내는 경우가 있어 둘 다 받는다
+     · 조작 중인 입력 자신에게는 값을 다시 쓰지 않는다(피커가 끝값에서 튀는 현상 제거) */
+  function syncEditorColorInput(t) {
+    if (!t || !ui.modal || ui.modal.type !== 'edit') return false;
+    /* 옵션 컬러명 → 색상명 매핑 */
+    if (t.name === 'color') {
+      var row = t.closest('.var-row');
+      var mapped = colorHexFromName(t.value);
+      if (row && mapped) {
+        var textEl = row.querySelector('[name=hexText]');
+        var pickEl = row.querySelector('[name=hex]');
+        var cur = normalizeHex(textEl ? textEl.value : '') || normalizeHex(pickEl ? pickEl.value : '');
+        /* 비어 있거나 기본값(#1B1B1D)일 때만 매핑으로 채운다 — 관리자가 고른 색을 덮어쓰지 않는다 */
+        if (!cur || cur === DEFAULT_HEX) {
+          if (textEl && String(textEl.value).toUpperCase() !== mapped) textEl.value = mapped;
+          if (pickEl && String(pickEl.value).toUpperCase() !== mapped) pickEl.value = mapped;
+        }
+      }
+      updateColorTarget();
+      return true;
+    }
+    /* 옵션별 컬러 피커 → HEX 텍스트 */
+    if (t.name === 'hex') {
+      var row2 = t.closest('.var-row');
+      var n2 = normalizeHex(t.value);
+      if (row2 && n2) {
+        var tx2 = row2.querySelector('[name=hexText]');
+        if (tx2 && String(tx2.value || '').toUpperCase() !== n2) tx2.value = n2;
+      }
+      return true;
+    }
+    /* 옵션별 HEX 직접 입력 → 컬러 피커 (F0F0F0 · #fff 모두 허용) */
+    if (t.name === 'hexText') {
+      var row3 = t.closest('.var-row');
+      var n3 = normalizeHex(t.value);
+      var pk3 = row3 ? row3.querySelector('[name=hex]') : null;
+      if (pk3 && n3 && String(pk3.value || '').toUpperCase() !== n3) pk3.value = n3;
+      var sw = row3 ? row3.querySelector('.row-swatch i') : null;
+      if (sw && n3) { sw.style.background = n3; sw.className = swatchClass(n3); }
+      return true;
+    }
+    return false;
+  }
+  /* 어떤 옵션 행을 만지고 있는지 기록 — 기본색·프리셋·팔레트가 그 행에 적용된다 */
+  function trackEditorRow(ev) {
+    if (!ui.modal || ui.modal.type !== 'edit') return;
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    var row = t.closest('#variant-rows .var-row');
+    if (!row) return;
+    var idx = rowIndexOf(row);
+    if (idx < 0) return;
+    if (ui.editRow !== idx) { ui.editRow = idx; updateColorTarget(); }
+  }
+  document.addEventListener('focusin', trackEditorRow);
+  document.addEventListener('pointerdown', trackEditorRow, true);
+  document.addEventListener('change', function (ev) {
+    var t = ev.target;
+    /* v1.9.9 — 브랜드 스토리 노출 스위치: 저장 전 미리보기 라벨만 바꾼다 */
+    if (t.id === 'site-story-enabled') {
+      var onNow = !!t.checked;
+      t.setAttribute('aria-checked', onNow ? 'true' : 'false');
+      var stLab = $('[data-hook=story-enabled-state]');
+      if (stLab) stLab.textContent = onNow ? 'ON' : 'OFF';
+      var swBox = $('[data-story-switch]');
+      if (swBox) swBox.dataset.storyEnabled = onNow ? '1' : '0';
+      return;
+    }
+    /* v1.9.10 — 상단 안내 띠 노출 스위치: 저장 전 미리보기 라벨만 바꾼다 */
+    if (t.id === 'site-banner-enabled') {
+      var bOnNow = !!t.checked;
+      t.setAttribute('aria-checked', bOnNow ? 'true' : 'false');
+      var bLab = $('[data-hook=banner-enabled-state]');
+      if (bLab) bLab.textContent = bOnNow ? 'ON' : 'OFF';
+      var bBox = $('[data-banner-switch]');
+      if (bBox) bBox.dataset.bannerEnabled = bOnNow ? '1' : '0';
+      return;
+    }
+    /* v1.9.6 — 주문 관리/반품·교환 기간(시작일~종료일) */
+    if (t.id === 'order-from' || t.id === 'order-to') {
+      ui.adminOrderFrom = (($('[data-hook=order-from]') || {}).value || '').trim();
+      ui.adminOrderTo = (($('[data-hook=order-to]') || {}).value || '').trim();
+      if (ui.adminOrderFrom && ui.adminOrderTo && ui.adminOrderFrom > ui.adminOrderTo) {
+        toast('시작일이 종료일보다 늦습니다. 기간을 다시 확인해 주세요.', 'warn');
+      }
+      refreshAdminOrders();
+      return;
+    }
+    /* v1.9.8 — 상품 관리 등록일 기간 */
+    if (t.id === 'product-from' || t.id === 'product-to') {
+      ui.adminProductFrom = (($('[data-hook=product-from]') || {}).value || '').trim();
+      ui.adminProductTo = (($('[data-hook=product-to]') || {}).value || '').trim();
+      if (ui.adminProductFrom && ui.adminProductTo && ui.adminProductFrom > ui.adminProductTo) {
+        toast('시작일이 종료일보다 늦습니다. 기간을 다시 확인해 주세요.', 'warn');
+      }
+      refreshAdminProductTable();
+      return;
+    }
+    if (t.id === 'claim-from' || t.id === 'claim-to') {
+      ui.adminClaimFrom = (($('[data-hook=claim-from]') || {}).value || '').trim();
+      ui.adminClaimTo = (($('[data-hook=claim-to]') || {}).value || '').trim();
+      if (ui.adminClaimFrom && ui.adminClaimTo && ui.adminClaimFrom > ui.adminClaimTo) {
+        toast('시작일이 종료일보다 늦습니다. 기간을 다시 확인해 주세요.', 'warn');
+      }
+      refreshAdminClaims();
+      return;
+    }
+    /* v1.9.7 — 매출 관리 기간(시작일~종료일): 날짜를 직접 고치면 빠른 기간 선택은 해제 */
+    if (t.id === 'revenue-from' || t.id === 'revenue-to') {
+      ui.adminRevFrom = (($('[data-hook=revenue-from]') || {}).value || '').trim();
+      ui.adminRevTo = (($('[data-hook=revenue-to]') || {}).value || '').trim();
+      ui.adminRevPreset = '';
+      if (ui.adminRevFrom && ui.adminRevTo && ui.adminRevFrom > ui.adminRevTo) {
+        toast('시작일이 종료일보다 늦습니다. 기간을 다시 확인해 주세요.', 'warn');
+      }
+      refreshAdminRevenue();
+      return;
+    }
+    /* 컬러 피커·HEX·기본 색상 — change 만 보내는 브라우저 보정 */
+    if (syncEditorColorInput(t)) return;
+    /* 리뷰 첨부 파일 */
+    if (t.id === 'rv-file') {
+      handleReviewMedia(t.files);
+      try { t.value = ''; } catch (e) {}
+      return;
+    }
+    /* 리뷰 대상 주문 상품 변경 */
+    if (t.id === 'rv-item') {
+      if (!ui.review) return;
+      var rvTa = $('#rv-content');
+      ui.review.content = rvTa ? rvTa.value : ui.review.content;
+      ui.review.oi = t.value;
+      var pickIt = reviewableItems(ui.review.pid, currentUser()).filter(function (x) { return x.item.id === t.value; })[0];
+      if (pickIt) ui.review.pid = pickIt.product.id;
+      ui.review.rewrite = !!reviewOfOrderItem(t.value);
+      ui.review.error = '';
+      renderModal();
+      return;
+    }
+    /* 색상 레이어 — 분석할 사진 변경/추출 */
+    if (t.id === 'pe-layer-src') { extractColorLayerPalette(); return; }
+    /* 브랜드 스토리 사진 업로드 — 사이트 전용 목록에 추가하고 바로 적용한다 */
+    if (t.id === 'site-story-upload') {
+      var stFiles = t.files;
+      if (stFiles && stFiles.length) {
+        resizeImageFile(stFiles[0]).then(function (row) {
+          var stAdd = addSiteMedia('story', row.data);
+          if (stAdd.ok) selectSiteMedia('story', row.data);
+          paintSiteMedia('story');
+          toast(stAdd.ok ? '스토리 사진을 추가하고 적용했습니다.' : stAdd.message, stAdd.ok ? 'ok' : 'warn');
+        })['catch'](function (err) {
+          toast(err && err.message ? err.message : '사진을 불러오지 못했습니다.', 'warn');
+        });
+      }
+      try { t.value = ''; } catch (e) {}
+      return;
+    }
+    if (t.id === 'site-story-image') {
+      var stPrev = $('[data-hook=story-preview]');
+      if (stPrev) stPrev.src = imgSrc(t.value);
+      return;
+    }
+    if (t.id === 'pe-category') {
+      refreshEditorSizeOptions();
+      return;
+    }
+    /* 이메일을 다시 입력하면 인증을 다시 받도록 한다 */
+    if (t.id === 'af-email' && ui.emailAuth && ui.emailAuth.email !== String(t.value || '').trim().toLowerCase()) {
+      ui.emailAuth.verified = false;
+      ui.emailAuth.sentAt = 0;
+      ui.emailAuth.code = '';
+      return;
+    }
+    if (t.id === 'ns-sms-enabled') {
+      var stg = t.closest('.toggle');
+      var slb = $('[data-hook=sms-enabled-label]');
+      if (stg) stg.classList.toggle('on', !!t.checked);
+      if (slb) slb.textContent = t.checked ? '사용' : '사용 안 함';
+      return;
+    }
+    if (t.id === 'sort-select') { ui.sort = t.value; renderView(); }
+    if (t.id === 'pe-active') {
+      var tg = t.closest('.toggle');
+      var al = $('[data-hook=active-label]');
+      if (tg) tg.classList.toggle('on', !!t.checked);
+      if (al) al.textContent = t.checked ? '판매 중' : '숨김 (판매 안 함)';
+      if (ui.modal && ui.modal.type === 'edit') ui.modal.draft.is_active = !!t.checked;
+      return;
+    }
+    /* 쿠폰 발급 대상 모드(전체/등급/회원) 전환 */
+    if (t.name && /^(cf|ce)-mode$/.test(t.name)) {
+      syncTargetPicker(t.name.slice(0, 2));
+      return;
+    }
+    if (t.name && /^(cf|ce)-grade$/.test(t.name)) {
+      var chip = t.closest('.grade-chip');
+      if (chip) chip.classList.toggle('on', !!t.checked);
+      return;
+    }
+    /* 교환 희망 옵션 — 실제 상품 옵션 선택 */
+    if (t.dataset && (t.dataset.action === 'claim-ex-color' || t.dataset.action === 'claim-ex-size' || t.dataset.action === 'claim-ex-item')) {
+      var cm = ui.modal;
+      if (!cm || cm.type !== 'claim') return;
+      if (t.dataset.action === 'claim-ex-item') {
+        cm.exchange_item = parseInt(t.value, 10) || 0;
+        cm.exchange_color = '';
+        cm.exchange_size = '';
+      } else if (t.dataset.action === 'claim-ex-color') {
+        cm.exchange_color = t.value;
+        cm.exchange_size = '';
+      } else {
+        cm.exchange_size = t.value;
+      }
+      var exHost = $('[data-hook=claim-exchange]');
+      var exOrder = orderById(cm.oid);
+      if (exHost && exOrder) exHost.innerHTML = claimExchangeHTML(exOrder, cm);
+      return;
+    }
+    /* 사이트 관리: 히어로 배너 사진 업로드 — 사이트 전용 목록에 추가하고 바로 적용한다 */
+    if (t.id === 'site-hero-upload') {
+      var heroFiles = t.files;
+      if (heroFiles && heroFiles.length) {
+        resizeImageFile(heroFiles[0]).then(function (row) {
+          var hAdd = addSiteMedia('hero', row.data);
+          if (hAdd.ok) selectSiteMedia('hero', row.data);
+          paintSiteMedia('hero');
+          toast(hAdd.ok ? '배너 사진을 추가하고 적용했습니다.' : hAdd.message, hAdd.ok ? 'ok' : 'warn');
+        })['catch'](function (err) {
+          toast(err && err.message ? err.message : '사진을 불러오지 못했습니다.', 'warn');
+        });
+      }
+      try { t.value = ''; } catch (e) {}
+      return;
+    }
+    if (t.id === 'site-hero-image') {
+      var heroPrev = $('[data-hook=hero-preview]');
+      if (heroPrev) heroPrev.src = imgSrc(t.value);
+      return;
+    }
+    if (t.id === 'site-hero-effect' || t.id === 'site-hero-overlay') {
+      var badge = $('[data-hook=hero-effect-badge]');
+      var eff = ($('#site-hero-effect') || {}).value || 'none';
+      var ovl = ($('#site-hero-overlay') || {}).value || '0';
+      if (badge) badge.textContent = (HERO_EFFECTS[eff] || '없음') + ' · 오버레이 ' + ovl + '%';
+      return;
+    }
+    if (t.id === 'pe-upload') {
+      handleImageUploads(t.files);
+      try { t.value = ''; } catch (e) {}
+      return;
+    }
+    if (t.id === 'pe-badge') {
+      return;
+    }
+    if (t.dataset && t.dataset.action === 'admin-claim-status') {
+      if (!isAdmin()) return;
+      var cr = updateClaimStatus(t.dataset.cid, t.value);
+      if (!cr.ok) { toast(cr.message, 'warn'); renderAll(); return; }
+      var stateLabel = (CLAIM_STATUS[t.value] || {}).label || t.value;
+      toast('교환/반품 상태를 ' + stateLabel + '(으)로 변경했습니다.' + (cr.restored ? ' 재고 ' + cr.restored + '개를 복구했습니다.' : ''));
+      renderAll();
+      return;
+    }
+    if (t.dataset && t.dataset.action === 'admin-order-status') {
+      if (!isAdmin()) return;
+      var r = updateOrderStatus(t.dataset.oid, t.value);
+      if (!r.ok) { toast(r.message, 'warn'); renderAll(); return; }
+      toast('주문 상태를 ' + STATUS[t.value].label + '(으)로 변경했습니다.' +
+        (r.restored ? ' 재고 ' + r.restored + '개 복구.' : '') +
+        (r.refunded ? ' 포인트 ' + r.refunded.toLocaleString('ko-KR') + 'P 환급.' : ''));
+      renderAll();
+    }
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ui.lightbox) {
+      if (ev.key === 'ArrowLeft') { lightboxStep(-1); return; }
+      if (ev.key === 'ArrowRight') { lightboxStep(1); return; }
+      if (ev.key === '+' || ev.key === '=') { lightboxZoomBy(1); return; }
+      if (ev.key === '-') { lightboxZoomBy(-1); return; }
+    }
+    if (ev.key === 'Escape') {
+      if (ui.lightbox) { closeLightbox(); syncRoute(); return; }
+      if (ui.modal) { closeModal(); syncRoute(); return; }
+      if (ui.cartOpen) { ui.cartOpen = false; renderHeader(); renderCart(); syncLock(); syncRoute(); return; }
+      return;
+    }
+    if (ev.key === 'Enter') {
+      var t = ev.target;
+      if (t.classList && t.classList.contains('coupon-code')) {
+        ev.preventDefault();
+        var res = applyCouponCode(t.value, activeRows());
+        if (!res.ok) toast(res.message, 'warn'); else toast(res.coupon.code + ' 쿠폰을 적용했습니다.');
+        refreshMoneyViews();
+        return;
+      }
+      if (t.id === 'shop-search') {
+        // Enter — 폼 전송 없이 목록만 갱신하고 포커스는 검색창에 둔다.
+        ev.preventDefault();
+        applySearchQuery(t.value);
+        return;
+      }
+      if (t.dataset && t.dataset.enter) {
+        var btn = document.querySelector('[data-action="' + t.dataset.enter + '"]');
+        if (btn) { btn.click(); ev.preventDefault(); }
+      }
+    }
+  });
+
+  function renderShopOnly() {
+    renderHeader();
+    renderView();
+  }
+
+  /* ------------------------------------------------------------------ boot */
+  /* 예전 버전은 '미지정' HEX 를 #1B1B1D 로 저장해, 하얀색·크림 같은 밝은 옵션이
+     기본색(검정)으로 남아 있는 데이터가 있다. 색상명이 있으면 매핑으로 한 번만 보정한다. */
+  function repairVariantHexes() {
+    var changed = 0;
+    for (var i = 0; i < db.product_variants.length; i++) {
+      var v = db.product_variants[i];
+      var stored = normalizeHex(v.color_hex);
+      var mapped = colorHexFromName(v.color);
+      if ((!stored || stored === DEFAULT_HEX) && mapped && mapped !== stored) {
+        v.color_hex = mapped;
+        changed++;
+      }
+    }
+    return changed;
+  }
+  function migrateColorData() {
+    if (!db || !db.product_variants) return 0;
+    if (!db.meta) db.meta = {};
+    if (db.meta.color_repair_v18) return 0;
+    var changed = repairVariantHexes();
+    db.meta.color_repair_v18 = true;
+    save();
+    return changed;
+  }
+  /* 예전 데이터에 제품번호가 없거나 중복이면 저장 가능한 빈 번호를 채번해 채운다 */
+  function migrateProductCodes() {
+    if (!db || !db.products) return 0;
+    if (!db.meta) db.meta = {};
+    if (db.meta.product_code_v18) return 0;
+    var changed = 0, seen = {};
+    db.products.forEach(function (p) {
+      var c = normalizeProductCode(p.product_code);
+      if (c && !seen[c]) { seen[c] = 1; p.product_code = c; return; }
+      var next = '';
+      do { next = nextProductCode(); } while (seen[next] || productCodeTaken(next, p.id));
+      seen[next] = 1;
+      p.product_code = next;
+      changed++;
+    });
+    db.meta.product_code_v18 = true;
+    save();
+    return changed;
+  }
+
+  function boot() {
+    var loaded = loadDB();
+    db = loaded || clone(SEED);
+    if (!loaded) save();
+    else if (seedMergePending) save();   // v1.9.12 — 기존 방문자에게 새 시드 행 반영
+    migrateColorData();   // 예전 데이터의 '미지정 #1B1B1D' 를 색상명 매핑으로 한 번만 보정
+    migrateProductCodes(); // 제품번호가 없는 예전 상품에 MA-#### 를 채운다
+    migrateSiteData();     // 히어로·푸터·HELP 설정이 없으면 시드 기본값으로 채운다
+    loadSession();
+    loadPaymentConfig();   // 관리자가 화면에서 저장한 결제 설정이 있으면 우선 적용
+    if (session && !db.users.some(function (u) { return u.id === session.userId; })) {
+      session = null; saveSession();
+    }
+    if (!storageOk) {
+      setTimeout(function () { toast('이 브라우저에서는 저장소를 사용할 수 없어 새로고침 시 초기화됩니다.', 'warn'); }, 900);
+    }
+    applyHashRoute();      // v1.9.2 — 새로고침해도 보던 마이페이지·관리자 탭을 그대로 복원
+    renderAll();
+    try { history.replaceState(routeOf(), '', currentRouteHash()); } catch (e) {}
+    handlePaymentReturn(); // 토스페이먼츠 successUrl/failUrl 복귀 처리
+    handleClaimReturn();    // 교환/반품 배송비 결제 복귀 처리(?tossClaim=…)
+    syncRoute();
+  }
+
+  /* ------------------------------------------------- debug / test surface */
+  window.__MONO__ = {
+    version: APP_VERSION,
+    getDB: function () { return clone(db); },
+    colorPresets: function () { return COLOR_PRESETS.map(function (p) { return { name: p[0], hex: p[1] }; }); },
+    nearestColorName: function (hex) { return nearestColorName(hex); },
+    normalizeHex: function (v) { return normalizeHex(v); },
+    colorOf: function (pid, color) { return hexOfColor(pid, color); },
+    siteSettings: function () { return clone(siteSettings()); },
+    helpTopics: function () { return clone(helpTopics()); },
+    saveSiteSettings: function (input) { return clone(saveSiteSettings(input || {})); },
+    saveHelpTopics: function (list) { return clone(saveHelpTopics(list || [])); },
+    helpTopic: function (id) { var t = helpTopicById(id); return t ? clone(t) : null; },
+    /* --- v1.9: 포인트 · 리뷰 · FAQ · 주소 --- */
+    points: function (uid) {
+      var u = uid ? currentUserById(uid) : currentUser();
+      return u ? userPoints(u) : 0;
+    },
+    pointLogs: function (uid) {
+      var u = uid ? currentUserById(uid) : currentUser();
+      return u ? clone(pointLogsOf(u.id)) : [];
+    },
+    pointPolicies: function () { return clone(pointPolicyMap()); },
+    savePointPolicies: function (input) { return clone(savePointPolicies(input || {})); },
+    gradePolicy: function (uid) { var u = uid ? currentUserById(uid) : currentUser(); return clone(pointPolicyOf(u)); },
+    confirmItem: function (oi) { return clone(confirmOrderItem(oi)); },
+    canConfirm: function (oi) { var x = db.order_items.filter(function (i) { return i.id === oi; })[0]; return !!(x && canConfirmItem(orderById(x.order_id), x)); },
+    reviewsOf: function (pid) { return clone(productReviews(pid)); },
+    reviewStats: function (pid) { return clone(reviewStats(pid)); },
+    reviewable: function (pid) {
+      return reviewableItems(pid).map(function (x) { return { oi: x.item.id, pid: x.product.id, name: x.product.name }; });
+    },
+    addReview: function (input) { return clone(addReview(input || {})); },
+    reviewsAll: function () { return clone(allReviews()); },
+    updateReview: function (input) { return clone(updateReview(input || {})); },
+    rejectReview: function (id, reason) { return clone(rejectReview(id, reason)); },
+    reviewGranted: function (rid) { var r = (db.product_reviews || []).filter(function (x) { return x.id === rid; })[0]; return reviewGrantedPoints(r); },
+    /* --- v1.9.9: 회원 관리 · 리뷰 승인 · 목록 보기 --- */
+    adjustPoints: function (uid, amount, reason) { return clone(adjustMemberPoints(uid, amount, reason)); },
+    saveGrade: function (uid, grade) { return clone(saveMemberGrade(uid, grade)); },
+    approveReview: function (rid) { return clone(approveReview(rid)); },
+    storeView: function () { return ui.storeView; },
+    brandStoryEnabled: function () { return brandStoryEnabled(siteSettings()); },
+    openMember: function (uid) { ui.memberPtsError = ''; ui.modal = { type: 'admin-member', uid: uid }; renderModal(); syncLock(); return ui.modal ? clone(ui.modal) : null; },
+    openReviewDetail: function (rid) { ui.modal = { type: 'admin-review', rid: rid }; renderModal(); syncLock(); return ui.modal ? clone(ui.modal) : null; },
+    /* --- v1.9.11: 상품 Q&A · 리뷰 추천/비추천 --- */
+    qnas: function (pid) { return clone(pid ? productQnas(pid) : (db.product_qnas || [])); },
+    qnaSubmit: function (pid, input) { return clone(submitQna(pid, input || {})); },
+    qnaAnswer: function (qid, answer) { return clone(answerQna(qid, answer)); },
+    qnaDelete: function (qid) { return clone(deleteQna(qid)); },
+    reviewVotes: function (rid) { return clone(rid ? reviewVoteRows(rid) : (db.review_votes || [])); },
+    reviewVoteCounts: function (rid) { return clone(reviewVoteCounts(rid)); },
+    voteReview: function (rid, vote) { return clone(toggleReviewVote(rid, vote)); },
+    reviewSort: function () { return ui.reviewSort; },
+    openAdminQna: function (qid) { ui.modal = { type: 'admin-qna', qid: qid }; renderModal(); syncLock(); return ui.modal ? clone(ui.modal) : null; },
+    /* v1.9.12 — Q&A 상세에서 상품 미리보기 열기(뒤로가기 = Q&A 상세) */
+    openQnaProduct: function (pid, qid) { ui.modal = { type: 'admin-qna-product', pid: pid, qid: qid || null }; renderModal(); syncLock(); pushRouteState(); return ui.modal ? clone(ui.modal) : null; },
+    notifySettings: function () { return clone(notifySettings()); },
+    saveNotifySettings: function (input) { return clone(saveNotifySettings(input || {})); },
+    smsLogs: function (oid) { return clone(smsLogsOf(oid)); },
+    sendOrderSms: function (oid) { return clone(sendOrderSms(orderById(oid))); },
+    dispatchLogs: function () { return clone(dispatchLogsOf()); },
+    dispatchAnomalies: function () { return clone(dispatchAnomalies()); },
+    emailCooldown: function (e) { return emailCooldownLeft(e); },
+    viewState: function () { return { view: ui.view, myTab: ui.myTab, adminTab: ui.adminTab, hash: location.hash, orderFilter: ui.adminOrderFilter, claimFilter: ui.adminClaimFilter, logChannel: ui.logChannel, logStatus: ui.logStatus, logQuery: ui.logQuery, siteTab: ui.siteTab, dataTab: ui.dataTab, productFrom: ui.adminProductFrom, productTo: ui.adminProductTo, faqSel: clone(ui.faqSel || {}), storeView: ui.storeView, reviewSort: ui.reviewSort, qnaPage: ui.qnaPage, adminQnaQuery: ui.adminQnaQuery, adminQnaFilter: ui.adminQnaFilter, adminReviewQuery: ui.adminReviewQuery, adminOrderQuery: ui.adminOrderQuery }; },
+    reviewAttempts: function (oi) { var x = db.order_items.filter(function (i) { return i.id === oi; })[0]; return reviewAttemptsOf(x); },
+    reviewRewrite: function (oi) { var x = db.order_items.filter(function (i) { return i.id === oi; })[0]; return reviewRewriteAvailable(x); },
+    addCart: function (pid, color, size, qty) { return clone(addToCart(pid, color, size, qty)); },
+    removeCart: function (ids) { return removeCartItems(ids || []); },
+    passwordCheck: function (pw) { return clone(passwordCheckOf(pw)); },
+    emailAuth: function () { return ui.emailAuth ? clone(ui.emailAuth) : null; },
+    sendEmailCode: function (e) { return clone(sendEmailCode(e)); },
+    verifyEmailCode: function (e, c) { return clone(verifyEmailCode(e, c)); },
+    sizeCodes: function (cid) { return sizeCodesOf(cid).slice(); },
+    sizeOptions: function (cid, legacy) { return sizeOptionsFor(cid, legacy || []); },
+    setCategorySizeCodes: function (cid, list) { return clone(saveCategorySizeCodes(cid, list || [])); },
+    reviewDraft: function () { return ui.review ? clone(ui.review) : null; },
+    faqs: function () { return clone(faqList()); },
+    faqCategories: function () { return clone(faqCategories()); },
+    saveFaqs: function (list) { return clone(saveFaqs(list || [])); },
+    story: function () {
+      var s = siteSettings();
+      return { title: s.story_title, subtitle: s.story_subtitle, body: s.story_body, eyebrow: s.story_eyebrow, image: s.story_image, tags: clone(storyTagsOf(s)) };
+    },
+    addressSamples: function () { return ADDRESS_SAMPLES.map(function (a) { return { zip: a[0], base: a[1], name: a[2] }; }); },
+    addressParts: function () { return clone(readAddressGroup('co')); },
+    nextProductCode: function () { return nextProductCode(); },
+    productCodeOf: function (pid) { return productCodeOf(productById(pid)); },
+    productCodeTaken: function (code, exceptId) { return productCodeTaken(code, exceptId); },
+    productByCode: function (code) { var p = productByCode(code); return p ? clone(p) : null; },
+    paletteOfImage: function (src) {
+      return new Promise(function (resolve) { sampleImageColors(src, {}, resolve); });
+    },
+    editorState: function () {
+      var rows = $$('#variant-rows .var-row').map(function (r, i) {
+        return {
+          index: i,
+          active: r.classList.contains('active'),
+          color: (r.querySelector('[name=color]') || {}).value || '',
+          picker: (r.querySelector('[name=hex]') || {}).value || '',
+          text: (r.querySelector('[name=hexText]') || {}).value || '',
+          size: (r.querySelector('[name=size]') || {}).value || '',
+          stock: (r.querySelector('[name=stock]') || {}).value || ''
+        };
+      });
+      return {
+        base: '',
+        basePicker: '',
+        colorRow: ui.colorRow,
+        layerOpen: !!document.querySelector('.color-layer'),
+        target: ($('[data-hook=cl-now-hex]') || {}).textContent || '',
+        focusRow: ui.editRow == null ? null : ui.editRow,
+        rows: rows,
+        palette: $$('[data-hook=palette] .pal').map(function (b) {
+          return { hex: b.getAttribute('data-hex'), name: b.getAttribute('data-name'), label: b.textContent.trim() };
+        })
+      };
+    },
+    hash: sha256Hex,
+    totals: function () { return totalsOf(selectedRows(), ui.coupon); },
+    checkoutTotals: function () { return totalsOf(checkoutRows(), ui.coupon); },
+    shipping: function () { return shippingOf(selectedRows()); },
+    coupons: function () { return clone(db.coupons); },
+    activeCoupons: function () { return clone(activeCoupons()); },
+    couponsForUser: function (uid) {
+      var u = uid ? currentUserById(uid) : currentUser();
+      return clone(couponsForUser(u));
+    },
+    couponTargets: function (code) { var c = couponByCode(code); return clone(c ? couponTargets(c) : []); },
+    badgePresets: function () { return BADGE_PRESETS.slice(); },
+    coupon: function (code) { return clone(couponByCode(code)); },
+    applyCoupon: function (code) { return clone(applyCouponCode(code, activeRows())); },
+    clearCoupon: function () { clearCoupon(); refreshMoneyViews(); },
+    appliedCoupon: function () { return ui.coupon ? clone(ui.coupon) : null; },
+    productGallery: function (pid) { return clone(productImages(productById(pid))); },
+    freeShipOf: function (pid) { var p = productById(pid); return p ? freeShipThresholdOf(p) : null; },
+    addCoupon: function (input) { return clone(createCoupon(input)); },
+    route: function () { return clone(routeOf()); },
+    openProduct: function (pid) { openProduct(pid); syncRoute(); return clone(ui.modal); },
+    openCart: function () { ui.cartOpen = true; renderHeader(); renderCart(); syncLock(); syncRoute(); },
+    modal: function () { return ui.modal ? clone(ui.modal) : null; },
+    currentUser: function () { var u = currentUser(); return u ? clone(u) : null; },
+    stockOf: function (pid) { return stockOf(pid); },
+    variant: function (pid, color, size) { return clone(findVariant(pid, color, size) || null); },
+    integrity: function () { return runIntegrity(); },
+    /* --- v1.9.8 테이블 레지스트리 · 관리자 조회 모달 · FAQ 1건/선택 삭제 (검수용) --- */
+    storeTables: function () {
+      return {
+        tables: STORE_TABLES.map(function (t) { return t.name; }),
+        labels: STORE_TABLES.map(function (t) { return { name: t.name, label: t.label, count: storeTableCount(t.name) }; }),
+        total: storeTableTotal(),
+        exported: Object.keys(storeTableSnapshot()),
+        exportPayload: exportPayload()
+      };
+    },
+    exportPayload: function () { return exportPayload(); },
+    saveFaqItem: function (input) { return clone(saveFaqItem(input || {})); },
+    deleteFaqs: function (ids) { return clone(deleteFaqItems(ids || [])); },
+    moveFaq: function (id, dir) { return clone(moveFaqItem(id, dir)); },
+    openAdminOrder: function (oid) { ui.modal = { type: 'admin-order', oid: oid }; renderModal(); syncLock(); return ui.modal ? clone(ui.modal) : null; },
+    openAdminClaim: function (cid) { ui.modal = { type: 'admin-claim', cid: cid }; renderModal(); syncLock(); return ui.modal ? clone(ui.modal) : null; },
+    saveClaimMemo: function (cid, memo) {
+      var c = claimById(cid);
+      if (!c) return { ok: false, message: '접수건을 찾을 수 없습니다.' };
+      c.admin_memo = String(memo || '').trim().slice(0, 500); c.updated_at = nowISO();
+      save();
+      return { ok: true, claim: clone(c) };
+    },
+    saveCategoryDetail: function (cid, input) { return clone(saveCategoryDetail(cid, input || {})); },
+    reset: function () { resetDB(); },
+    login: function (e, p) { return login(e, p); },
+    cartCount: function () { return cartCount(); },
+    paymentConfig: function () { return clone(PAYMENT_CONFIG); },
+    paymentConfigSource: function () { return paymentConfigSource(); },
+    savePaymentConfig: function (cfg) { return clone(savePaymentConfig(cfg)); },
+    resetPaymentConfig: function () { return clone(resetPaymentConfig()); },
+    categories: function () { return clone(categoriesSorted()); },
+    addCategory: function (input) { return clone(addCategory(input)); },
+    updateCategory: function (id, input) { return clone(updateCategory(id, input)); },
+    deleteCategory: function (id) { return clone(deleteCategory(id)); },
+    moveCategory: function (id, dir) { return clone(moveCategory(id, dir)); },
+    grades: function () { return clone(GRADES); },
+    userGrade: function (uid) { var u = currentUserById(uid); return u ? gradeOf(u) : null; },
+    colorHex: function (name, hex) { return resolveColorHex(name, hex); },
+    couponByCode: function (code) { return clone(couponByCode(code)); },
+    updateCoupon: function (id, input) { return clone(updateCoupon(id, input)); },
+    lightbox: function () { return ui.lightbox ? clone(ui.lightbox) : null; },
+    openLightbox: function () { openLightbox(); syncRoute(); return ui.lightbox ? clone(ui.lightbox) : null; },
+    closeLightbox: function () { closeLightbox(); syncRoute(); },
+    setLightboxZoom: function (z) { setLightboxZoom(z); return ui.lightbox ? ui.lightbox.zoom : null; },
+    modelInfo: function (pid) { var p = productById(pid); return p ? (p.model_info || null) : null; },
+    paymentMode: function () { return { available: tossAvailable(), label: paymentModeLabel() }; },
+    pendingCheckout: function () { return clone(loadPending()); },
+    clearPending: function () { clearPending(); },
+    customerKey: function () { return customerKey(); },
+    handlePaymentReturn: function () { return handlePaymentReturn(); },
+    /* --- 교환/반품 접수 (테스트·검수용) --- */
+    claims: function () { return clone(db.order_claims); },
+    claimOf: function (oid) { return clone(claimOfOrder(oid)); },
+    claimById: function (cid) { return clone(claimById(cid)); },
+    claimFee: function (type, reason) { return claimFeeOf(type, reason); },
+    claimEligible: function (oid) { var o = orderById(oid); return !claimBlockReason(o); },
+    openClaim: function (oid) {
+      var o = orderById(oid);
+      if (!o) return null;
+      ui.modal = { type: 'claim', oid: oid, claim_type: 'return', reason_category: 'change_of_mind', reason_detail: '', exchange_option: '', error: '' };
+      renderModal(); syncLock(); syncRoute();
+      return clone(ui.modal);
+    },
+    claimDetail: function (cid) { return clone(claimById(cid)); },
+    updateClaimStatus: function (cid, status) { return clone(updateClaimStatus(cid, status)); },
+    setOrderStatus: function (oid, status) { return clone(updateOrderStatus(oid, status)); },
+    pendingClaim: function () { return clone(loadPendingClaim()); },
+    clearPendingClaim: function () { clearPendingClaim(); },
+    handleClaimReturn: function () { return handleClaimReturn(); },
+    confirmPayment: function (payKey, orderNo, amount) {
+      var pending = loadPending();
+      if (!pending) return { ok: false, message: '대기 주문 없음' };
+      if (orderNo && orderNo !== pending.order_no) return { ok: false, message: '주문번호 불일치' };
+      if (amount != null && Number(amount) !== pending.amount) return { ok: false, message: '금액 불일치' };
+      confirmPayment(pending, { paymentKey: payKey || 'test_client_key', orderId: pending.order_no, amount: pending.amount });
+      return { ok: true };
+    }
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
