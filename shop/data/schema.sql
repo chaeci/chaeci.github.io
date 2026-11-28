@@ -232,6 +232,8 @@ CREATE TABLE site_settings (
   id                   TEXT PRIMARY KEY,                        -- 'default' 단일 행
   top_banner_text      TEXT NOT NULL DEFAULT '',                -- v1.9.3 상단 안내 띠 문구(비우면 띠 숨김)
   top_banner_sub       TEXT NOT NULL DEFAULT '',                -- v1.9.3 상단 띠 보조 문구(비우면 숨김)
+  top_banner_enabled   INTEGER NOT NULL DEFAULT 1 CHECK (top_banner_enabled IN (0,1)),
+                                                               -- v1.9.10 상단 안내 띠 노출(0 = 숨김)
   hero_image           TEXT NOT NULL,                           -- 대표 배너 이미지(asset 파일명 또는 업로드 Data URL)
   hero_eyebrow         TEXT NOT NULL DEFAULT '',                -- 상단 뱃지 문구
   hero_title           TEXT NOT NULL,                           -- 메인 타이틀
@@ -249,6 +251,9 @@ CREATE TABLE site_settings (
   story_tags           TEXT NOT NULL DEFAULT '[]',              -- JSON 배열: 핵심 가치/태그
   brand_story_enabled  INTEGER NOT NULL DEFAULT 1 CHECK (brand_story_enabled IN (0,1)),
                                                                -- v1.9.9 메인페이지 브랜드 스토리 노출(0 = 홈에서 숨김)
+  shop_eyebrow         TEXT NOT NULL DEFAULT 'SHOP — NEW ARRIVALS',   -- v1.9.10 상품 섹션 뱃지·영문 문구
+  shop_title           TEXT NOT NULL DEFAULT '이번 시즌, 새로 도착한 옷',  -- v1.9.10 상품 섹션 제목
+  shop_desc            TEXT NOT NULL DEFAULT '',                -- v1.9.10 상품 섹션 설명(비우면 기본 문구)
   brand_blurb          TEXT NOT NULL DEFAULT '',                -- 푸터 브랜드 소개
   company_name         TEXT NOT NULL DEFAULT '',                -- 상호
   company_ceo          TEXT NOT NULL DEFAULT '',                -- 대표자

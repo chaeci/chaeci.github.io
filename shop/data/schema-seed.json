@@ -2563,6 +2563,7 @@
     "id": "default",
     "top_banner_text": "FALL / WINTER 2026 — 10만 원 이상 무료배송",
     "top_banner_sub": "평일 오후 2시 이전 당일 출고",
+    "top_banner_enabled": true,
     "hero_image": "hero.webp",
     "hero_eyebrow": "FALL / WINTER 2026 — THE QUIET COLLECTION",
     "hero_title": "Quiet luxury,\nfor every day.",
@@ -2584,6 +2585,9 @@
       "서울 제작"
     ],
     "brand_story_enabled": true,
+    "shop_eyebrow": "SHOP — NEW ARRIVALS",
+    "shop_title": "이번 시즌, 새로 도착한 옷",
+    "shop_desc": "단정한 실루엣과 좋은 소재. 유행보다 오래 입는 옷을 제안합니다.",
     "company_name": "모노 아뜰리에",
     "company_ceo": "홍길동",
     "company_reg_no": "000-00-00000",
@@ -2621,16 +2625,10 @@
       "body": "수령 후 7일 이내 교환·반품 신청이 가능합니다.\n제품 하자·오배송은 판매자 귀책으로 배송비가 무료이며, 단순 변심은 반품 3,000원 · 교환(왕복) 6,000원입니다.\n교환·반품은 마이페이지 → 주문 내역에서 신청할 수 있습니다."
     },
     {
-      "id": "help_shipping",
-      "title": "무료배송·당일출고",
-      "sort_order": 3,
-      "body": "10만 원 이상 구매 시 전 상품 무료배송입니다.\n상품별 무료배송 기준은 상품 상세의 배송 안내를 참고해 주세요.\n평일 오후 2시 이전 결제 건은 당일 출고되며, 출고 후 1~3일 안에 받아 보실 수 있습니다."
-    },
-    {
       "id": "help_faq",
       "title": "고객센터",
-      "sort_order": 4,
-      "body": "고객센터 운영 시간: 평일 10:00 – 17:00\n점심 12:30 – 13:30, 주말·공휴일 휴무\n전화 02-0000-0000 · 이메일 help@mono.kr\n자주 묻는 질문은 푸터의 「FAQ 게시판」에서 확인할 수 있습니다."
+      "sort_order": 3,
+      "body": "고객센터 운영 시간: 평일 10:00 – 17:00\n점심 12:30 – 13:30, 주말·공휴일 휴무\n전화 02-0000-0000 · 이메일 help@mono.kr\n자주 묻는 질문은 홈 HELP 4칸의 「FAQ」에서 확인할 수 있습니다."
     }
   ]
 }
