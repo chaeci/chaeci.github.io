@@ -2817,6 +2817,7 @@ table.data.faq-grid tr[data-faq-state=hidden] td { color: #9d978b; }
   .table-scroll table.data.admin-grid.coupons-table { min-width: 720px; }
   .table-scroll table.data.admin-grid.point-policy-table { min-width: 560px; }
   .table-scroll table.data.admin-grid.point-members-table { min-width: 560px; }
+  .table-scroll table.data.admin-grid.point-logs { min-width: 560px; }
   .table-scroll table.data.admin-grid.category-grid { min-width: 640px; }
   .table-scroll table.data.admin-grid.faq-grid { min-width: 520px; }
   .faq-toolbar [data-action=faq-delete-selected] { margin-left: 0; }
@@ -8993,6 +8994,25 @@ table.data.faq-grid tr[data-faq-state=hidden] td { color: #9d978b; }
                 return '<div class="pl-mini">' + (l.amount > 0 ? '+' : '−') + Math.abs(l.amount).toLocaleString('ko-KR') + 'P · ' + esc(l.description) + '</div>';
               }).join('') + '</div>' : '<span class="m">내역 없음</span>') + '</td></tr>';
           }).join('') +
+        '</tbody></table></div>' +
+      '</div>' +
+      /* v1.9.8 — 포인트 이력 표(전체 회원) : 그리드 표로 모바일에서도 머리글 유지 */
+      '<div class="data-card" style="margin-top:16px" data-point-logs="1">' +
+        '<h3>포인트 이력 <small class="data-h3-sub">' + (db.point_logs || []).length + '건</small></h3>' +
+        '<p>적립·사용·회수 내역 전체입니다(최신순). 회원 보유 포인트는 이 내역의 합계와 같습니다.</p>' +
+        '<div class="table-wrap table-scroll"><table class="data point-logs admin-grid"><thead><tr><th>일시</th><th>회원</th><th>유형</th><th>포인트</th><th>사유</th></tr></thead><tbody>' +
+          ((db.point_logs || []).length ? (db.point_logs || []).slice()
+            .sort(function (a, b) { return timeOf(b.created_at) - timeOf(a.created_at); })
+            .map(function (l) {
+              var lu = currentUserById(l.user_id);
+              return '<tr data-point-log="' + esc(l.id) + '">' +
+                '<td data-label="일시" style="white-space:nowrap;font-size:11px;color:var(--muted)">' + fmtDateTime(l.created_at) + '</td>' +
+                '<td data-label="회원">' + esc(lu ? lu.name : '(탈퇴 회원)') + '<div class="m" style="font-size:10px;color:var(--muted)">' + esc(lu ? lu.email : l.user_id) + '</div></td>' +
+                '<td data-label="유형">' + esc(pointTypeLabel(l.type)) + '</td>' +
+                '<td data-label="포인트"><b>' + (l.amount > 0 ? '+' : '−') + Math.abs(l.amount).toLocaleString('ko-KR') + 'P</b></td>' +
+                '<td data-label="사유">' + esc(l.description || '') + '</td></tr>';
+            }).join('')
+            : '<tr><td colspan="5" class="empty-cell">포인트 내역이 없습니다.</td></tr>') +
         '</tbody></table></div>' +
       '</div>';
   }
